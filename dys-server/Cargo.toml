@@ -1,0 +1,21 @@
+[package]
+name = "dys-server"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+tonic-build.workspace = true
+
+[dependencies]
+tonic.workspace = true
+prost.workspace = true
+tokio.workspace = true
+serde.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-bunyan-formatter.workspace = true
+
+dys-director = { path = "../dys-director"}
+dys-world = { path = "../dys-world"}
