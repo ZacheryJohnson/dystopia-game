@@ -7,32 +7,42 @@ pub struct Arena {
 impl Arena {
     pub fn new_with_testing_defaults() -> Arena {
         Arena {
+            // X: horizontal; Y: vertical; Z: depth
             features: vec![
+                // West Wall
                 Box::new(
-                    ArenaWall { origin: vector![0.0, 50.0, 0.0], size: vector![1.0, 100.0, 10.0], rotation: vector![0.0, 0.0, 0.0] }
+                    ArenaWall { origin: vector![0.0, 0.0, 50.0], size: vector![3.0, 10.0, 100.0], rotation: vector![0.0, 0.0, 0.0] }
                 ),
+                // East Wall
                 Box::new(
-                    ArenaWall { origin: vector![100.0, 50.0, 0.0], size: vector![1.0, 100.0, 10.0], rotation: vector![0.0, 0.0, 0.0] }
+                    ArenaWall { origin: vector![100.0, 0.0, 50.0], size: vector![3.0, 10.0, 100.0], rotation: vector![0.0, 0.0, 0.0] }
                 ),
+                // South Wall
                 Box::new(
-                    ArenaWall { origin: vector![50.0, 0.0, 0.0], size: vector![100.0, 1.0, 10.0], rotation: vector![0.0, 0.0, 0.0] }
+                    ArenaWall { origin: vector![50.0, 0.0, 0.0], size: vector![100.0, 10.0, 3.0], rotation: vector![0.0, 0.0, 0.0] }
                 ),
+                // North Wall
                 Box::new(
-                    ArenaWall { origin: vector![50.0, 100.0, 0.0], size: vector![100.0, 1.0, 10.0], rotation: vector![0.0, 0.0, 0.0] }
+                    ArenaWall { origin: vector![50.0, 0.0, 100.0], size: vector![100.0, 10.0, 3.0], rotation: vector![0.0, 0.0, 0.0] }
                 ),
+                // Floor
                 Box::new(
-                    ArenaPlate { origin: vector![50.0, 50.0, 0.0], shape: ArenaPlateShape::Circle { radius: 10.0 }, rotation: vector![0.0, 0.0, 0.0] }
+                    ArenaWall { origin: vector![50.0, -5.0, 50.0], size: vector![100.0, 10.0, 100.0], rotation: vector![0.0, 0.0, 0.0] }
+                ),
+                // Plate
+                Box::new(
+                    ArenaPlate { origin: vector![50.0, 0.0, 50.0], shape: ArenaPlateShape::Circle { radius: 10.0 }, rotation: vector![0.0, 0.0, 0.0] }
                 )
             ]
         }
     }
 
-    pub fn register_features_physics(&self, mut rigid_body_set: &mut RigidBodySet, collider_set: &mut ColliderSet) {
+    pub fn register_features_physics(&self, rigid_body_set: &mut RigidBodySet, collider_set: &mut ColliderSet) {
         for feature in &self.features {
             if let Some(rigid_body) = feature.build_rigid_body() {
                 let rigid_body_handle = rigid_body_set.insert(rigid_body);
                 if let Some(collider) = feature.build_collider() {
-                    let _collider_handle = collider_set.insert_with_parent(collider, rigid_body_handle, &mut rigid_body_set);
+                    let _collider_handle = collider_set.insert_with_parent(collider, rigid_body_handle, rigid_body_set);
                 }
             } else {
                 if let Some(collider) = feature.build_collider() {
@@ -72,9 +82,7 @@ impl ArenaFeature for ArenaWall {
     }
 
     fn build_collider(&self) -> Option<Collider> {
-        let collider = ColliderBuilder::cuboid(self.size.x, self.size.y, self.size.z)
-            .translation(self.origin)
-            .rotation(self.rotation)
+        let collider = ColliderBuilder::cuboid(self.size.x / 2.0, self.size.y / 2.0, self.size.z / 2.0)
             .build();
 
         Some(collider)

@@ -3,6 +3,10 @@ members = [ "dys-*" ]
 
 resolver = "2"
 
+# Ensure we're optimizing Rapier (physics) always in dev builds
+[profile.dev.package.rapier3d]
+opt-level = 3
+
 [workspace.dependencies]
 tonic-build = "0.11" # Build dependency only!
 
