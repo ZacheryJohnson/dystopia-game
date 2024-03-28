@@ -1,5 +1,5 @@
 use dys_world::combatant::combatant::CombatantId;
-use rapier3d::{dynamics::{CoefficientCombineRule, RigidBody, RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{Collider, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3};
+use rapier3d::{dynamics::{CoefficientCombineRule, RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 
 use crate::game_tick::GameTickNumber;
 
@@ -9,6 +9,7 @@ const BALL_RADIUS: f32 = 0.5;
 const BALL_RESTITUTION: f32 = 0.2;
 const BALL_MASS: f32 = 2.0;
 
+#[derive(Clone)]
 pub enum BallState {
     Idle,
     Held { 
@@ -27,6 +28,7 @@ pub enum BallState {
     Explode,
 }
 
+#[derive(Clone)]
 pub struct BallObject {
     pub id: BallId,
     pub rigid_body_handle: RigidBodyHandle,
@@ -43,6 +45,7 @@ impl BallObject {
             .build();
         
         let collider = ColliderBuilder::ball(BALL_RADIUS)
+            .active_events(ActiveEvents::COLLISION_EVENTS)
             .restitution(BALL_RESTITUTION)
             .restitution_combine_rule(CoefficientCombineRule::Min)
             .density(BALL_MASS)
@@ -59,5 +62,15 @@ impl BallObject {
             state_tick_stamp: creation_tick,
             charge: 0.0,
         }
+    }
+
+    pub fn change_state(&mut self, current_tick: GameTickNumber, new_state: BallState) -> (BallState, GameTickNumber) {
+        let old_state = self.state.clone();
+        let old_tick_timestamp = self.state_tick_stamp;
+        
+        self.state = new_state;
+        self.state_tick_stamp = current_tick;
+
+        (old_state, old_tick_timestamp)
     }
 }

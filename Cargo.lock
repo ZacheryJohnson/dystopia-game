@@ -430,6 +430,7 @@ name = "dys-game"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "crossbeam",
  "dys-world",
  "rand",
  "rand_pcg",

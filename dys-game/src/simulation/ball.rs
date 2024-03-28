@@ -8,8 +8,7 @@ const BALL_MAX_HOLD_TIME_SECONDS: u32 = 7;
 const BALL_MAX_HOLD_TIME_TICKS: u32 = TICKS_PER_SECOND * BALL_MAX_HOLD_TIME_SECONDS;
 
 pub(crate) fn simulate_balls(game_state: &mut GameState) {
-    let (rigid_body_set, collider_set) = game_state.physics_sim.sets();
-    for (id, ball) in &mut game_state.balls {
+    for (_, ball) in &mut game_state.balls {
         explode(ball);
         decrease_charge(ball);
     }

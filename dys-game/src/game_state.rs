@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use dys_world::combatant::combatant::CombatantId;
 use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
-use rapier3d::{na::Vector3, prelude::*};
+use rapier3d::prelude::*;
 
-use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::CombatantObject}, game_tick::{GameTick, GameTickNumber}, simulation::simulate_tick};
+use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::CombatantObject, game_object_type::GameObjectType}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::simulate_tick};
 
 pub type SeedT = [u8; 32];
 
@@ -16,72 +16,10 @@ pub struct GameState {
     pub physics_sim: PhysicsSim,
     pub combatants: HashMap<CombatantId, CombatantObject>,
     pub balls: HashMap<BallId, BallObject>,
+    pub active_colliders: HashMap<ColliderHandle, GameObjectType>,
     pub home_points: u16,
     pub away_points: u16,
     pub current_tick: GameTickNumber,
-}
-
-pub struct PhysicsSim {
-    gravity: Vector3<f32>,
-    integration_params: IntegrationParameters,
-    pipeline: PhysicsPipeline,
-    island_manager: IslandManager,
-    broad_phase: BroadPhase,
-    narrow_phase: NarrowPhase,
-    rigid_body_set: RigidBodySet,
-    collider_set: ColliderSet,
-    impulse_joint_set: ImpulseJointSet,
-    multibody_joint_set: MultibodyJointSet,
-    ccd_solver: CCDSolver,
-    query_pipeline: QueryPipeline,
-    physics_hooks: (),
-    event_handler: (),
-}
-
-impl PhysicsSim {
-    pub fn new() -> PhysicsSim {
-        let mut integration_params = IntegrationParameters::default();
-        integration_params.dt = 1.0 / 5.0; // ZJ-TODO: read from TICKS_PER_SECOND
-
-        PhysicsSim {
-            gravity: vector![0.0, -9.81, 0.0],
-            integration_params,
-            pipeline: PhysicsPipeline::new(),
-            island_manager: IslandManager::new(),
-            broad_phase: BroadPhase::new(),
-            narrow_phase: NarrowPhase::new(),
-            rigid_body_set: RigidBodySet::new(),
-            collider_set: ColliderSet::new(),
-            impulse_joint_set: ImpulseJointSet::new(),
-            multibody_joint_set: MultibodyJointSet::new(),
-            ccd_solver: CCDSolver::new(),
-            query_pipeline: QueryPipeline::new(),
-            physics_hooks: (),
-            event_handler: (),
-        }
-    }
-
-    pub fn sets(&mut self) -> (&mut RigidBodySet, &mut ColliderSet) {
-        (&mut self.rigid_body_set, &mut self.collider_set)
-    }
-
-    pub fn tick(&mut self) {
-        self.pipeline.step(
-            &self.gravity,
-            &self.integration_params,
-            &mut self.island_manager,
-            &mut self.broad_phase,
-            &mut self.narrow_phase,
-            &mut self.rigid_body_set,
-            &mut self.collider_set,
-            &mut self.impulse_joint_set,
-            &mut self.multibody_joint_set,
-            &mut self.ccd_solver,
-            Some(&mut self.query_pipeline),
-            &self.physics_hooks,
-            &self.event_handler,
-        )
-    }
 }
 
 impl GameState {
@@ -95,14 +33,19 @@ impl GameState {
         let (rigid_body_set, collider_set) = physics_sim.sets();
         game.schedule_game.arena.lock().unwrap().register_features_physics(rigid_body_set, collider_set);
 
+        let mut active_colliders = HashMap::new();
+
         // ZJ-TODO: move the following to arena init
-        let ball_object = BallObject::new(1, 1, vector![30.0, 1.0, 30.0], rigid_body_set, collider_set);
+        let ball_id = 1;
+        let ball_object = BallObject::new(ball_id, 1, vector![30.0, 1.0, 30.0], rigid_body_set, collider_set);
 
         let ball_object_rb = rigid_body_set.get_mut(ball_object.rigid_body_handle).unwrap();
         ball_object_rb.apply_impulse(vector![75.0, 0.0, 55.0], true);
 
+        active_colliders.insert(ball_object.collider_handle, GameObjectType::Ball(ball_id));
+
         let mut balls = HashMap::new();
-        balls.insert(1, ball_object);
+        balls.insert(ball_id, ball_object);
 
         // ZJ-TODO: combatant init
 
@@ -112,6 +55,7 @@ impl GameState {
             rng: Pcg64::from_seed(*seed),
             physics_sim,
             combatants: HashMap::new(),
+            active_colliders,
             balls,
             home_points: 0,
             away_points: 0,
