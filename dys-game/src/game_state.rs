@@ -5,7 +5,8 @@ use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
 use rapier3d::prelude::*;
 
-use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::CombatantObject, game_object_type::GameObjectType}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::simulate_tick};
+use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::CombatantObject, game_object::GameObject, game_object_type::GameObjectType}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::simulate_tick};
+use dys_world::arena::feature::ArenaFeature;
 
 pub type SeedT = [u8; 32];
 
@@ -29,37 +30,70 @@ impl GameState {
     }
 
     pub fn from_game_seeded(game: Game, seed: &SeedT) -> GameState {
+        let current_tick = 0;
+
         let mut physics_sim = PhysicsSim::new();
         let (rigid_body_set, collider_set) = physics_sim.sets();
-        game.schedule_game.arena.lock().unwrap().register_features_physics(rigid_body_set, collider_set);
 
         let mut active_colliders = HashMap::new();
-
-        // ZJ-TODO: move the following to arena init
-        let ball_id = 1;
-        let ball_object = BallObject::new(ball_id, 1, vector![30.0, 1.0, 30.0], rigid_body_set, collider_set);
-
-        let ball_object_rb = rigid_body_set.get_mut(ball_object.rigid_body_handle).unwrap();
-        ball_object_rb.apply_impulse(vector![75.0, 0.0, 55.0], true);
-
-        active_colliders.insert(ball_object.collider_handle, GameObjectType::Ball(ball_id));
-
         let mut balls = HashMap::new();
-        balls.insert(ball_id, ball_object);
+        let mut combatants = HashMap::new();
+
+        {
+            let arena = game.schedule_game.arena.lock().unwrap();
+            arena.register_features_physics(rigid_body_set, collider_set);
+
+            // ZJ-TODO: move the following to arena init
+            let mut ball_id = 0;
+
+            for ball_spawn in arena.ball_spawns() {
+                ball_id += 1;
+                let ball_object = BallObject::new(ball_id, current_tick, *ball_spawn.origin(), rigid_body_set, collider_set);
+
+                active_colliders.insert(ball_object.collider_handle, GameObjectType::Ball(ball_id));
+
+                balls.insert(ball_id, ball_object);
+            }
+        }
 
         // ZJ-TODO: combatant init
+        {
+            let mut home_combatants = { game.schedule_game.home_team.lock().unwrap().combatants.clone() };
+            let mut away_combatants = { game.schedule_game.away_team.lock().unwrap().combatants.clone() };
+
+            let arena = game.schedule_game.arena.lock().unwrap();
+            let combatant_starts = arena.combatant_starts();
+            println!("{}", combatant_starts.len());
+
+            let mut combatant_id = 0;
+            for player_start in combatant_starts {
+                combatant_id += 1;
+                let position = player_start.origin().to_owned();
+
+                let team_combatants = if player_start.is_home_team { &mut home_combatants } else { &mut away_combatants };
+                let Some(combatant) = team_combatants.pop() else {
+                    // This may not be an error case if we allow more starts than combatants
+                    println!("failed to pop combatant for empty player start");
+                    continue;
+                };
+
+                let combatant_object = CombatantObject::new(combatant_id, combatant, position);
+                active_colliders.insert(combatant_object.collider_handle().expect("combatant game objects must have collider handles"), GameObjectType::Combatant(combatant_id));
+                combatants.insert(combatant_id, combatant_object);
+            }
+        }
 
         GameState {
             game,
             seed: seed.to_owned(),
             rng: Pcg64::from_seed(*seed),
             physics_sim,
-            combatants: HashMap::new(),
+            combatants,
             active_colliders,
             balls,
             home_points: 0,
             away_points: 0,
-            current_tick: 0,
+            current_tick,
         }
     }
 

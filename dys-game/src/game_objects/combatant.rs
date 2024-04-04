@@ -3,6 +3,8 @@ use std::sync::{Arc, Mutex};
 use dys_world::combatant::combatant::Combatant;
 use rapier3d::na::Vector3;
 
+use super::game_object::GameObject;
+
 pub type CombatantId = u64;
 
 pub struct CombatantObject {
@@ -34,5 +36,15 @@ impl CombatantObject {
             combatant_state: CombatantState::Idle,
             world_position: position
         }
+    }
+}
+
+impl GameObject for CombatantObject {
+    fn rigid_body_handle(&self) -> Option<rapier3d::prelude::RigidBodyHandle> {
+        todo!()
+    }
+
+    fn collider_handle(&self) -> Option<rapier3d::prelude::ColliderHandle> {
+        todo!()
     }
 }

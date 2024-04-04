@@ -3,6 +3,8 @@ use rapier3d::{dynamics::{CoefficientCombineRule, RigidBodyBuilder, RigidBodyHan
 
 use crate::game_tick::GameTickNumber;
 
+use super::game_object::GameObject;
+
 pub type BallId = u16;
 
 const BALL_RADIUS: f32 = 0.5;
@@ -72,5 +74,15 @@ impl BallObject {
         self.state_tick_stamp = current_tick;
 
         (old_state, old_tick_timestamp)
+    }
+}
+
+impl GameObject for BallObject {
+    fn rigid_body_handle(&self) -> Option<RigidBodyHandle> {
+        Some(self.rigid_body_handle.clone())
+    }
+
+    fn collider_handle(&self) -> Option<ColliderHandle> {
+        Some(self.collider_handle.clone())
     }
 }

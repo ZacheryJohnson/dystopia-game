@@ -1,4 +1,15 @@
-use rapier3d::{dynamics::{RigidBody, RigidBodyBuilder, RigidBodySet}, geometry::{Collider, ColliderBuilder, ColliderSet, SharedShape}, na::{vector, Vector3}, prelude::*};
+use std::any::{Any, TypeId};
+
+use rapier3d::{dynamics::RigidBodySet, geometry::ColliderSet, na::{vector, Vector3}, prelude::*};
+
+use self::{ball_spawn::ArenaBallSpawn, feature::ArenaFeature, plate::{ArenaPlate, ArenaPlateShape}, combatant_start::ArenaCombatantStart, wall::ArenaWall};
+
+pub mod feature;
+
+mod wall;
+mod plate;
+mod combatant_start;
+mod ball_spawn;
 
 pub struct Arena {
     features: Vec<Box<dyn ArenaFeature>>
@@ -32,7 +43,55 @@ impl Arena {
                 // Plate
                 Box::new(
                     ArenaPlate { origin: vector![50.0, 0.0, 50.0], shape: ArenaPlateShape::Circle { radius: 10.0 }, rotation: vector![0.0, 0.0, 0.0] }
-                )
+                ),
+                // South Ball Spawn
+                Box::new(
+                    ArenaBallSpawn { origin: vector![50.0, 0.0, 25.0] }
+                ),
+                // North Ball Spawn
+                Box::new(
+                    ArenaBallSpawn { origin: vector![50.0, 0.0, 75.0] }
+                ),
+                // Home Team Player 1 Start
+                Box::new(
+                    ArenaCombatantStart { origin: vector![15.0, 0.0, 80.0], is_home_team: true }
+                ),
+                // Home Team Player 2 Start
+                Box::new(
+                    ArenaCombatantStart { origin: vector![15.0, 0.0, 65.0], is_home_team: true }
+                ),
+                // Home Team Player 3 Start
+                Box::new(
+                    ArenaCombatantStart { origin: vector![15.0, 0.0, 50.0], is_home_team: true }
+                ),
+                // Home Team Player 4 Start
+                Box::new(
+                    ArenaCombatantStart { origin: vector![15.0, 0.0, 35.0], is_home_team: true }
+                ),
+                // Home Team Player 5 Start
+                Box::new(
+                    ArenaCombatantStart { origin: vector![15.0, 0.0, 20.0], is_home_team: true }
+                ),
+                // Away Team Player 1 Start
+                Box::new(
+                    ArenaCombatantStart { origin: vector![85.0, 0.0, 80.0], is_home_team: false }
+                ),
+                // Away Team Player 2 Start
+                Box::new(
+                    ArenaCombatantStart { origin: vector![85.0, 0.0, 65.0], is_home_team: false }
+                ),
+                // Away Team Player 3 Start
+                Box::new(
+                    ArenaCombatantStart { origin: vector![85.0, 0.0, 50.0], is_home_team: false }
+                ),
+                // Away Team Player 4 Start
+                Box::new(
+                    ArenaCombatantStart { origin: vector![85.0, 0.0, 35.0], is_home_team: false }
+                ),
+                // Away Team Player 5 Start
+                Box::new(
+                    ArenaCombatantStart { origin: vector![85.0, 0.0, 20.0], is_home_team: false }
+                ),
             ]
         }
     }
@@ -51,83 +110,25 @@ impl Arena {
             }
         }
     }
-}
 
-trait ArenaFeature {
-    fn build_rigid_body(&self) -> Option<RigidBody>;
+    pub fn ball_spawns(&self) -> Vec<&ArenaBallSpawn> {
+        let spawns = self
+            .features
+            .iter()
+            .filter(|feature| TypeId::of::<ArenaBallSpawn>() == (*feature).type_id())
+            .map(|feature| feature.as_any().downcast_ref::<ArenaBallSpawn>().expect("failed to cast feature to a ball spawn"))
+            .collect();
 
-    fn build_collider(&self) -> Option<Collider>;
-}
-
-/// All walls are rectangular prisms
-pub struct ArenaWall {
-    /// Center point of the wall
-    pub origin: Vector3<f32>,
-
-    /// XYZ size of the wall
-    pub size: Vector3<f32>,
-
-    /// Quaternion of the rotation
-    pub rotation: Vector3<f32>,
-}
-
-impl ArenaFeature for ArenaWall {
-    fn build_rigid_body(&self) -> Option<RigidBody> {
-        let rigid_body = RigidBodyBuilder::fixed()
-            .translation(self.origin)
-            .rotation(self.rotation)
-            .build();
-
-        Some(rigid_body)
+        spawns
     }
 
-    fn build_collider(&self) -> Option<Collider> {
-        let collider = ColliderBuilder::cuboid(self.size.x / 2.0, self.size.y / 2.0, self.size.z / 2.0)
-            .build();
+    pub fn combatant_starts(&self) -> Vec<&ArenaCombatantStart> {
+        let starts = self
+            .features
+            .iter()
+            .filter_map(|feature| feature.as_any().downcast_ref::<ArenaCombatantStart>())
+            .collect();
 
-        Some(collider)
-    }
-}
-
-pub enum ArenaPlateShape {
-    Circle { radius: f32 },
-    Rect { width: f32, height: f32 },
-    /// Equilateral triangle
-    Triangle { width: f32, height: f32 },
-}
-
-pub struct ArenaPlate {
-    /// Center point of the wall
-    pub origin: Vector3<f32>,
-
-    /// Shape of the plate, including size of that shape
-    pub shape: ArenaPlateShape,
-
-    /// Quaternion of the rotation
-    pub rotation: Vector3<f32>,
-}
-
-impl ArenaFeature for ArenaPlate {
-    fn build_rigid_body(&self) -> Option<RigidBody> {
-        // Plates do not need rigid bodies (at least with current design)
-        // Maybe there's a world where plates move around but meh, feature creep
-        None
-    }
-
-    fn build_collider(&self) -> Option<Collider> {
-        const PLATE_VERTICAL_HEIGHT: f32 = 100.0;
-
-        let shape: SharedShape = match &self.shape {
-            ArenaPlateShape::Circle { radius } => SharedShape::cylinder(PLATE_VERTICAL_HEIGHT, *radius),
-            ArenaPlateShape::Rect { width, height } => SharedShape::cuboid(*width, *height, PLATE_VERTICAL_HEIGHT),
-            ArenaPlateShape::Triangle { width, height } => SharedShape::triangle(point![0.0, 0.0, 0.0], point![*width, 0.0, 0.0], point![*width / 2.0, *height, 0.0]), // TODO: pretty sure this is broken: 0 height on this collider
-        };
-
-        let collider = ColliderBuilder::new(shape)
-            .translation(self.origin)
-            .rotation(self.rotation)
-            .build();
-
-        Some(collider)
+        starts
     }
 }
