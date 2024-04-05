@@ -16,12 +16,12 @@ pub struct Generator {
 
 impl Generator {
     pub fn new() -> Generator {
-        let given_names: Vec<String> = include_str!("../data/given_names.txt")
+        let given_names: Vec<String> = include_str!("../../data/given_names.txt")
             .split_whitespace()
             .map(|s| s.to_owned())
             .collect();
 
-        let surnames: Vec<String> = include_str!("../data/surnames.txt")
+        let surnames: Vec<String> = include_str!("../../data/surnames.txt")
             .split_whitespace()
             .map(|s| s.to_owned())
             .collect();

@@ -9,4 +9,5 @@ edition = "2021"
 tracing.workspace = true
 rand.workspace = true
 
+dys-game = { path = "../dys-game" }
 dys-world = { path = "../dys-world" }

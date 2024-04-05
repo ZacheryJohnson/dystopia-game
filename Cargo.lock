@@ -420,6 +420,7 @@ dependencies = [
 name = "dys-director"
 version = "0.1.0"
 dependencies = [
+ "dys-game",
  "dys-world",
  "rand",
  "tracing",

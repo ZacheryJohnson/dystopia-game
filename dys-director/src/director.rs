@@ -1,8 +1,7 @@
 use std::sync::{Arc, Mutex};
 
+use dys_game::generator::Generator;
 use dys_world::{combatant::combatant::Combatant, team::team::Team, world::World};
-
-use crate::generator::Generator;
 
 pub struct Director {
     world: World

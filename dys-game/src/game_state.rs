@@ -63,7 +63,6 @@ impl GameState {
 
             let arena = game.schedule_game.arena.lock().unwrap();
             let combatant_starts = arena.combatant_starts();
-            println!("{}", combatant_starts.len());
 
             let mut combatant_id = 0;
             for player_start in combatant_starts {
@@ -77,7 +76,7 @@ impl GameState {
                     continue;
                 };
 
-                let combatant_object = CombatantObject::new(combatant_id, combatant, position);
+                let combatant_object = CombatantObject::new(combatant_id, combatant, position, rigid_body_set, collider_set);
                 active_colliders.insert(combatant_object.collider_handle().expect("combatant game objects must have collider handles"), GameObjectType::Combatant(combatant_id));
                 combatants.insert(combatant_id, combatant_object);
             }

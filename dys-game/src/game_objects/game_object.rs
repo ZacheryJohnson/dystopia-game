@@ -1,4 +1,4 @@
-use rapier3d::{dynamics::RigidBodyHandle, geometry::ColliderHandle, na::Vector3};
+use rapier3d::{dynamics::RigidBodyHandle, geometry::ColliderHandle};
 
 pub trait GameObject {
     fn rigid_body_handle(&self) -> Option<RigidBodyHandle>;
