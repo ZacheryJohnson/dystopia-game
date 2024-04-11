@@ -10,11 +10,17 @@ pub type CombatantId = u64;
 const COMBATANT_HALF_HEIGHT: f32 = 2.0; // ZJ-TODO: this should be derived from the character's limbs
 const COMBATANT_RADIUS: f32 = 0.5; // ZJ-TODO: this should be derived from the character's limbs
 
+#[derive(PartialEq, Eq)]
+pub enum TeamAlignment {
+    Home,
+    Away,
+}
+
 pub struct CombatantObject {
     pub id: CombatantId,
     pub combatant: Arc<Mutex<Combatant>>,
     pub combatant_state: CombatantState,
-    pub world_position: Vector3<f32>,
+    pub team: TeamAlignment,
     rigid_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
 }
@@ -24,7 +30,7 @@ pub enum CombatantState {
 }
 
 impl CombatantObject {
-    pub fn new(id: CombatantId, combatant: Arc<Mutex<Combatant>>, position: Vector3<f32>, rigid_body_set: &mut RigidBodySet, collider_set: &mut ColliderSet) -> CombatantObject {
+    pub fn new(id: CombatantId, combatant: Arc<Mutex<Combatant>>, position: Vector3<f32>, team: TeamAlignment, rigid_body_set: &mut RigidBodySet, collider_set: &mut ColliderSet) -> CombatantObject {
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation(position)
             .build();
@@ -40,7 +46,7 @@ impl CombatantObject {
             id,
             combatant,
             combatant_state: CombatantState::Idle,
-            world_position: position,
+            team,
             rigid_body_handle,
             collider_handle,
         }

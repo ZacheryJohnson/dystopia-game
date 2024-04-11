@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use crate::simulation::simulation_event::SimulationEvent;
+
 pub type GameTickNumber = u32;
 
 pub struct GameTick {
@@ -7,6 +9,7 @@ pub struct GameTick {
     pub physics_duration: Duration,
     pub balls_duration: Duration,
     pub tick_duration: Duration,
+    pub simulation_events: Vec<SimulationEvent>,
     pub(crate) is_halftime: bool,
     pub(crate) is_end_of_game: bool,
 }

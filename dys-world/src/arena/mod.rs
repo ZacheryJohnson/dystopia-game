@@ -115,8 +115,7 @@ impl Arena {
         let spawns = self
             .features
             .iter()
-            .filter(|feature| TypeId::of::<ArenaBallSpawn>() == (*feature).type_id())
-            .map(|feature| feature.as_any().downcast_ref::<ArenaBallSpawn>().expect("failed to cast feature to a ball spawn"))
+            .filter_map(|feature| feature.as_any().downcast_ref::<ArenaBallSpawn>())
             .collect();
 
         spawns

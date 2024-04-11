@@ -46,6 +46,7 @@ mod tests {
     use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}};
 
     use crate::{game::Game, generator::Generator};
+
     #[test]
     fn test_speed() {
         let world = Generator::new().generate_world();
@@ -63,6 +64,12 @@ mod tests {
         let physics_duration_micros: u128 = game_log.ticks.iter().map(|tick| tick.physics_duration.as_micros()).sum();
         let balls_duration_micros: u128 = game_log.ticks.iter().map(|tick| tick.balls_duration.as_micros()).sum();
         let total_duration_micros: u128 = game_log.ticks.iter().map(|tick| tick.tick_duration.as_micros()).sum();
+
+        for tick in &game_log.ticks {
+            for simulation_event in &tick.simulation_events {
+                println!("Tick {}: {:?}", tick.tick_number, simulation_event);
+            }
+        }
 
         println!("Simulation duration: {total_duration_micros} microseconds ({physics_duration_micros} in physics, {balls_duration_micros} in balls)");
     }

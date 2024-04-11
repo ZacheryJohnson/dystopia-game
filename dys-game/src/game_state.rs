@@ -5,7 +5,7 @@ use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
 use rapier3d::prelude::*;
 
-use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::CombatantObject, game_object::GameObject, game_object_type::GameObjectType}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::simulate_tick};
+use crate::{game::Game, game_objects::{ball::{BallId, BallObject, BallState}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::simulate_tick};
 use dys_world::arena::feature::ArenaFeature;
 
 pub type SeedT = [u8; 32];
@@ -50,7 +50,7 @@ impl GameState {
                 ball_id += 1;
                 let ball_object = BallObject::new(ball_id, current_tick, *ball_spawn.origin(), rigid_body_set, collider_set);
 
-                active_colliders.insert(ball_object.collider_handle, GameObjectType::Ball(ball_id));
+                active_colliders.insert(ball_object.collider_handle().expect("ball game objects must have collider handles"), GameObjectType::Ball(ball_id));
 
                 balls.insert(ball_id, ball_object);
             }
@@ -76,10 +76,47 @@ impl GameState {
                     continue;
                 };
 
-                let combatant_object = CombatantObject::new(combatant_id, combatant, position, rigid_body_set, collider_set);
+                let team_alignment = if player_start.is_home_team { TeamAlignment::Home } else { TeamAlignment::Away };
+
+                let combatant_object = CombatantObject::new(combatant_id, combatant, position, team_alignment, rigid_body_set, collider_set);
                 active_colliders.insert(combatant_object.collider_handle().expect("combatant game objects must have collider handles"), GameObjectType::Combatant(combatant_id));
                 combatants.insert(combatant_id, combatant_object);
             }
+        }
+
+        // ZJ-TODO: delete this block. Testing ball collisions
+        {
+            let (_, ball_obj) = balls.iter_mut().next().unwrap();
+            let ball_rb = rigid_body_set.get(ball_obj.rigid_body_handle().expect("balls should have rigid bodies")).expect("failed to find ball rigid body");
+            let ball_pos = ball_rb.translation();
+
+            let (thrower_id, thrower_obj) = combatants
+                .iter()
+                .filter(|(_, combatant_obj)| combatant_obj.team == TeamAlignment::Home)
+                .next()
+                .expect("failed to find home team combatant");
+            
+            let (target_id, target_obj) = combatants
+                .iter()
+                .filter(|(_, combatant_obj)| combatant_obj.team == TeamAlignment::Away)
+                .next()
+                .expect("failed to find away team combatant");
+            let target_pos = rigid_body_set
+                .get(target_obj.rigid_body_handle().expect("combatants should have rigid bodies"))
+                .expect("failed to get target rigid body")
+                .translation();
+
+            // We're telekinetically throwing the ball in this case - the ball would otherwise be parented to the thrower.
+            let impulse_direction = target_pos - ball_pos;
+            let impulse = impulse_direction * 0.6;
+            ball_obj.change_state(current_tick, BallState::ThrownAtTarget { 
+                direction: impulse_direction.clone(), 
+                thrower_id: *thrower_id,
+                target_id: *target_id,
+            });
+
+            let mut_ball_rb = rigid_body_set.get_mut(ball_obj.rigid_body_handle().expect("balls should have rigid bodies")).expect("failed to find ball rigid body");
+            mut_ball_rb.apply_impulse(impulse, true);
         }
 
         GameState {

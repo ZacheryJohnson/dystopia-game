@@ -19,11 +19,9 @@ pub enum BallState {
     },
     RollingInDirection {
         direction: Vector3<f32>,
-        velocity: f32
     },
     ThrownAtTarget {
         direction: Vector3<f32>,
-        velocity: f32,
         thrower_id: CombatantId,
         target_id: CombatantId,
     },
@@ -33,8 +31,8 @@ pub enum BallState {
 #[derive(Clone)]
 pub struct BallObject {
     pub id: BallId,
-    pub rigid_body_handle: RigidBodyHandle,
-    pub collider_handle: ColliderHandle,
+    rigid_body_handle: RigidBodyHandle,
+    collider_handle: ColliderHandle,
     pub state: BallState,
     pub state_tick_stamp: GameTickNumber,
     pub charge: f32,
