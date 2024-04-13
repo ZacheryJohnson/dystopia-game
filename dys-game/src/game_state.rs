@@ -5,7 +5,7 @@ use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
 use rapier3d::prelude::*;
 
-use crate::{game::Game, game_objects::{ball::{BallId, BallObject, BallState}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::simulate_tick};
+use crate::{game::Game, game_objects::{ball::{BallId, BallObject, BallState}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::{simulate_tick, TICKS_PER_SECOND}};
 use dys_world::arena::feature::ArenaFeature;
 
 pub type SeedT = [u8; 32];
@@ -32,7 +32,7 @@ impl GameState {
     pub fn from_game_seeded(game: Game, seed: &SeedT) -> GameState {
         let current_tick = 0;
 
-        let mut physics_sim = PhysicsSim::new();
+        let mut physics_sim = PhysicsSim::new(TICKS_PER_SECOND as f32);
         let (rigid_body_set, collider_set) = physics_sim.sets();
 
         let mut active_colliders = HashMap::new();
@@ -41,14 +41,27 @@ impl GameState {
 
         {
             let arena = game.schedule_game.arena.lock().unwrap();
-            arena.register_features_physics(rigid_body_set, collider_set);
+            for feature in &arena.features {
+                if let Some(rigid_body) = feature.build_rigid_body() {
+                    let rigid_body_handle = rigid_body_set.insert(rigid_body);
+                    if let Some(collider) = feature.build_collider() {
+                        let collider_handle = collider_set.insert_with_parent(collider, rigid_body_handle, rigid_body_set);
+                        active_colliders.insert(collider_handle, GameObjectType::Wall); // ZJ-TODO: don't hardcode wall - this could be a plate
+                    }
+                } else {
+                    if let Some(collider) = feature.build_collider() {
+                        let collider_handle = collider_set.insert(collider);
+                        active_colliders.insert(collider_handle, GameObjectType::Wall); // ZJ-TODO: don't hardcode wall - this could be a plate
+                    }
+                }
+            }
 
             // ZJ-TODO: move the following to arena init
             let mut ball_id = 0;
 
             for ball_spawn in arena.ball_spawns() {
                 ball_id += 1;
-                let ball_object = BallObject::new(ball_id, current_tick, *ball_spawn.origin(), rigid_body_set, collider_set);
+                let ball_object = BallObject::new(ball_id, current_tick, *ball_spawn.origin() + vector![0.0, 1.0, 0.0], rigid_body_set, collider_set);
 
                 active_colliders.insert(ball_object.collider_handle().expect("ball game objects must have collider handles"), GameObjectType::Ball(ball_id));
 
@@ -67,7 +80,7 @@ impl GameState {
             let mut combatant_id = 0;
             for player_start in combatant_starts {
                 combatant_id += 1;
-                let position = player_start.origin().to_owned();
+                let position = player_start.origin() + vector![0.0, 2.5, 0.0];
 
                 let team_combatants = if player_start.is_home_team { &mut home_combatants } else { &mut away_combatants };
                 let Some(combatant) = team_combatants.pop() else {
@@ -86,7 +99,7 @@ impl GameState {
 
         // ZJ-TODO: delete this block. Testing ball collisions
         {
-            let (_, ball_obj) = balls.iter_mut().next().unwrap();
+            let (ball_id, ball_obj) = balls.iter_mut().next().unwrap();
             let ball_rb = rigid_body_set.get(ball_obj.rigid_body_handle().expect("balls should have rigid bodies")).expect("failed to find ball rigid body");
             let ball_pos = ball_rb.translation();
 
@@ -106,14 +119,25 @@ impl GameState {
                 .expect("failed to get target rigid body")
                 .translation();
 
+            // ZJ-TODO: extract the below into a generic "throw_ball" function. There's a lot of reusable physics math in here
+
             // We're telekinetically throwing the ball in this case - the ball would otherwise be parented to the thrower.
-            let impulse_direction = target_pos - ball_pos;
-            let impulse = impulse_direction * 0.6;
-            ball_obj.change_state(current_tick, BallState::ThrownAtTarget { 
-                direction: impulse_direction.clone(), 
+            let difference_vector = target_pos - ball_pos;
+            let difference_distance = difference_vector.magnitude();
+            let throw_speed_units_per_sec = 25.0; // This particular throw will go 25 units per second; should be read from the thrower's stats
+            let total_travel_time_sec = difference_distance / throw_speed_units_per_sec;
+            let gravity_adjustment_magnitude = (4.905 * (total_travel_time_sec.powi(2)) + difference_vector.y) / total_travel_time_sec;
+            let impulse_direction = vector![difference_vector.x, 0.0, difference_vector.z].normalize();
+
+            let impulse = (impulse_direction * throw_speed_units_per_sec) + vector![0.0, gravity_adjustment_magnitude, 0.0]; 
+
+            let new_state = BallState::ThrownAtTarget { 
+                direction: impulse.clone(), 
                 thrower_id: *thrower_id,
                 target_id: *target_id,
-            });
+            };
+
+            ball_obj.change_state(current_tick, new_state);
 
             let mut_ball_rb = rigid_body_set.get_mut(ball_obj.rigid_body_handle().expect("balls should have rigid bodies")).expect("failed to find ball rigid body");
             mut_ball_rb.apply_impulse(impulse, true);

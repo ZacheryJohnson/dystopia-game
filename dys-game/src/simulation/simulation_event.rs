@@ -1,7 +1,15 @@
+use rapier3d::na::Vector3;
+
 use crate::game_objects::{ball::BallId, combatant::CombatantId};
 
 #[derive(Debug)]
 pub enum SimulationEvent {
+    /// A ball has moved through the world
+    BallPositionUpdate { ball_id: BallId, position: Vector3<f32> },
+
+    /// A combatant has moved through the world
+    CombatantPositionUpdate { combatant_id: CombatantId, position: Vector3<f32> },
+
     /// A ball has been thrown targeting an enemy
     BallThrownAtEnemy { thrower_id: CombatantId, enemy_id: CombatantId, ball_id: BallId },
 

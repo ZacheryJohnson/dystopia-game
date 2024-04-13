@@ -9,8 +9,8 @@ mod combatant;
 pub mod simulation_event;
 
 // TODO: config driven?
-const TICKS_PER_SECOND: u32 = 5;
-const SECONDS_PER_HALF: u32 = 60 * 5;
+pub const TICKS_PER_SECOND: u32 = 10;
+const SECONDS_PER_HALF: u32 = 60 * 3;
 const TICKS_PER_HALF: u32   = SECONDS_PER_HALF * TICKS_PER_SECOND;
 const TICKS_PER_GAME: u32   = TICKS_PER_HALF * 2;
 
@@ -51,8 +51,6 @@ fn handle_collision_events(game_state: &mut GameState) -> Vec<SimulationEvent> {
             
                 match ball_obj.state {
                     BallState::ThrownAtTarget { direction, thrower_id, target_id } => {
-                        println!("COLLISION! Ball {ball_id} thrown by {thrower_id} aiming for {target_id} hit {combatant_id} on tick {}", game_state.current_tick);
-
                         // ZJ-TODO: check team of hit combatant, and only explode if enemy
                         let (old_state, old_state_tick) = ball_obj.change_state(game_state.current_tick, BallState::Explode);
                         new_simulation_events.push(SimulationEvent::BallCollisionEnemy { thrower_id, enemy_id: *combatant_id, ball_id: *ball_id });
@@ -86,11 +84,13 @@ pub fn simulate_tick(game_state: &mut GameState) -> GameTick {
     let post_physics_timestamp = Instant::now();
 
     let pre_balls_timestamp = Instant::now();
-    simulate_balls(game_state);
+    let ball_simulation_events = simulate_balls(game_state);
+    simulation_events.extend(ball_simulation_events);
     let post_balls_timestamp = Instant::now();
 
     let pre_combatant_timestamp = Instant::now();
-    simulate_combatants(game_state);
+    let combatant_simulation_events = simulate_combatants(game_state);
+    simulation_events.extend(combatant_simulation_events);
     let post_combatant_timestamp = Instant::now();
 
     let post_tick_timestamp = Instant::now();

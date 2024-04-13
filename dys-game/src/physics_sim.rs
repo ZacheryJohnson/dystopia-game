@@ -21,9 +21,9 @@ pub struct PhysicsSim {
 }
 
 impl PhysicsSim {
-    pub fn new() -> PhysicsSim {
+    pub fn new(ticks_per_second: f32) -> PhysicsSim {
         let mut integration_params = IntegrationParameters::default();
-        integration_params.dt = 1.0 / 5.0; // ZJ-TODO: read from TICKS_PER_SECOND
+        integration_params.dt = 1.0 / ticks_per_second;
 
         let (collision_send, collision_recv) = crossbeam::channel::unbounded();
         let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();

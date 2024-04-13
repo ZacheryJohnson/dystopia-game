@@ -65,11 +65,13 @@ mod tests {
         let balls_duration_micros: u128 = game_log.ticks.iter().map(|tick| tick.balls_duration.as_micros()).sum();
         let total_duration_micros: u128 = game_log.ticks.iter().map(|tick| tick.tick_duration.as_micros()).sum();
 
+        /*
         for tick in &game_log.ticks {
             for simulation_event in &tick.simulation_events {
                 println!("Tick {}: {:?}", tick.tick_number, simulation_event);
             }
         }
+        */
 
         println!("Simulation duration: {total_duration_micros} microseconds ({physics_duration_micros} in physics, {balls_duration_micros} in balls)");
     }

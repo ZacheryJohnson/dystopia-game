@@ -11,7 +11,7 @@ const BALL_RADIUS: f32 = 0.5;
 const BALL_RESTITUTION: f32 = 0.2;
 const BALL_MASS: f32 = 2.0;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum BallState {
     Idle,
     Held { 
