@@ -12,8 +12,8 @@ pub struct Stat {
     pub value: f32,
 }
 
-impl Into<(StatType, f32)> for Stat {
-    fn into(self) -> (StatType, f32) {
-        (self.stat_type, self.value)
+impl From<Stat> for (StatType, f32) {
+    fn from(val: Stat) -> Self {
+        (val.stat_type, val.value)
     }
 }

@@ -16,7 +16,7 @@ pub fn get_throw_vector_towards_target(
     accuracy: f32,
     y_axis_gravity: f32,
 ) -> Vector3<f32> {
-    assert!(accuracy >= 0.0 && accuracy <= 1.0);
+    assert!((0.0..=1.0).contains(&accuracy));
 
     let difference_vector = target_pos - start_pos;
     let difference_distance = difference_vector.magnitude();
@@ -37,7 +37,7 @@ pub fn get_throw_vector_towards_target(
     let throw_direction = vector![difference_vector.x, 0.0, difference_vector.z].normalize();
 
     // Our overall throw vector is the X and Z components of the throw, and our Y component that we calculated accounting for gravity.
-    let throw_vector = (throw_direction * throw_speed_units_per_sec) + vector![0.0, gravity_adjustment_magnitude, 0.0]; 
+     
 
-    throw_vector
+    (throw_direction * throw_speed_units_per_sec) + vector![0.0, gravity_adjustment_magnitude, 0.0]
 }

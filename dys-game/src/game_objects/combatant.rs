@@ -68,7 +68,7 @@ impl CombatantObject {
         force_direction: Vector3<f32>,
         rigid_body_set: &mut RigidBodySet)
     {
-        let self_rb = rigid_body_set.get_mut(self.rigid_body_handle.clone()).expect("failed to get own rigidbody");
+        let self_rb = rigid_body_set.get_mut(self.rigid_body_handle).expect("failed to get own rigidbody");
         let impulse = force_direction.normalize() * force_magnitude;
         self_rb.apply_impulse(impulse, true);
 

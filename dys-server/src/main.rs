@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     register_tracing_subscriber();
 
     let addr = "127.0.0.1:3000".parse().unwrap();
-    let dys_director_svc = DysDirectorService::default();
+    let dys_director_svc = DysDirectorService;
 
     println!("Starting DysDirectorService on {}", addr);
 

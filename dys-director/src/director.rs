@@ -7,6 +7,12 @@ pub struct Director {
     world: World
 }
 
+impl Default for Director {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Director {
     pub fn from_world(world: World) -> Director {
         Director {

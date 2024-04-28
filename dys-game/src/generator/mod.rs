@@ -14,6 +14,12 @@ pub struct Generator {
     team_names: Vec<String>,
 }
 
+impl Default for Generator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Generator {
     pub fn new() -> Generator {
         let given_names: Vec<String> = include_str!("../../data/given_names.txt")

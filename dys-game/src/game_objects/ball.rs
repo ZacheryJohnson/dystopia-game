@@ -80,11 +80,11 @@ impl BallObject {
 
 impl GameObject for BallObject {
     fn rigid_body_handle(&self) -> Option<RigidBodyHandle> {
-        Some(self.rigid_body_handle.clone())
+        Some(self.rigid_body_handle)
     }
 
     fn collider_handle(&self) -> Option<ColliderHandle> {
-        Some(self.collider_handle.clone())
+        Some(self.collider_handle)
     }
 
     fn is_dirty(&self) -> bool {

@@ -2,7 +2,7 @@ use crate::{combatant::record::CombatantRecord, history::recordable::{RecordType
 
 use super::team::Team;
 
-const RECORD_PREFIX: &'static str = "TEAM";
+const RECORD_PREFIX: &str = "TEAM";
 
 pub struct TeamRecord {
     pub id: u64,

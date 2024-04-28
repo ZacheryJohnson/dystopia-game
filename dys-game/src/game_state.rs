@@ -51,11 +51,9 @@ impl GameState {
                         let collider_handle = collider_set.insert_with_parent(collider, rigid_body_handle, rigid_body_set);
                         active_colliders.insert(collider_handle, GameObjectType::Wall); // ZJ-TODO: don't hardcode wall - this could be a plate
                     }
-                } else {
-                    if let Some(collider) = feature.build_collider() {
-                        let collider_handle = collider_set.insert(collider);
-                        active_colliders.insert(collider_handle, GameObjectType::Wall); // ZJ-TODO: don't hardcode wall - this could be a plate
-                    }
+                } else if let Some(collider) = feature.build_collider() {
+                    let collider_handle = collider_set.insert(collider);
+                    active_colliders.insert(collider_handle, GameObjectType::Wall); // ZJ-TODO: don't hardcode wall - this could be a plate
                 }
             }
 
@@ -105,15 +103,11 @@ impl GameState {
             let ball_pos = ball_rb.translation();
 
             let (thrower_id, _) = combatants
-                .iter()
-                .filter(|(_, combatant_obj)| combatant_obj.team == TeamAlignment::Home)
-                .next()
+                .iter().find(|(_, combatant_obj)| combatant_obj.team == TeamAlignment::Home)
                 .expect("failed to find home team combatant");
             
             let (target_id, target_obj) = combatants
-                .iter()
-                .filter(|(_, combatant_obj)| combatant_obj.team == TeamAlignment::Away)
-                .next()
+                .iter().find(|(_, combatant_obj)| combatant_obj.team == TeamAlignment::Away)
                 .expect("failed to find away team combatant");
             let target_pos = rigid_body_set
                 .get(target_obj.rigid_body_handle().expect("combatants should have rigid bodies"))
@@ -126,7 +120,7 @@ impl GameState {
             let impulse = get_throw_vector_towards_target(target_pos, ball_pos, throw_speed_units_per_sec, accuracy, y_axis_gravity);
 
             let new_state = BallState::ThrownAtTarget { 
-                direction: impulse.clone(), 
+                direction: impulse, 
                 thrower_id: *thrower_id,
                 target_id: *target_id,
             };

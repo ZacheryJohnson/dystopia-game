@@ -2,7 +2,7 @@ use crate::history::recordable::{RecordType, Recordable};
 
 use super::{combatant::Combatant, limb::Limb};
 
-const RECORD_PREFIX: &'static str = "COMB";
+const RECORD_PREFIX: &str = "COMB";
 
 pub struct CombatantRecord {  
     pub id: u64,
