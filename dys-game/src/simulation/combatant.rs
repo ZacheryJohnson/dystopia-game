@@ -13,7 +13,10 @@ pub(crate) fn simulate_combatants(game_state: &mut GameState) -> Vec<SimulationE
         let (rigid_body_set, _) = game_state.physics_sim.sets();
 
         let combatant_rb = rigid_body_set.get(combatant_rb_handle).expect("combatants rigid bodies should be registered with main set");
-        events.push(SimulationEvent::CombatantPositionUpdate { combatant_id: *combatant_id, position: *combatant_rb.translation() });
+
+        if combatant_object.is_dirty() {
+            events.push(SimulationEvent::CombatantPositionUpdate { combatant_id: *combatant_id, position: *combatant_rb.translation() });
+        }
     }
 
     events

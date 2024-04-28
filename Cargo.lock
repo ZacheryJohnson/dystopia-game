@@ -455,6 +455,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "dys-testbench"
+version = "0.1.0"
+dependencies = [
+ "dys-game",
+ "dys-world",
+]
+
+[[package]]
 name = "dys-world"
 version = "0.1.0"
 dependencies = [

@@ -1,4 +1,4 @@
-use rapier3d::{dynamics::RigidBodySet, geometry::ColliderSet, na::vector, prelude::*};
+use rapier3d::{na::vector, prelude::*};
 
 use self::{ball_spawn::ArenaBallSpawn, feature::ArenaFeature, plate::{ArenaPlate, ArenaPlateShape}, combatant_start::ArenaCombatantStart, wall::ArenaWall};
 

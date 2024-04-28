@@ -5,9 +5,9 @@ use super::ArenaFeature;
 
 pub enum ArenaPlateShape {
     Circle { radius: f32 },
-    Rect { width: f32, height: f32 },
-    /// Equilateral triangle
-    Triangle { width: f32, height: f32 },
+    // Rect { width: f32, height: f32 },
+    // /// Equilateral triangle
+    // Triangle { width: f32, height: f32 },
 }
 
 pub struct ArenaPlate {
@@ -33,8 +33,8 @@ impl ArenaFeature for ArenaPlate {
 
         let shape: SharedShape = match &self.shape {
             ArenaPlateShape::Circle { radius } => SharedShape::cylinder(PLATE_VERTICAL_HEIGHT, *radius),
-            ArenaPlateShape::Rect { width, height } => SharedShape::cuboid(*width, *height, PLATE_VERTICAL_HEIGHT),
-            ArenaPlateShape::Triangle { width, height } => SharedShape::triangle(point![0.0, 0.0, 0.0], point![*width, 0.0, 0.0], point![*width / 2.0, *height, 0.0]), // TODO: pretty sure this is broken: 0 height on this collider
+            // ArenaPlateShape::Rect { width, height } => SharedShape::cuboid(*width, *height, PLATE_VERTICAL_HEIGHT),
+            // ArenaPlateShape::Triangle { width, height } => SharedShape::triangle(point![0.0, 0.0, 0.0], point![*width, 0.0, 0.0], point![*width / 2.0, *height, 0.0]), // TODO: pretty sure this is broken: 0 height on this collider
         };
 
         let collider = ColliderBuilder::new(shape)

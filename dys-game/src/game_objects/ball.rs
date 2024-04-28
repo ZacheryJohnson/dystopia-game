@@ -36,6 +36,7 @@ pub struct BallObject {
     pub state: BallState,
     pub state_tick_stamp: GameTickNumber,
     pub charge: f32,
+    pub is_dirty: bool,
 }
 
 impl BallObject {
@@ -61,6 +62,7 @@ impl BallObject {
             state: BallState::Idle,
             state_tick_stamp: creation_tick,
             charge: 0.0,
+            is_dirty: false
         }
     }
 
@@ -70,6 +72,7 @@ impl BallObject {
         
         self.state = new_state;
         self.state_tick_stamp = current_tick;
+        self.is_dirty = true;
 
         (old_state, old_tick_timestamp)
     }
@@ -82,5 +85,9 @@ impl GameObject for BallObject {
 
     fn collider_handle(&self) -> Option<ColliderHandle> {
         Some(self.collider_handle.clone())
+    }
+
+    fn is_dirty(&self) -> bool {
+        self.is_dirty
     }
 }

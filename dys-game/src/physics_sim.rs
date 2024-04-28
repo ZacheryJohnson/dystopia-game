@@ -21,9 +21,9 @@ pub struct PhysicsSim {
 }
 
 impl PhysicsSim {
-    pub fn new(ticks_per_second: f32) -> PhysicsSim {
+    pub fn new(ticks_per_second: u32) -> PhysicsSim {
         let mut integration_params = IntegrationParameters::default();
-        integration_params.dt = 1.0 / ticks_per_second;
+        integration_params.dt = 1.0 / (ticks_per_second as f32);
 
         let (collision_send, collision_recv) = crossbeam::channel::unbounded();
         let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();
@@ -49,8 +49,12 @@ impl PhysicsSim {
         }
     }
 
-    pub fn sets(&mut self) -> (&mut RigidBodySet, &mut ColliderSet) {
+    pub fn sets_mut(&mut self) -> (&mut RigidBodySet, &mut ColliderSet) {
         (&mut self.rigid_body_set, &mut self.collider_set)
+    }
+
+    pub fn sets(&self) -> (&RigidBodySet, &ColliderSet) {
+        (&self.rigid_body_set, &self.collider_set)
     }
 
     pub fn collision_events(&mut self) -> &mut Receiver<CollisionEvent> {
@@ -59,6 +63,14 @@ impl PhysicsSim {
 
     pub fn contact_force_events(&mut self) -> &mut Receiver<ContactForceEvent> {
         &mut self.contact_force_event_recv
+    }
+
+    pub fn query_pipeline(&mut self) -> &QueryPipeline {
+        &self.query_pipeline
+    }
+
+    pub fn query_pipeline_and_sets(&mut self) -> (&mut QueryPipeline, &mut RigidBodySet, &mut ColliderSet) {
+        (&mut self.query_pipeline, &mut self.rigid_body_set, &mut self.collider_set)
     }
 
     pub fn tick(&mut self) {
@@ -77,5 +89,9 @@ impl PhysicsSim {
             &self.physics_hooks,
             &self.event_handler,
         )
+    }
+
+    pub fn gravity_y(&self) -> f32 {
+        self.gravity.y
     }
 }

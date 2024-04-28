@@ -5,7 +5,7 @@ use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
 use rapier3d::prelude::*;
 
-use crate::{game::Game, game_objects::{ball::{BallId, BallObject, BallState}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::{simulate_tick, TICKS_PER_SECOND}};
+use crate::{game::Game, game_objects::{ball::{BallId, BallObject, BallState}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::{config::SimulationConfig, simulate_tick}, targeting::get_throw_vector_towards_target};
 use dys_world::arena::feature::ArenaFeature;
 
 pub type SeedT = [u8; 32];
@@ -21,6 +21,7 @@ pub struct GameState {
     pub home_points: u16,
     pub away_points: u16,
     pub current_tick: GameTickNumber,
+    pub simulation_config: SimulationConfig,
 }
 
 impl GameState {
@@ -32,8 +33,10 @@ impl GameState {
     pub fn from_game_seeded(game: Game, seed: &SeedT) -> GameState {
         let current_tick = 0;
 
-        let mut physics_sim = PhysicsSim::new(TICKS_PER_SECOND as f32);
-        let (rigid_body_set, collider_set) = physics_sim.sets();
+        let simulation_config = SimulationConfig::default();
+        let mut physics_sim = PhysicsSim::new(simulation_config.ticks_per_second());
+        let gravity_y = physics_sim.gravity_y();
+        let (rigid_body_set, collider_set) = physics_sim.sets_mut();
 
         let mut active_colliders = HashMap::new();
         let mut balls = HashMap::new();
@@ -56,7 +59,6 @@ impl GameState {
                 }
             }
 
-            // ZJ-TODO: move the following to arena init
             let mut ball_id = 0;
 
             for ball_spawn in arena.ball_spawns() {
@@ -69,7 +71,6 @@ impl GameState {
             }
         }
 
-        // ZJ-TODO: combatant init
         {
             let mut home_combatants = { game.schedule_game.home_team.lock().unwrap().combatants.clone() };
             let mut away_combatants = { game.schedule_game.away_team.lock().unwrap().combatants.clone() };
@@ -99,11 +100,11 @@ impl GameState {
 
         // ZJ-TODO: delete this block. Testing ball collisions
         {
-            let (ball_id, ball_obj) = balls.iter_mut().next().unwrap();
+            let (_, ball_obj) = balls.iter_mut().next().unwrap();
             let ball_rb = rigid_body_set.get(ball_obj.rigid_body_handle().expect("balls should have rigid bodies")).expect("failed to find ball rigid body");
             let ball_pos = ball_rb.translation();
 
-            let (thrower_id, thrower_obj) = combatants
+            let (thrower_id, _) = combatants
                 .iter()
                 .filter(|(_, combatant_obj)| combatant_obj.team == TeamAlignment::Home)
                 .next()
@@ -119,17 +120,10 @@ impl GameState {
                 .expect("failed to get target rigid body")
                 .translation();
 
-            // ZJ-TODO: extract the below into a generic "throw_ball" function. There's a lot of reusable physics math in here
-
-            // We're telekinetically throwing the ball in this case - the ball would otherwise be parented to the thrower.
-            let difference_vector = target_pos - ball_pos;
-            let difference_distance = difference_vector.magnitude();
-            let throw_speed_units_per_sec = 25.0; // This particular throw will go 25 units per second; should be read from the thrower's stats
-            let total_travel_time_sec = difference_distance / throw_speed_units_per_sec;
-            let gravity_adjustment_magnitude = (4.905 * (total_travel_time_sec.powi(2)) + difference_vector.y) / total_travel_time_sec;
-            let impulse_direction = vector![difference_vector.x, 0.0, difference_vector.z].normalize();
-
-            let impulse = (impulse_direction * throw_speed_units_per_sec) + vector![0.0, gravity_adjustment_magnitude, 0.0]; 
+            let throw_speed_units_per_sec = 25.0; // ZJ-TODO: read from combatant stats
+            let accuracy = 1.0_f32.clamp(0.0, 1.0); // ZJ-TODO: read from combatant stats
+            let y_axis_gravity = gravity_y;
+            let impulse = get_throw_vector_towards_target(target_pos, ball_pos, throw_speed_units_per_sec, accuracy, y_axis_gravity);
 
             let new_state = BallState::ThrownAtTarget { 
                 direction: impulse.clone(), 
@@ -137,6 +131,7 @@ impl GameState {
                 target_id: *target_id,
             };
 
+            ball_obj.charge = 80.0; // ZJ-TODO: don't add arbitrary charge
             ball_obj.change_state(current_tick, new_state);
 
             let mut_ball_rb = rigid_body_set.get_mut(ball_obj.rigid_body_handle().expect("balls should have rigid bodies")).expect("failed to find ball rigid body");
@@ -154,6 +149,7 @@ impl GameState {
             home_points: 0,
             away_points: 0,
             current_tick,
+            simulation_config
         }
     }
 
