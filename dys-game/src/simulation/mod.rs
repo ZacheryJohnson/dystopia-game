@@ -2,10 +2,11 @@ use std::time::Instant;
 
 use crate::{game_objects::{ball::BallState, game_object_type::GameObjectType}, game_state::GameState, game_tick::GameTick};
 
-use self::{ball::simulate_balls, combatant::simulate_combatants, simulation_event::SimulationEvent};
+use self::{ball::simulate_balls, combatant::simulate_combatants, scoring::simulate_scoring, simulation_event::SimulationEvent};
 
 mod ball;
 mod combatant;
+mod scoring;
 pub mod config;
 pub mod simulation_event;
 
@@ -37,6 +38,8 @@ fn handle_collision_events(game_state: &mut GameState) -> Vec<SimulationEvent> {
                     _ => ()
                 }
             },
+            (GameObjectType::Plate(_), _) | (_, GameObjectType::Plate(_)) => continue, // ZJ-TODO: should we flag players as on/off plates rather than checking at scoring time?
+            (GameObjectType::BallSpawn, _) | (_, GameObjectType::BallSpawn) => continue,
             (GameObjectType::Wall, _) | (_, GameObjectType::Wall) => continue,
             (GameObjectType::Ball(_), GameObjectType::Ball(_)) => continue,
             (GameObjectType::Combatant(_), GameObjectType::Combatant(_)) => continue,
@@ -69,6 +72,7 @@ pub fn simulate_tick(game_state: &mut GameState) -> GameTick {
     let simulation_config = &game_state.simulation_config;
     let is_halftime = game_state.current_tick == simulation_config.ticks_per_half();
     let is_end_of_game = game_state.current_tick == simulation_config.ticks_per_game();
+    let is_scoring_tick = game_state.current_tick % simulation_config.ticks_per_second() == 0;
     let mut simulation_events = vec![];
 
     let pre_physics_timestamp = Instant::now();
@@ -90,6 +94,13 @@ pub fn simulate_tick(game_state: &mut GameState) -> GameTick {
     simulation_events.extend(combatant_simulation_events);
     let post_combatant_timestamp = Instant::now();
 
+    let pre_scoring_timestamp = Instant::now();
+    if is_scoring_tick {
+        let scoring_simulation_events = simulate_scoring(game_state);
+        simulation_events.extend(scoring_simulation_events);
+    }
+    let post_scoring_timestamp = Instant::now();
+
     let post_tick_timestamp = Instant::now();
 
     GameTick {
@@ -97,9 +108,11 @@ pub fn simulate_tick(game_state: &mut GameState) -> GameTick {
         physics_duration: post_physics_timestamp - pre_physics_timestamp,
         balls_duration: post_balls_timestamp - pre_balls_timestamp,
         combatant_duration: post_combatant_timestamp - pre_combatant_timestamp,
+        scoring_duration: post_scoring_timestamp - pre_scoring_timestamp,
         tick_duration: post_tick_timestamp - pre_tick_timestamp,
         simulation_events,
         is_halftime,
         is_end_of_game,
+        is_scoring_tick,
     }
 }

@@ -3,6 +3,8 @@ use rapier3d::prelude::*;
 
 use super::ArenaFeature;
 
+pub type PlateId = u8;
+
 pub enum ArenaPlateShape {
     Circle { radius: f32 },
     // Rect { width: f32, height: f32 },
@@ -11,6 +13,8 @@ pub enum ArenaPlateShape {
 }
 
 pub struct ArenaPlate {
+    pub id: PlateId,
+
     /// Center point of the wall
     pub origin: Vector3<f32>,
 

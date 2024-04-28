@@ -1,6 +1,7 @@
+use dys_world::arena::plate::PlateId;
 use rapier3d::na::Vector3;
 
-use crate::game_objects::{ball::BallId, combatant::CombatantId};
+use crate::game_objects::{ball::BallId, combatant::{CombatantId, TeamAlignment}};
 
 #[derive(Debug)]
 pub enum SimulationEvent {
@@ -26,5 +27,8 @@ pub enum SimulationEvent {
     BallExplosion { ball_id: BallId, charge: f32 },
 
     /// A ball explosion has applied explosion force to a combatant
-    BallExplosionForceApplied { ball_id: BallId, combatant_id: CombatantId, force_magnitude: f32, force_direction: Vector3<f32> }
+    BallExplosionForceApplied { ball_id: BallId, combatant_id: CombatantId, force_magnitude: f32, force_direction: Vector3<f32> },
+
+    /// Points have been scored this tick
+    PointsScoredOnPlate { plate_id: PlateId, points: u8, team: TeamAlignment },
 }

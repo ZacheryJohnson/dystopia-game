@@ -4,20 +4,20 @@ use self::{ball_spawn::ArenaBallSpawn, feature::ArenaFeature, plate::{ArenaPlate
 
 pub mod feature;
 
-mod wall;
-mod plate;
-mod combatant_start;
-mod ball_spawn;
+pub mod wall;
+pub mod plate;
+pub mod combatant_start;
+pub mod ball_spawn;
 
 pub struct Arena {
-    pub features: Vec<Box<dyn ArenaFeature>>
+    all_features: Vec<Box<dyn ArenaFeature>>
 }
 
 impl Arena {
     pub fn new_with_testing_defaults() -> Arena {
         Arena {
             // X: horizontal; Y: vertical; Z: depth
-            features: vec![
+            all_features: vec![
                 // West Wall
                 Box::new(
                     ArenaWall { origin: vector![0.0, -5.0, 50.0], size: vector![3.0, 20.0, 100.0], rotation: vector![0.0, 0.0, 0.0] }
@@ -40,7 +40,7 @@ impl Arena {
                 ),
                 // Plate
                 Box::new(
-                    ArenaPlate { origin: vector![50.0, 0.0, 50.0], shape: ArenaPlateShape::Circle { radius: 10.0 }, rotation: vector![0.0, 0.0, 0.0] }
+                    ArenaPlate { id: 1, origin: vector![50.0, 0.0, 50.0], shape: ArenaPlateShape::Circle { radius: 10.0 }, rotation: vector![0.0, 0.0, 0.0] }
                 ),
                 // South Ball Spawn
                 Box::new(
@@ -94,27 +94,15 @@ impl Arena {
         }
     }
 
-    pub fn walls(&self) -> Vec<&ArenaWall> {
-        self
-            .features
-            .iter()
-            .filter_map(|feature| feature.as_any().downcast_ref::<ArenaWall>())
-            .collect()
+    pub fn all_features(&self) -> &Vec<Box<dyn ArenaFeature>> {
+        &self.all_features
     }
 
-    pub fn ball_spawns(&self) -> Vec<&ArenaBallSpawn> {
+    pub fn features<T: ArenaFeature + 'static>(&self) -> Vec<&T> {
         self
-            .features
+            .all_features
             .iter()
-            .filter_map(|feature| feature.as_any().downcast_ref::<ArenaBallSpawn>())
-            .collect()
-    }
-
-    pub fn combatant_starts(&self) -> Vec<&ArenaCombatantStart> {
-        self
-            .features
-            .iter()
-            .filter_map(|feature| feature.as_any().downcast_ref::<ArenaCombatantStart>())
+            .filter_map(|feature| feature.as_any().downcast_ref::<T>())
             .collect()
     }
 }

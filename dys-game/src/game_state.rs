@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 
-use dys_world::combatant::combatant::CombatantId;
+use dys_world::{arena::{ball_spawn::ArenaBallSpawn, combatant_start::ArenaCombatantStart, feature::ArenaFeature, plate::ArenaPlate, wall::ArenaWall}, combatant::combatant::CombatantId};
 use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
 use rapier3d::prelude::*;
 
 use crate::{game::Game, game_objects::{ball::{BallId, BallObject, BallState}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::{config::SimulationConfig, simulate_tick}, targeting::get_throw_vector_towards_target};
-use dys_world::arena::feature::ArenaFeature;
 
 pub type SeedT = [u8; 32];
 
@@ -22,6 +21,22 @@ pub struct GameState {
     pub away_points: u16,
     pub current_tick: GameTickNumber,
     pub simulation_config: SimulationConfig,
+}
+
+fn get_game_object_type_from_feature(feature: &Box<dyn ArenaFeature>) -> GameObjectType {
+    if let Some(arena_wall) = feature.as_any().downcast_ref::<ArenaWall>() {
+        return GameObjectType::Wall;
+    }
+
+    if let Some(ball_spawn) = feature.as_any().downcast_ref::<ArenaBallSpawn>() {
+        return GameObjectType::BallSpawn;
+    }
+
+    if let Some(plate) = feature.as_any().downcast_ref::<ArenaPlate>() {
+        return GameObjectType::Plate(plate.id);
+    }
+
+    panic!("unknown game object type for feature");
 }
 
 impl GameState {
@@ -44,22 +59,22 @@ impl GameState {
 
         {
             let arena = game.schedule_game.arena.lock().unwrap();
-            for feature in &arena.features {
+            for feature in arena.all_features() {
                 if let Some(rigid_body) = feature.build_rigid_body() {
                     let rigid_body_handle = rigid_body_set.insert(rigid_body);
                     if let Some(collider) = feature.build_collider() {
                         let collider_handle = collider_set.insert_with_parent(collider, rigid_body_handle, rigid_body_set);
-                        active_colliders.insert(collider_handle, GameObjectType::Wall); // ZJ-TODO: don't hardcode wall - this could be a plate
+                        active_colliders.insert(collider_handle, get_game_object_type_from_feature(feature));
                     }
                 } else if let Some(collider) = feature.build_collider() {
                     let collider_handle = collider_set.insert(collider);
-                    active_colliders.insert(collider_handle, GameObjectType::Wall); // ZJ-TODO: don't hardcode wall - this could be a plate
+                    active_colliders.insert(collider_handle, get_game_object_type_from_feature(feature));
                 }
             }
 
             let mut ball_id = 0;
 
-            for ball_spawn in arena.ball_spawns() {
+            for ball_spawn in arena.features::<ArenaBallSpawn>() {
                 ball_id += 1;
                 let ball_object = BallObject::new(ball_id, current_tick, *ball_spawn.origin() + vector![0.0, 1.0, 0.0], rigid_body_set, collider_set);
 
@@ -74,7 +89,7 @@ impl GameState {
             let mut away_combatants = { game.schedule_game.away_team.lock().unwrap().combatants.clone() };
 
             let arena = game.schedule_game.arena.lock().unwrap();
-            let combatant_starts = arena.combatant_starts();
+            let combatant_starts = arena.features::<ArenaCombatantStart>();
 
             let mut combatant_id = 0;
             for player_start in combatant_starts {

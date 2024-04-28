@@ -6,6 +6,8 @@ use crate::{game_objects::{ball::{BallObject, BallState}, combatant::CombatantOb
 
 use super::{config::SimulationConfig, simulation_event::SimulationEvent};
 
+const CHARGE_FORCE_MODIFIER: f32 = 2.0;
+
 pub(crate) fn simulate_balls(game_state: &mut GameState) -> Vec<SimulationEvent> {
     let mut events = vec![];
 
@@ -40,14 +42,10 @@ fn explode(
     rigid_body_set: &RigidBodySet,
     collider_set: &ColliderSet,
 ) -> (Vec<SimulationEvent>, Vec<ColliderHandle>) {
-    let should_explode = match &ball.state {
-        BallState::Explode => true,
-        _ => false,
-    };
-
-    if !should_explode {
+    // Only handle balls in the Explode state
+    let BallState::Explode = ball.state else {
         return (vec![], vec![]);
-    }
+    };
 
     let ball_pos = rigid_body_set.get(ball.rigid_body_handle().unwrap()).unwrap().translation();
 
@@ -57,6 +55,7 @@ fn explode(
     let explosion_pos = Isometry::new(ball_pos.to_owned(), vector![0.0, 0.0, 0.0]);
     let query_filter = QueryFilter::only_dynamic()
         .exclude_sensors();
+    // ZJ-TODO: use InteractionGroups to get only combatants and ignore everything else
 
     let mut affected_colliders = vec![];
     query_pipeline.intersections_with_shape(rigid_body_set, collider_set, &explosion_pos, &explosion_shape, query_filter, |handle| {
@@ -91,8 +90,9 @@ fn apply_explosion_forces(
 
         // Magnitude of the explosion force is the charge of the ball divided by the square distance
         // This means direct impacts will apply a LOT of force, while nearby combatants will take exponentially less per unit away
-        let force_direction = ball_pos - combatant_pos;
-        let force_magnitude = ball_object.charge / (force_direction.magnitude() + 1.0);
+        let position_difference = ball_pos - combatant_pos;
+        let force_direction = vector![position_difference.x, 0.0, position_difference.z];
+        let force_magnitude = ball_object.charge * CHARGE_FORCE_MODIFIER / (force_direction.magnitude() + 1.0);
 
         combatant.apply_explosion_force(current_tick, force_magnitude, force_direction.normalize(), rigid_body_set);
         events.push(SimulationEvent::BallExplosionForceApplied { ball_id: ball_object.id, combatant_id: *combatant_id, force_magnitude, force_direction });
