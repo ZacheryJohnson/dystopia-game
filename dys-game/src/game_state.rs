@@ -24,11 +24,11 @@ pub struct GameState {
 }
 
 fn get_game_object_type_from_feature(feature: &Box<dyn ArenaFeature>) -> GameObjectType {
-    if let Some(arena_wall) = feature.as_any().downcast_ref::<ArenaWall>() {
+    if let Some(_) = feature.as_any().downcast_ref::<ArenaWall>() {
         return GameObjectType::Wall;
     }
 
-    if let Some(ball_spawn) = feature.as_any().downcast_ref::<ArenaBallSpawn>() {
+    if let Some(_) = feature.as_any().downcast_ref::<ArenaBallSpawn>() {
         return GameObjectType::BallSpawn;
     }
 
