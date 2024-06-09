@@ -13,6 +13,10 @@ impl ArenaFeature for ArenaBallSpawn {
         &self.origin
     }
     
+    fn is_pathable(&self) -> bool {
+        true
+    }
+
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }

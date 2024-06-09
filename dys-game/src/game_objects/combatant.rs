@@ -70,7 +70,6 @@ impl CombatantObject {
     {
         let self_rb = rigid_body_set.get_mut(self.rigid_body_handle).expect("failed to get own rigidbody");
         let impulse = force_direction.normalize() * force_magnitude;
-        println!("{impulse:?}");
         self_rb.apply_impulse(impulse, true);
 
         // ZJ-TODO: apply damage to limbs, etc

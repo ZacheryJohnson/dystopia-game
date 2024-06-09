@@ -1,22 +1,15 @@
 use std::sync::{Arc, Mutex};
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use dys_game::game::Game;
-use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}, team::team::Team};
+use dys_game::{game::Game, generator::Generator};
+use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}};
 
 fn game_simulation_benchmark(c: &mut Criterion) {
+    let world = Generator::new().generate_world();
     let game = Game {
         schedule_game: ScheduleGame {
-            away_team: Arc::new(Mutex::new(Team {
-                id: 1,
-                name: String::from("Away Team"),
-                combatants: vec![],
-            })),
-            home_team: Arc::new(Mutex::new(Team {
-                id: 2,
-                name: String::from("Home Team"),
-                combatants: vec![],
-            })),
+            away_team: world.teams[0].clone(),
+            home_team: world.teams[1].clone(),
             arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())),
             date: Date(Month::Arguscorp, 1, 10000),
         },

@@ -1,13 +1,14 @@
 use rapier3d::{na::vector, prelude::*};
 
-use self::{ball_spawn::ArenaBallSpawn, feature::ArenaFeature, plate::{ArenaPlate, ArenaPlateShape}, combatant_start::ArenaCombatantStart, wall::ArenaWall};
+use self::{ball_spawn::ArenaBallSpawn, feature::ArenaFeature, plate::{ArenaPlate, ArenaPlateShape}, combatant_start::ArenaCombatantStart, barrier::ArenaBarrier, barrier::BarrierPathing};
 
 pub mod feature;
 
-pub mod wall;
+pub mod barrier;
 pub mod plate;
 pub mod combatant_start;
 pub mod ball_spawn;
+pub mod navmesh;
 
 pub struct Arena {
     all_features: Vec<Box<dyn ArenaFeature>>
@@ -20,23 +21,23 @@ impl Arena {
             all_features: vec![
                 // West Wall
                 Box::new(
-                    ArenaWall { origin: vector![0.0, -5.0, 50.0], size: vector![3.0, 20.0, 100.0], rotation: vector![0.0, 0.0, 0.0] }
+                    ArenaBarrier::new(vector![0.0, -5.0, 50.0], vector![3.0, 20.0, 100.0], vector![0.0, 0.0, 0.0], BarrierPathing::Disabled)
                 ),
                 // East Wall
                 Box::new(
-                    ArenaWall { origin: vector![100.0, -5.0, 50.0], size: vector![3.0, 20.0, 100.0], rotation: vector![0.0, 0.0, 0.0] }
+                    ArenaBarrier::new(vector![100.0, -5.0, 50.0], vector![3.0, 20.0, 100.0], vector![0.0, 0.0, 0.0], BarrierPathing::Disabled)
                 ),
                 // South Wall
                 Box::new(
-                    ArenaWall { origin: vector![50.0, -5.0, 0.0], size: vector![100.0, 20.0, 3.0], rotation: vector![0.0, 0.0, 0.0] }
+                    ArenaBarrier::new(vector![50.0, -5.0, 0.0], vector![100.0, 20.0, 3.0], vector![0.0, 0.0, 0.0], BarrierPathing::Disabled)
                 ),
                 // North Wall
                 Box::new(
-                    ArenaWall { origin: vector![50.0, -5.0, 100.0], size: vector![100.0, 20.0, 3.0], rotation: vector![0.0, 0.0, 0.0] }
+                    ArenaBarrier::new(vector![50.0, -5.0, 100.0], vector![100.0, 20.0, 3.0], vector![0.0, 0.0, 0.0], BarrierPathing::Disabled)
                 ),
                 // Floor
                 Box::new(
-                    ArenaWall { origin: vector![50.0, -5.0, 50.0], size: vector![100.0, 10.0, 100.0], rotation: vector![0.0, 0.0, 0.0] }
+                    ArenaBarrier::new(vector![50.0, -5.0, 50.0], vector![100.0, 10.0, 100.0], vector![0.0, 0.0, 0.0], BarrierPathing::Enabled)
                 ),
                 // Plate
                 Box::new(

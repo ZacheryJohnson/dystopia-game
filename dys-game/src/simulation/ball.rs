@@ -124,5 +124,4 @@ fn try_freeze_slow_moving_ball(current_tick: GameTickNumber, ball_object: &mut B
     // Ball is too slow - set it's velocity to zero to prevent further physics sim work
     ball_rb.set_linvel(vector![0.0, 0.0, 0.0], true);
     ball_object.change_state(current_tick, BallState::Idle);
-    ball_object.is_dirty = true;
 }

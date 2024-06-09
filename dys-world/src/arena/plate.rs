@@ -52,6 +52,10 @@ impl ArenaFeature for ArenaPlate {
     fn origin(&self) -> &Vector3<f32> {
         &self.origin
     }
+
+    fn is_pathable(&self) -> bool {
+        true
+    }
     
     fn as_any(&self) -> &dyn std::any::Any {
         self

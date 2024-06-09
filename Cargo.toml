@@ -8,13 +8,21 @@ resolver = "2"
 opt-level = 3
 
 [workspace.dependencies]
+# Build dependencies
 tonic-build = "0.11" # Build dependency only!
 
-tonic = "0.11"
+# Dev dependencies
+criterion = "0.5.1"
+
+# Runtime dependencies
+ordered-float = "4.2.0"
+petgraph = "0.6.5"
 prost = "0.12"
-tokio = { version = "1.36", features = ["full"] }
+rand = "0.8.5"
+rapier3d = "0.18.0"
 serde = "1.0"
+tokio = { version = "1.36", features = ["full"] }
+tonic = "0.11"
 tracing = { version = "0.1.40", features = ["log"] }
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 tracing-bunyan-formatter = "0.3"
-rand = "0.8.5"

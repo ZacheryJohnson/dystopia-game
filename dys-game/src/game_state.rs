@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use dys_world::{arena::{ball_spawn::ArenaBallSpawn, combatant_start::ArenaCombatantStart, feature::ArenaFeature, plate::ArenaPlate, wall::ArenaWall}, combatant::combatant::CombatantId};
+use dys_world::{arena::{ball_spawn::ArenaBallSpawn, combatant_start::ArenaCombatantStart, feature::ArenaFeature, plate::ArenaPlate, barrier::ArenaBarrier}, combatant::combatant::CombatantId};
 use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
 use rapier3d::prelude::*;
@@ -24,7 +24,7 @@ pub struct GameState {
 }
 
 fn get_game_object_type_from_feature(feature: &Box<dyn ArenaFeature>) -> GameObjectType {
-    if let Some(_) = feature.as_any().downcast_ref::<ArenaWall>() {
+    if let Some(_) = feature.as_any().downcast_ref::<ArenaBarrier>() {
         return GameObjectType::Wall;
     }
 
