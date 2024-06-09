@@ -55,7 +55,7 @@ pub fn simulate_scoring(
 
         simulation_events.push(SimulationEvent::PointsScoredOnPlate { 
             plate_id: *plate_id, 
-            points: plate_score.abs() as u8, 
+            points: plate_score.unsigned_abs(), 
             team: if plate_score < 0 { TeamAlignment::Away } else { TeamAlignment::Home }
         });
     }
