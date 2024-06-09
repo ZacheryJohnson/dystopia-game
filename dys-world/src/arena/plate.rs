@@ -15,7 +15,7 @@ pub enum ArenaPlateShape {
 pub struct ArenaPlate {
     pub id: PlateId,
 
-    /// Center point of the wall
+    /// Center point of the plate
     pub origin: Vector3<f32>,
 
     /// Shape of the plate, including size of that shape
@@ -33,7 +33,10 @@ impl ArenaFeature for ArenaPlate {
     }
 
     fn build_collider(&self) -> Option<Collider> {
-        const PLATE_VERTICAL_HEIGHT: f32 = 100.0;
+        // Plates don't have a physical height, but this is to accomodate a tall vertical collider to detect collisions.
+        // This should be large enough to accommodate different player sizes and collider differences,
+        // but not so large that players flying through the air are counted towards plate progress.
+        const PLATE_VERTICAL_HEIGHT: f32 = 5.0;
 
         let shape: SharedShape = match &self.shape {
             ArenaPlateShape::Circle { radius } => SharedShape::cylinder(PLATE_VERTICAL_HEIGHT, *radius),

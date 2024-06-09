@@ -1,8 +1,16 @@
 use dys_world::arena::plate::PlateId;
 use rapier3d::na::Vector3;
 
-use crate::game_objects::{ball::BallId, combatant::{CombatantId, TeamAlignment}};
+use crate::game_objects::{ball::BallId, combatant::CombatantId};
 
+/// SimulationEvents are any notable action that happens during a simulation.
+/// These events will be collected to form a recap of the game.
+/// 
+/// Alongside discrete events (for example, a player was hit by a ball),
+/// per-tick updates can be useful as simulation events,
+/// such as the last position of a combatant or ball. These will be used in the
+/// [GameLog](crate::game_log::GameLog) to allow clients to visually recreate 
+/// an entire game, whereas just discrete events may be confusing to see.
 #[derive(Debug)]
 pub enum SimulationEvent {
     /// A ball has moved through the world
@@ -29,6 +37,6 @@ pub enum SimulationEvent {
     /// A ball explosion has applied explosion force to a combatant
     BallExplosionForceApplied { ball_id: BallId, combatant_id: CombatantId, force_magnitude: f32, force_direction: Vector3<f32> },
 
-    /// Points have been scored this tick
-    PointsScoredOnPlate { plate_id: PlateId, points: u8, team: TeamAlignment },
+    /// Points have been scored this tick by a combatant on a plate
+    PointsScoredByCombatant { plate_id: PlateId, combatant_id: CombatantId, points: u8 },
 }

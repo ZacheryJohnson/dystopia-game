@@ -12,7 +12,7 @@ pub enum BarrierPathing {
 /// Barriers can be used as walls (which aren't pathable by characters)
 /// or as floors (which are pathable by characters)
 pub struct ArenaBarrier {
-    /// Center point of the wall
+    /// Center point of the barrier
     origin: Vector3<f32>,
 
     shape: SharedShape,

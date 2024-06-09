@@ -65,8 +65,20 @@ impl BallObject {
             is_dirty: false
         }
     }
+}
 
-    pub fn change_state(&mut self, current_tick: GameTickNumber, new_state: BallState) -> (BallState, GameTickNumber) {
+impl GameObject for BallObject {
+    type GameStateT = BallState;
+
+    fn rigid_body_handle(&self) -> Option<RigidBodyHandle> {
+        Some(self.rigid_body_handle)
+    }
+
+    fn collider_handle(&self) -> Option<ColliderHandle> {
+        Some(self.collider_handle)
+    }
+
+    fn change_state(&mut self, current_tick: GameTickNumber, new_state: BallState) -> (BallState, GameTickNumber) {
         let old_state = self.state.clone();
         let old_tick_timestamp = self.state_tick_stamp;
         
@@ -75,16 +87,6 @@ impl BallObject {
         self.is_dirty = true;
 
         (old_state, old_tick_timestamp)
-    }
-}
-
-impl GameObject for BallObject {
-    fn rigid_body_handle(&self) -> Option<RigidBodyHandle> {
-        Some(self.rigid_body_handle)
-    }
-
-    fn collider_handle(&self) -> Option<ColliderHandle> {
-        Some(self.collider_handle)
     }
 
     fn is_dirty(&self) -> bool {

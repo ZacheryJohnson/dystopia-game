@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use dys_world::combatant::combatant::Combatant;
+use dys_world::{arena::plate::PlateId, combatant::combatant::Combatant};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 
 use crate::game_tick::GameTickNumber;
@@ -12,7 +12,7 @@ pub type CombatantId = u64;
 const COMBATANT_HALF_HEIGHT: f32 = 2.0; // ZJ-TODO: this should be derived from the character's limbs
 const COMBATANT_RADIUS: f32 = 0.5; // ZJ-TODO: this should be derived from the character's limbs
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum TeamAlignment {
     Home,
     Away,
@@ -26,14 +26,15 @@ pub struct CombatantObject {
     pub team: TeamAlignment,
     rigid_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
-    pub is_dirty: bool
+    is_dirty: bool
 }
 
+#[derive(Clone)]
 pub enum CombatantState {
     Idle,
     MovingToBall { ball_id: BallId },
-    MovingToPosition { position: Vector3<f32> },
-    RecoilingFromExplosion {  },
+    MovingToPlate { plate_id: PlateId },
+    RecoilingFromExplosion {},
 }
 
 impl CombatantObject {
@@ -74,19 +75,30 @@ impl CombatantObject {
 
         // ZJ-TODO: apply damage to limbs, etc
         
-        self.combatant_state = CombatantState::RecoilingFromExplosion {  };
-        self.state_tick_stamp = current_tick;
-        self.is_dirty = true;
+        self.change_state(current_tick, CombatantState::RecoilingFromExplosion {});
     }
 }
 
 impl GameObject for CombatantObject {
+    type GameStateT = CombatantState;
+
     fn rigid_body_handle(&self) -> Option<RigidBodyHandle> {
         Some(self.rigid_body_handle)
     }
 
     fn collider_handle(&self) -> Option<ColliderHandle> {
         Some(self.collider_handle)
+    }
+    
+    fn change_state(&mut self, current_tick: GameTickNumber, new_state: Self::GameStateT) -> (Self::GameStateT, GameTickNumber) {
+        let old_state = self.combatant_state.clone();
+        let old_tick_timestamp = self.state_tick_stamp;
+        
+        self.combatant_state = new_state;
+        self.state_tick_stamp = current_tick;
+        self.is_dirty = true;
+
+        (old_state, old_tick_timestamp)
     }
 
     fn is_dirty(&self) -> bool {

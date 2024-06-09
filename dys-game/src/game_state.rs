@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use dys_world::{arena::{ball_spawn::ArenaBallSpawn, combatant_start::ArenaCombatantStart, feature::ArenaFeature, plate::ArenaPlate, barrier::ArenaBarrier}, combatant::combatant::CombatantId};
+use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, combatant_start::ArenaCombatantStart, feature::ArenaFeature, navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, plate::{ArenaPlate, PlateId}}, combatant::combatant::CombatantId};
 use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
 use rapier3d::prelude::*;
 
-use crate::{game::Game, game_objects::{ball::{BallId, BallObject, BallState}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::{config::SimulationConfig, simulate_tick}, targeting::get_throw_vector_towards_target};
+use crate::{game::Game, game_objects::{ball::{BallId, BallObject, BallState}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType, plate::PlateObject}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::{config::SimulationConfig, simulate_tick}, targeting::get_throw_vector_towards_target};
 
 pub type SeedT = [u8; 32];
 
@@ -16,16 +16,18 @@ pub struct GameState {
     pub physics_sim: PhysicsSim,
     pub combatants: HashMap<CombatantId, CombatantObject>,
     pub balls: HashMap<BallId, BallObject>,
+    pub plates: HashMap<PlateId, PlateObject>,
     pub active_colliders: HashMap<ColliderHandle, GameObjectType>,
     pub home_points: u16,
     pub away_points: u16,
     pub current_tick: GameTickNumber,
     pub simulation_config: SimulationConfig,
+    pub arena_navmesh: ArenaNavmesh,
 }
 
 fn get_game_object_type_from_feature(feature: &Box<dyn ArenaFeature>) -> GameObjectType {
     if feature.as_any().downcast_ref::<ArenaBarrier>().is_some() {
-        return GameObjectType::Wall;
+        return GameObjectType::Barrier;
     }
 
     if feature.as_any().downcast_ref::<ArenaBallSpawn>().is_some() {
@@ -56,6 +58,7 @@ impl GameState {
         let mut active_colliders = HashMap::new();
         let mut balls = HashMap::new();
         let mut combatants = HashMap::new();
+        let mut plates = HashMap::new();
 
         {
             let arena = game.schedule_game.arena.lock().unwrap();
@@ -64,11 +67,23 @@ impl GameState {
                     let rigid_body_handle = rigid_body_set.insert(rigid_body);
                     if let Some(collider) = feature.build_collider() {
                         let collider_handle = collider_set.insert_with_parent(collider, rigid_body_handle, rigid_body_set);
-                        active_colliders.insert(collider_handle, get_game_object_type_from_feature(feature));
+                        let game_object_type = get_game_object_type_from_feature(feature);
+                        match game_object_type {
+                            GameObjectType::Plate(plate_id) => plates.insert(plate_id, PlateObject::new(collider_handle)),
+                            _ => None,
+                        };
+
+                        active_colliders.insert(collider_handle, game_object_type);
                     }
                 } else if let Some(collider) = feature.build_collider() {
                     let collider_handle = collider_set.insert(collider);
-                    active_colliders.insert(collider_handle, get_game_object_type_from_feature(feature));
+                    let game_object_type = get_game_object_type_from_feature(feature);
+                    match game_object_type {
+                        GameObjectType::Plate(plate_id) => plates.insert(plate_id, PlateObject::new(collider_handle)),
+                        _ => None,
+                    };
+
+                    active_colliders.insert(collider_handle, game_object_type);
                 }
             }
 
@@ -147,6 +162,8 @@ impl GameState {
             mut_ball_rb.apply_impulse(impulse, true);
         }
 
+        let arena_navmesh = ArenaNavmesh::new_from(game.schedule_game.arena.clone(), ArenaNavmeshConfig::default());
+
         GameState {
             game,
             seed: seed.to_owned(),
@@ -155,10 +172,12 @@ impl GameState {
             combatants,
             active_colliders,
             balls,
+            plates,
             home_points: 0,
             away_points: 0,
             current_tick,
-            simulation_config
+            simulation_config,
+            arena_navmesh
         }
     }
 

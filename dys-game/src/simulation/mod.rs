@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::{game_objects::{ball::BallState, game_object_type::GameObjectType}, game_state::GameState, game_tick::GameTick};
+use crate::{game_objects::{ball::BallState, game_object::GameObject, game_object_type::GameObjectType}, game_state::GameState, game_tick::GameTick};
 
 use self::{ball::simulate_balls, combatant::simulate_combatants, scoring::simulate_scoring, simulation_event::SimulationEvent};
 
@@ -26,7 +26,7 @@ fn handle_collision_events(game_state: &mut GameState) -> Vec<SimulationEvent> {
 
         match (collider_1, collider_2) {
             (GameObjectType::Invalid, _) | (_, GameObjectType::Invalid) => continue,
-            (GameObjectType::Ball(ball_id), GameObjectType::Wall) | (GameObjectType::Wall, GameObjectType::Ball(ball_id)) => {
+            (GameObjectType::Ball(ball_id), GameObjectType::Barrier) | (GameObjectType::Barrier, GameObjectType::Ball(ball_id)) => {
                 let ball_obj = game_state.balls.get_mut(ball_id).expect("Received invalid ball ID");
 
                 match ball_obj.state {
@@ -40,7 +40,7 @@ fn handle_collision_events(game_state: &mut GameState) -> Vec<SimulationEvent> {
             },
             (GameObjectType::Plate(_), _) | (_, GameObjectType::Plate(_)) => continue, // ZJ-TODO: should we flag players as on/off plates rather than checking at scoring time?
             (GameObjectType::BallSpawn, _) | (_, GameObjectType::BallSpawn) => continue,
-            (GameObjectType::Wall, _) | (_, GameObjectType::Wall) => continue,
+            (GameObjectType::Barrier, _) | (_, GameObjectType::Barrier) => continue,
             (GameObjectType::Ball(_), GameObjectType::Ball(_)) => continue,
             (GameObjectType::Combatant(_), GameObjectType::Combatant(_)) => continue,
             (GameObjectType::Ball(ball_id), GameObjectType::Combatant(combatant_id)) | (GameObjectType::Combatant(combatant_id), GameObjectType::Ball(ball_id)) => {

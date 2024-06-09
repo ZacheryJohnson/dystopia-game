@@ -4,6 +4,9 @@ use crate::{game_objects::{combatant::TeamAlignment, game_object_type::GameObjec
 
 use super::simulation_event::SimulationEvent;
 
+const PLATE_POINTS_PER_TICK: u8 = 1; // ZJ-TODO: move this to config
+const OWNED_PLATE_MULTIPLIER: u8 = 2; // ZJ-TODO: move this to config
+
 pub fn simulate_scoring(
     game_state: &mut GameState,
 ) -> Vec<SimulationEvent> {
@@ -12,7 +15,7 @@ pub fn simulate_scoring(
     let plate_object_colliders: Vec<(&ColliderHandle, &GameObjectType)> = game_state
         .active_colliders
         .iter()
-        .filter(|kv| matches!(kv.1, &GameObjectType::Plate(_)))
+        .filter(|(_, game_object_type)| matches!(game_object_type, &GameObjectType::Plate(_)))
         .collect();
 
     let mut simulation_events = vec![];
@@ -35,7 +38,7 @@ pub fn simulate_scoring(
         });
 
         // If plate score < 0, away team controls the plate; if > 0, home team controls the plate
-        let mut plate_score: i8 = 0;
+        let mut scoring_combatants = vec![];
         for collider_handle in affected_colliders {
             let GameObjectType::Combatant(combatant_id) = game_state.active_colliders.get(&collider_handle).unwrap() else {
                 continue;
@@ -45,19 +48,21 @@ pub fn simulate_scoring(
                 continue;
             };
 
-            plate_score += if combatant.team == TeamAlignment::Away { -1 } else { 1 };
+            scoring_combatants.push((combatant_id, combatant.team));
         }
 
-        // No points are scored if both teams have an equivalent number of combatants on the plate (or no combatants on the plate)
-        if plate_score == 0 {
-            continue;
-        }
+        let home_owns_plate = scoring_combatants.iter().all(|(_, team)| *team == TeamAlignment::Home);
+        let away_owns_plate = scoring_combatants.iter().all(|(_, team)| *team == TeamAlignment::Away);
 
-        simulation_events.push(SimulationEvent::PointsScoredOnPlate { 
-            plate_id: *plate_id, 
-            points: plate_score.unsigned_abs(), 
-            team: if plate_score < 0 { TeamAlignment::Away } else { TeamAlignment::Home }
-        });
+        let one_team_owns_plate = home_owns_plate || away_owns_plate;
+
+        for (combatant_id, _) in scoring_combatants {
+            simulation_events.push(SimulationEvent::PointsScoredByCombatant { 
+                plate_id: *plate_id, 
+                combatant_id: *combatant_id,
+                points: if one_team_owns_plate { PLATE_POINTS_PER_TICK * OWNED_PLATE_MULTIPLIER } else { PLATE_POINTS_PER_TICK },
+            });
+        }
     }
 
     simulation_events
