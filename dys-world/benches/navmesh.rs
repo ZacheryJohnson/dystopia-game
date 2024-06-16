@@ -7,7 +7,7 @@ fn navmesh_simulation_benchmark(c: &mut Criterion) {
     let arena = Arc::new(Mutex::new(Arena::new_with_testing_defaults()));
     let config = ArenaNavmeshConfig::default();
     
-    c.bench_function("navmesh generation", |b| b.iter(|| {
+    c.bench_function("navmesh_generation", |b| b.iter(|| {
         ArenaNavmesh::new_from(arena.clone(), config.clone());
     }));
 }

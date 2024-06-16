@@ -13,6 +13,9 @@ ordered-float.workspace = true
 petgraph.workspace = true
 rapier3d.workspace = true
 
+[lib]
+bench = false
+
 [[bench]]
 name = "navmesh"
 harness = false

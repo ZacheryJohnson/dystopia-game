@@ -16,6 +16,9 @@ rand = "0.8.5"
 rand_pcg = "0.3.1"
 rapier3d = "0.18"
 
+[lib]
+bench = false
+
 [[bench]]
 name = "simulation"
 harness = false

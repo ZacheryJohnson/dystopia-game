@@ -16,7 +16,7 @@ fn game_simulation_benchmark(c: &mut Criterion) {
     };
     let seed = &[0; 32];
     
-    c.bench_function("full game simulation", |b| b.iter(|| game.simulate_seeded(seed)));
+    c.bench_function("full_game_simulation", |b| b.iter(|| game.simulate_seeded(seed)));
 }
 
 criterion_group!(benches, game_simulation_benchmark);
