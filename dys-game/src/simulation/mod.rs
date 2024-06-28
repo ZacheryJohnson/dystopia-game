@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::{game_objects::{ball::BallState, game_object::GameObject, game_object_type::GameObjectType}, game_state::GameState, game_tick::GameTick};
+use crate::{game_objects::{ball::BallState, game_object::GameObject, game_object_type::GameObjectType}, game_state::GameState, game_tick::{GameTick, TickPerformance}};
 
 use self::{ball::simulate_balls, combatant::simulate_combatants, scoring::simulate_scoring, simulation_event::SimulationEvent};
 
@@ -105,11 +105,13 @@ pub fn simulate_tick(game_state: &mut GameState) -> GameTick {
 
     GameTick {
         tick_number: game_state.current_tick,
-        physics_duration: post_physics_timestamp - pre_physics_timestamp,
-        balls_duration: post_balls_timestamp - pre_balls_timestamp,
-        combatant_duration: post_combatant_timestamp - pre_combatant_timestamp,
-        scoring_duration: post_scoring_timestamp - pre_scoring_timestamp,
-        tick_duration: post_tick_timestamp - pre_tick_timestamp,
+        tick_performance: TickPerformance::new(
+            post_physics_timestamp - pre_physics_timestamp,
+            post_balls_timestamp - pre_balls_timestamp,
+            post_combatant_timestamp - pre_combatant_timestamp,
+            post_scoring_timestamp - pre_scoring_timestamp,
+            post_tick_timestamp - pre_tick_timestamp
+        ),
         simulation_events,
         is_halftime,
         is_end_of_game,

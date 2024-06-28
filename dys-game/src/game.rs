@@ -60,20 +60,6 @@ mod tests {
             },
         };
         let seed = &[0; 32];
-        let game_log = game.simulate_seeded(seed);
-        let physics_duration_micros: u128 = game_log.ticks.iter().map(|tick| tick.physics_duration.as_micros()).sum();
-        let balls_duration_micros: u128 = game_log.ticks.iter().map(|tick| tick.balls_duration.as_micros()).sum();
-        let combatants_duration_micros: u128 = game_log.ticks.iter().map(|tick| tick.combatant_duration.as_micros()).sum();
-        let total_duration_micros: u128 = game_log.ticks.iter().map(|tick| tick.tick_duration.as_micros()).sum();
-
-        /*
-        for tick in &game_log.ticks {
-            for simulation_event in &tick.simulation_events {
-                println!("Tick {}: {:?}", tick.tick_number, simulation_event);
-            }
-        }
-        */
-
-        println!("Simulation duration: {total_duration_micros} microseconds ({physics_duration_micros} in physics, {balls_duration_micros} in balls, {combatants_duration_micros} in combatants)");
+        let _ = game.simulate_seeded(seed);
     }
 }
