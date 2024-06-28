@@ -112,7 +112,7 @@ fn decrease_charge(ball: &mut BallObject, simulation_config: &SimulationConfig) 
 
 fn try_freeze_slow_moving_ball(current_tick: GameTickNumber, ball_object: &mut BallObject, ball_rb: &mut RigidBody) {
     match ball_object.state {
-        BallState::Idle | BallState::Explode => return,
+        BallState::Explode => return,
         _ => (),
     };
 
@@ -124,4 +124,5 @@ fn try_freeze_slow_moving_ball(current_tick: GameTickNumber, ball_object: &mut B
     // Ball is too slow - set it's velocity to zero to prevent further physics sim work
     ball_rb.set_linvel(vector![0.0, 0.0, 0.0], true);
     ball_object.change_state(current_tick, BallState::Idle);
+    ball_object.is_dirty = false; // ZJ-TODO: handle this case in change_state; need to derive PartialEq
 }

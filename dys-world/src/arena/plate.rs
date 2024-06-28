@@ -47,6 +47,7 @@ impl ArenaFeature for ArenaPlate {
         let collider = ColliderBuilder::new(shape)
             .translation(self.origin)
             .rotation(self.rotation)
+            .sensor(true)
             .build();
 
         Some(collider)

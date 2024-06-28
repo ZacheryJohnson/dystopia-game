@@ -170,6 +170,24 @@ impl ArenaNavmesh {
             .collect()
     }
 
+    pub fn get_next_point(&self, from: OPoint<f32, Const<3>>, to: OPoint<f32, Const<3>>) -> Option<OPoint<f32, Const<3>>> {
+        // ZJ-TODO: refactor. We shouldn't assume ground = 0.0 - what if there's ramps?
+        let grounded_from = point![from.x, 0.0, from.z];
+        let grounded_to = point![to.x, 0.0, to.z];
+
+        // ZJ-TODO: refactor - we shouldn't reconstruct a new path each time, we should do it once and cache it
+        let path = self.create_path(grounded_from, grounded_to);
+        if path.len() < 2 {
+            return None;
+        }
+
+        Some(path.iter()
+            .skip(1)
+            .next()
+            .unwrap()
+            .to_owned())
+    }
+
     fn get_path_between_nodes(&self, from: ArenaNavmeshNode, to: ArenaNavmeshNode) -> Vec<ArenaNavmeshNode> {
         let astar_result = algo::astar(
             &self.graph, 

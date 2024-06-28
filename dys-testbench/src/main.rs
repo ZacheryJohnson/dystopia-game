@@ -9,7 +9,7 @@ fn main() {
     let away_team = world.teams.first().expect("failed to get away team from generated world").to_owned();
     let home_team = world.teams.get(1).expect("failed to get home team from generated world").to_owned();
     let arena = Arc::new(Mutex::new(Arena::new_with_testing_defaults()));
-    let date = Date(Month::Arguscorp, 1, 10000); 
+    let date = Date(Month::Arguscorp, 1, 10000);
 
     let schedule_game = ScheduleGame {
         away_team,
@@ -21,11 +21,9 @@ fn main() {
     let seed: [u8; 32] = [13; 32];
 
     let game_log = game.simulate_seeded(&seed);
-    for tick in game_log.ticks {
-        if tick.tick_number > 25 {
-            continue;
-        }
 
+    println!("Simulation complete: {}", game_log.perf_string());
+    for tick in game_log.ticks {
         println!("Tick {}: {}", tick.tick_number, tick.perf_string());
 
         for simulation_evt in tick.simulation_events {
