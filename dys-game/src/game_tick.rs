@@ -1,16 +1,18 @@
 use std::{ops::Add, time::Duration};
 
+use serde::{Deserialize, Serialize};
+
 use crate::simulation::simulation_event::SimulationEvent;
 
 pub type GameTickNumber = u32;
 
+#[derive(Deserialize, Serialize)]
 pub struct GameTick {
     pub tick_number: u32,
     pub tick_performance: TickPerformance,
     pub simulation_events: Vec<SimulationEvent>,
     pub(crate) is_halftime: bool,
     pub(crate) is_end_of_game: bool,
-    pub(crate) is_scoring_tick: bool,
 }
 
 impl GameTick {
@@ -23,7 +25,7 @@ impl GameTick {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct TickPerformance {
     pub physics_duration: Duration,
     pub balls_duration: Duration,

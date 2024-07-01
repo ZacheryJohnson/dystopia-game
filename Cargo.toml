@@ -8,19 +8,28 @@ resolver = "2"
 opt-level = 3
 
 [workspace.dependencies]
+# -----------------------
 # Build dependencies
+# -----------------------
 tonic-build = "0.11" # Build dependency only!
 
+# -----------------------
 # Dev dependencies
+# -----------------------
 criterion = "0.5.1"
 
+# -----------------------
 # Runtime dependencies
+# -----------------------
+
+# used for binary serialization
 ordered-float = "4.2.0"
 petgraph = "0.6.5"
+postcard = { version = "1.0.8", features = ["alloc"] }
 prost = "0.12"
 rand = "0.8.5"
-rapier3d = "0.18.0"
-serde = "1.0"
+rapier3d = { version = "0.18.0", features = ["serde-serialize"] }
+serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.36", features = ["full"] }
 tonic = "0.11"
 tracing = { version = "0.1.40", features = ["log"] }

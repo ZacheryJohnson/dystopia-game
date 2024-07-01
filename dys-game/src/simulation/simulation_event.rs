@@ -1,5 +1,6 @@
 use dys_world::arena::plate::PlateId;
 use rapier3d::na::Vector3;
+use serde::{Deserialize, Serialize};
 
 use crate::game_objects::{ball::BallId, combatant::CombatantId};
 
@@ -11,13 +12,19 @@ use crate::game_objects::{ball::BallId, combatant::CombatantId};
 /// such as the last position of a combatant or ball. These will be used in the
 /// [GameLog](crate::game_log::GameLog) to allow clients to visually recreate 
 /// an entire game, whereas just discrete events may be confusing to see.
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum SimulationEvent {
     /// A ball has moved through the world
     BallPositionUpdate { ball_id: BallId, position: Vector3<f32> },
 
     /// A combatant has moved through the world
     CombatantPositionUpdate { combatant_id: CombatantId, position: Vector3<f32> },
+
+    /// A combatant has begun being on a plate
+    CombatantOnPlate { combatant_id: CombatantId, plate_id: PlateId },
+
+    /// A combatant has stopped being on a plate
+    CombatantOffPlate { combatant_id: CombatantId, plate_id: PlateId },
 
     /// A ball has been thrown targeting an enemy
     BallThrownAtEnemy { thrower_id: CombatantId, enemy_id: CombatantId, ball_id: BallId },

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use dys_world::arena::{navmesh::ArenaNavmesh, plate::PlateId};
 use rapier3d::{dynamics::RigidBody, geometry::ColliderSet, math::Point, na::Matrix3x1, prelude::*};
 
-use crate::{game_objects::{ball::{BallId, BallObject}, combatant::{CombatantObject, CombatantState}, game_object::GameObject, plate::PlateObject}, game_state::GameState, game_tick::GameTickNumber};
+use crate::{ai, game_objects::{ball::{BallId, BallObject}, combatant::{CombatantObject, CombatantState}, game_object::GameObject, plate::PlateObject}, game_state::GameState, game_tick::GameTickNumber};
 
 use super::simulation_event::SimulationEvent;
 
@@ -13,10 +13,11 @@ pub(crate) fn simulate_combatants(game_state: &mut GameState) -> Vec<SimulationE
     let mut events = vec![];
 
     for (combatant_id, mut combatant_object) in combatants {
-        let combatant_rb_handle = combatant_object.rigid_body_handle().expect("combatants should have a valid rigidbody handle");
-
         let (rigid_body_set, collider_set) = game_state.physics_sim.sets_mut();
 
+        ai::combatant_ai::process_combatant(combatant_object, &rigid_body_set, game_state.current_tick);
+
+        let combatant_rb_handle = combatant_object.rigid_body_handle().expect("combatants should have a valid rigidbody handle");
         let combatant_rb = rigid_body_set.get_mut(combatant_rb_handle).expect("combatants rigid bodies should be registered with main set");
         
         events.extend(match combatant_object.combatant_state {
@@ -25,20 +26,13 @@ pub(crate) fn simulate_combatants(game_state: &mut GameState) -> Vec<SimulationE
             CombatantState::MovingToPlate { plate_id } => simulate_moving_to_plate(&mut combatant_object, plate_id, &game_state.arena_navmesh, combatant_rb, &collider_set, &game_state.plates, game_state.current_tick),
             CombatantState::RecoilingFromExplosion {} => simulate_state_recoiling_from_explosion(&mut combatant_object),
         });
-
-        // ZJ-TODO: temp for testing
-        let combatant_pos = combatant_rb.translation();
-        let combatant_on_plate = combatant_pos.x == 50.0 && combatant_pos.z == 50.0;
-        if *combatant_id == 1 && matches!(combatant_object.combatant_state, CombatantState::Idle) && !combatant_on_plate {
-            combatant_object.change_state(game_state.current_tick, CombatantState::MovingToPlate { plate_id: 1 });
-        }
     }
 
     events
 }
 
 fn simulate_state_idle(combatant_obj: &mut CombatantObject, current_tick: GameTickNumber) -> Vec<SimulationEvent> {
-    // We should never be idle for more than one tick. Figure out something productive to do
+    // We should never be in the idle state
     vec![]
 }
 

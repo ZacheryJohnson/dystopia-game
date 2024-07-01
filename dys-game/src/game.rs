@@ -22,10 +22,7 @@ impl Game {
             }
         }
 
-        GameLog { 
-            ticks, 
-            schedule_game: self.schedule_game.clone()
-        }
+        GameLog::from_ticks(ticks)
     }
 
     pub fn simulate(&self) -> GameLog {

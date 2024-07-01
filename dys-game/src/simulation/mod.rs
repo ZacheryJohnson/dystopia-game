@@ -27,6 +27,11 @@ fn handle_collision_events(game_state: &mut GameState) -> Vec<SimulationEvent> {
         match (collider_1, collider_2) {
             (GameObjectType::Invalid, _) | (_, GameObjectType::Invalid) => continue,
             (GameObjectType::Ball(ball_id), GameObjectType::Barrier) | (GameObjectType::Barrier, GameObjectType::Ball(ball_id)) => {
+                // We don't care if the ball and barrier have stopped colliding
+                if evt.stopped() {
+                    continue;
+                }
+
                 let ball_obj = game_state.balls.get_mut(ball_id).expect("Received invalid ball ID");
 
                 match ball_obj.state {
@@ -38,12 +43,30 @@ fn handle_collision_events(game_state: &mut GameState) -> Vec<SimulationEvent> {
                     _ => ()
                 }
             },
-            (GameObjectType::Plate(_), _) | (_, GameObjectType::Plate(_)) => continue, // ZJ-TODO: should we flag players as on/off plates rather than checking at scoring time?
+            (GameObjectType::Plate(plate_id), GameObjectType::Combatant(combatant_id)) | (GameObjectType::Combatant(combatant_id), GameObjectType::Plate(plate_id)) => {
+                if evt.started() {
+                    let combatant_object = game_state.combatants.get_mut(combatant_id).expect("failed to get combatant object");
+                    combatant_object.set_on_plate(true);
+                    new_simulation_events.push(SimulationEvent::CombatantOnPlate { combatant_id: *combatant_id, plate_id: *plate_id })
+                }
+
+                if evt.stopped() {
+                    let combatant_object = game_state.combatants.get_mut(combatant_id).expect("failed to get combatant object");
+                    combatant_object.set_on_plate(false);
+                    new_simulation_events.push(SimulationEvent::CombatantOffPlate { combatant_id: *combatant_id, plate_id: *plate_id })
+                }
+            },
+            (GameObjectType::Plate(_), _) | (_, GameObjectType::Plate(_)) => continue,
             (GameObjectType::BallSpawn, _) | (_, GameObjectType::BallSpawn) => continue,
             (GameObjectType::Barrier, _) | (_, GameObjectType::Barrier) => continue,
             (GameObjectType::Ball(_), GameObjectType::Ball(_)) => continue,
             (GameObjectType::Combatant(_), GameObjectType::Combatant(_)) => continue,
             (GameObjectType::Ball(ball_id), GameObjectType::Combatant(combatant_id)) | (GameObjectType::Combatant(combatant_id), GameObjectType::Ball(ball_id)) => {
+                // We don't care if the ball and combatant have stopped colliding
+                if evt.stopped() {
+                    continue;
+                }
+
                 let ball_obj = game_state.balls.get_mut(ball_id).expect("Received invalid ball ID");
                 let _combatant_obj = game_state.combatants.get(combatant_id).expect("Received invalid combatant ID");
             
@@ -114,7 +137,6 @@ pub fn simulate_tick(game_state: &mut GameState) -> GameTick {
         ),
         simulation_events,
         is_halftime,
-        is_end_of_game,
-        is_scoring_tick,
+        is_end_of_game
     }
 }

@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use dys_game::{game::Game, generator::Generator};
+use dys_game::{game::Game, game_log::GameLog, generator::Generator};
 use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}};
 
 fn main() {
@@ -21,13 +21,16 @@ fn main() {
     let seed: [u8; 32] = [13; 32];
 
     let game_log = game.simulate_seeded(&seed);
+    let game_log_artifact = postcard::to_allocvec(&game_log).expect("failed to serialize game log");
+    std::fs::write("game_log.bin", game_log_artifact).expect("failed to write game log artifact to file");
 
-    println!("Simulation complete: {}", game_log.perf_string());
-    for tick in game_log.ticks {
-        println!("Tick {}: {}", tick.tick_number, tick.perf_string());
-
-        for simulation_evt in tick.simulation_events {
-            println!("\t{simulation_evt:?}");
+    let parsed_game_log_contents = std::fs::read("game_log.bin").expect("failed to read serialized game log artifact to vector");
+    let parsed_game_log: GameLog = postcard::from_bytes(&parsed_game_log_contents).expect("failed to serialize game log artifact into a game log");
+    println!("{}", parsed_game_log.perf_string());
+    for tick in parsed_game_log.ticks() {
+        println!("Tick {}: {}", tick.tick_number, tick.tick_performance().perf_string());
+        for evt in &tick.simulation_events {
+            println!("\t{:?}", evt);
         }
     }
 }

@@ -11,6 +11,9 @@ criterion.workspace = true
 [dependencies]
 dys-world = { path = "../dys-world" }
 
+serde.workspace = true
+tracing.workspace = true
+
 crossbeam = "0.8.4"
 rand = "0.8.5"
 rand_pcg = "0.3.1"

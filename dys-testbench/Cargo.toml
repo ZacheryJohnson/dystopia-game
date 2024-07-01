@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 dys-game = { path = "../dys-game" }
 dys-world = { path = "../dys-world" }
+
+postcard.workspace = true
+serde.workspace = true

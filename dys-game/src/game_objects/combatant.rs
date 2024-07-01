@@ -26,7 +26,8 @@ pub struct CombatantObject {
     pub team: TeamAlignment,
     rigid_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
-    is_dirty: bool
+    is_dirty: bool,
+    is_on_plate: bool,
 }
 
 #[derive(Clone)]
@@ -59,6 +60,7 @@ impl CombatantObject {
             rigid_body_handle,
             collider_handle,
             is_dirty: false,
+            is_on_plate: false
         }
     }
 
@@ -76,6 +78,14 @@ impl CombatantObject {
         // ZJ-TODO: apply damage to limbs, etc
         
         self.change_state(current_tick, CombatantState::RecoilingFromExplosion {});
+    }
+
+    pub fn set_on_plate(&mut self, value: bool) {
+        self.is_on_plate = value;
+    }
+
+    pub fn on_plate(&self) -> bool {
+        self.is_on_plate
     }
 }
 
