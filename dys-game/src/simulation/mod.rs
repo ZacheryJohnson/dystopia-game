@@ -46,13 +46,13 @@ fn handle_collision_events(game_state: &mut GameState) -> Vec<SimulationEvent> {
             (GameObjectType::Plate(plate_id), GameObjectType::Combatant(combatant_id)) | (GameObjectType::Combatant(combatant_id), GameObjectType::Plate(plate_id)) => {
                 if evt.started() {
                     let combatant_object = game_state.combatants.get_mut(combatant_id).expect("failed to get combatant object");
-                    combatant_object.set_on_plate(true);
+                    combatant_object.set_on_plate(*plate_id);
                     new_simulation_events.push(SimulationEvent::CombatantOnPlate { combatant_id: *combatant_id, plate_id: *plate_id })
                 }
 
                 if evt.stopped() {
                     let combatant_object = game_state.combatants.get_mut(combatant_id).expect("failed to get combatant object");
-                    combatant_object.set_on_plate(false);
+                    combatant_object.set_off_plate();
                     new_simulation_events.push(SimulationEvent::CombatantOffPlate { combatant_id: *combatant_id, plate_id: *plate_id })
                 }
             },

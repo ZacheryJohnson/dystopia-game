@@ -3,7 +3,6 @@ use std::sync::{Arc, Mutex};
 
 use ordered_float::{self, OrderedFloat};
 
-use nalgebra::{Const, OPoint};
 use petgraph::algo;
 use petgraph::graphmap::UnGraphMap;
 use petgraph::visit::EdgeRef;
@@ -36,7 +35,7 @@ struct ArenaNavmeshNode {
 }
 
 impl ArenaNavmeshNode {
-    fn from_point(point: OPoint<f32, Const<3>>) -> ArenaNavmeshNode {
+    fn from_point(point: Point<f32>) -> ArenaNavmeshNode {
         ArenaNavmeshNode {
             x_pos: OrderedFloat::from(point.x),
             y_pos: OrderedFloat::from(point.y),
@@ -44,7 +43,7 @@ impl ArenaNavmeshNode {
         }
     }
 
-    fn as_point(&self) -> OPoint<f32, Const<3>> {
+    fn as_point(&self) -> Point<f32> {
         point![*self.x_pos, *self.y_pos, *self.z_pos]
     }
 }
@@ -120,7 +119,7 @@ impl ArenaNavmesh {
         for node in graph.nodes() {
             const CARDINAL_NEIGHBOR_WEIGHT: f32 = 1.0;
             const DIAGONAL_NEIGHBOR_WEIGHT: f32 = 1.7;
-            let neighbor_points: Vec<(OPoint<f32, Const<3>>, f32)> = vec![
+            let neighbor_points: Vec<(Point<f32>, f32)> = vec![
                 (node.as_point() + vector![-config.unit_resolution, 0.0, 0.0], CARDINAL_NEIGHBOR_WEIGHT),
                 (node.as_point() + vector![config.unit_resolution, 0.0, 0.0], CARDINAL_NEIGHBOR_WEIGHT),
                 (node.as_point() + vector![0.0, 0.0, -config.unit_resolution], CARDINAL_NEIGHBOR_WEIGHT),
@@ -150,7 +149,7 @@ impl ArenaNavmesh {
     }
 
     /// Attempts to create a path from one point to another point. Returns an empty vector if a path cannot be made.
-    pub fn create_path(&self, from: OPoint<f32, Const<3>>, to: OPoint<f32, Const<3>>) -> Vec<OPoint<f32, Const<3>>> {
+    pub fn create_path(&self, from: Point<f32>, to: Point<f32>) -> Vec<Point<f32>> {
         let start_node = ArenaNavmesh::get_closest_node(&self.graph, from, self.config.unit_resolution);
         let end_node = ArenaNavmesh::get_closest_node(&self.graph, to, self.config.unit_resolution);
         
@@ -170,7 +169,7 @@ impl ArenaNavmesh {
             .collect()
     }
 
-    pub fn get_next_point(&self, from: OPoint<f32, Const<3>>, to: OPoint<f32, Const<3>>) -> Option<OPoint<f32, Const<3>>> {
+    pub fn get_next_point(&self, from: Point<f32>, to: Point<f32>) -> Option<Point<f32>> {
         // ZJ-TODO: refactor. We shouldn't assume ground = 0.0 - what if there's ramps?
         let grounded_from = point![from.x, 0.0, from.z];
         let grounded_to = point![to.x, 0.0, to.z];
@@ -207,7 +206,7 @@ impl ArenaNavmesh {
     }
 
     /// This function is **expensive**. Should not be used when constructing the navmesh graph, and only for client requests (like [create_path](ArenaNavmesh::create_path)).
-    fn get_closest_node(graph: &UnGraphMap<ArenaNavmeshNode, f32>, point: OPoint<f32, Const<3>>, unit_resolution: f32) -> Option<ArenaNavmeshNode> {
+    fn get_closest_node(graph: &UnGraphMap<ArenaNavmeshNode, f32>, point: Point<f32>, unit_resolution: f32) -> Option<ArenaNavmeshNode> {
         graph
             .nodes()
             .filter(|node| (node.as_point() - point).magnitude() <= unit_resolution)

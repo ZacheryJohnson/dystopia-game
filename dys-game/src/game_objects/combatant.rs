@@ -27,7 +27,8 @@ pub struct CombatantObject {
     rigid_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
     is_dirty: bool,
-    is_on_plate: bool,
+    on_plate: Option<PlateId>,
+    holding_ball: Option<BallId>,
 }
 
 #[derive(Clone)]
@@ -60,7 +61,8 @@ impl CombatantObject {
             rigid_body_handle,
             collider_handle,
             is_dirty: false,
-            is_on_plate: false
+            on_plate: None,
+            holding_ball: None
         }
     }
 
@@ -80,12 +82,28 @@ impl CombatantObject {
         self.change_state(current_tick, CombatantState::RecoilingFromExplosion {});
     }
 
-    pub fn set_on_plate(&mut self, value: bool) {
-        self.is_on_plate = value;
+    pub fn set_on_plate(&mut self, plate_id: PlateId) {
+        self.on_plate = Some(plate_id);
     }
 
-    pub fn on_plate(&self) -> bool {
-        self.is_on_plate
+    pub fn set_off_plate(&mut self) {
+        self.on_plate = None;
+    }
+
+    pub fn plate(&self) -> Option<PlateId> {
+        self.on_plate
+    }
+
+    pub fn pickup_ball(&mut self, ball_id: BallId) {
+        self.holding_ball = Some(ball_id);
+    }
+
+    pub fn drop_ball(&mut self) {
+        self.holding_ball = None;
+    }
+
+    pub fn ball(&self) -> Option<BallId> {
+        self.holding_ball
     }
 }
 

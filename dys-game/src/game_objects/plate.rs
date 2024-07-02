@@ -25,7 +25,7 @@ impl GameObject for PlateObject {
         Some(self.collider_handle)
     }
 
-    fn change_state(&mut self, current_tick: crate::game_tick::GameTickNumber, new_state: Self::GameStateT) -> (Self::GameStateT, crate::game_tick::GameTickNumber) {
+    fn change_state(&mut self, _current_tick: crate::game_tick::GameTickNumber, _new_state: Self::GameStateT) -> (Self::GameStateT, crate::game_tick::GameTickNumber) {
         panic!("plates cannot change state")
     }
 

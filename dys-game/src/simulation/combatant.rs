@@ -12,7 +12,7 @@ pub(crate) fn simulate_combatants(game_state: &mut GameState) -> Vec<SimulationE
 
     let mut events = vec![];
 
-    for (combatant_id, mut combatant_object) in combatants {
+    for (_combatant_id, mut combatant_object) in combatants {
         let (rigid_body_set, collider_set) = game_state.physics_sim.sets_mut();
 
         ai::combatant_ai::process_combatant(combatant_object, &rigid_body_set, game_state.current_tick);
@@ -31,13 +31,13 @@ pub(crate) fn simulate_combatants(game_state: &mut GameState) -> Vec<SimulationE
     events
 }
 
-fn simulate_state_idle(combatant_obj: &mut CombatantObject, current_tick: GameTickNumber) -> Vec<SimulationEvent> {
+fn simulate_state_idle(_combatant_obj: &mut CombatantObject, _current_tick: GameTickNumber) -> Vec<SimulationEvent> {
     // We should never be in the idle state
     vec![]
 }
 
 fn simulate_move(
-    combatant_obj: &mut CombatantObject,
+    _combatant_obj: &mut CombatantObject,
     arena_navmesh: &ArenaNavmesh,
     combatant_rb: &mut RigidBody,
     target_position: &Matrix3x1<f32>
