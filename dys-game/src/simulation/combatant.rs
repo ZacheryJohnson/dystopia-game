@@ -90,6 +90,7 @@ fn simulate_moving_to_ball(
 
     // ZJ-TODO: if we're close enough to the ball, pick it up
     if are_points_equal(new_combatant_position, combatant_rb.translation().y, (*ball_position).into(), ball_position.y) {
+        combatant_obj.pickup_ball(ball_id);
         combatant_obj.change_state(current_tick, CombatantState::Idle);
     }
 

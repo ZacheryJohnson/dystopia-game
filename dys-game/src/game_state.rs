@@ -114,7 +114,7 @@ impl GameState {
                 let team_combatants = if player_start.is_home_team { &mut home_combatants } else { &mut away_combatants };
                 let Some(combatant) = team_combatants.pop() else {
                     // This may not be an error case if we allow more starts than combatants
-                    println!("failed to pop combatant for empty player start");
+                    tracing::info!("failed to pop combatant for empty player start");
                     continue;
                 };
 

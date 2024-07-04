@@ -1,8 +1,29 @@
 use std::sync::{Arc, Mutex};
 use dys_game::{game::Game, game_log::GameLog, generator::Generator};
 use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}};
+use tracing::subscriber::set_global_default;
+use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
+use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
+
+fn register_tracing_subscriber() {
+    let env_filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("info"));
+    let formatting_layer = BunyanFormattingLayer::new(
+        "dystopia".into(), 
+        std::io::stdout
+    );
+    
+    let subscriber = Registry::default()
+        .with(env_filter)
+        .with(JsonStorageLayer)
+        .with(formatting_layer);
+    
+    set_global_default(subscriber).expect("Failed to set subscriber");
+}
 
 fn main() {
+    register_tracing_subscriber();
+
     let generator = Generator::new();
     let world = generator.generate_world();
 
@@ -26,11 +47,11 @@ fn main() {
 
     let parsed_game_log_contents = std::fs::read("game_log.bin").expect("failed to read serialized game log artifact to vector");
     let parsed_game_log: GameLog = postcard::from_bytes(&parsed_game_log_contents).expect("failed to serialize game log artifact into a game log");
-    println!("{}", parsed_game_log.perf_string());
+    tracing::info!("{}", parsed_game_log.perf_string());
     for tick in parsed_game_log.ticks() {
-        println!("Tick {}: {}", tick.tick_number, tick.tick_performance().perf_string());
+        tracing::info!("Tick {}: {}", tick.tick_number, tick.tick_performance().perf_string());
         for evt in &tick.simulation_events {
-            println!("\t{:?}", evt);
+            tracing::info!("\t{:?}", evt);
         }
     }
 }

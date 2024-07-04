@@ -11,3 +11,6 @@ dys-world = { path = "../dys-world" }
 
 postcard.workspace = true
 serde.workspace = true
+tracing.workspace = true
+tracing-bunyan-formatter.workspace = true
+tracing-subscriber.workspace = true

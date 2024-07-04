@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let response = client.create_new_director(request).await?;
 
-    println!("Response: {}", response.get_ref().director_id);
+    tracing::info!("Response: {}", response.get_ref().director_id);
 
     Ok(())
 }

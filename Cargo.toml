@@ -22,12 +22,13 @@ criterion = "0.5.1"
 # Runtime dependencies
 # -----------------------
 
-# used for binary serialization
+crossbeam = "0.8.4"
 ordered-float = "4.2.0"
 petgraph = "0.6.5"
 postcard = { version = "1.0.8", features = ["alloc"] }
 prost = "0.12"
 rand = "0.8.5"
+rand_pcg = "0.3.1"
 rapier3d = { version = "0.18.0", features = ["serde-serialize"] }
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.36", features = ["full"] }
