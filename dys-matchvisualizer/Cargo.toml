@@ -7,6 +7,7 @@ edition = "2021"
 dys-game = { path = "../dys-game" }
 
 bevy.workspace = true
+once_cell.workspace = true
 postcard.workspace = true
 serde.workspace = true
 wasm-bindgen.workspace = true

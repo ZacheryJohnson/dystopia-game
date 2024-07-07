@@ -4,7 +4,6 @@ const MATCH_VISUALIZER_WASM_DIR_LOCAL_PATH: &'static str = "../.wasm_out";
 const FRONTEND_LOCAL_DIR_NAME: &'static str = "frontend";
 const FRONTEND_ARTIFACT_PUBLIC_DIR_NAME: &'static str = "public";
 const FRONTEND_ARTIFACT_INTERNAL_DIR_NAME: &'static str = "src/assets";
-const BUILD_SCRIPT_CMD_PWSH_LOCAL_PATH: &'static str = "build_scripts/build_webapp_frontend.ps1";
 
 fn build_and_copy_wasm(project_dir_path: &String) {
     let match_visualizer_wasm_path = std::path::Path::new(&project_dir_path).join(MATCH_VISUALIZER_WASM_DIR_LOCAL_PATH);
@@ -36,13 +35,27 @@ fn build_and_copy_wasm(project_dir_path: &String) {
 }
 
 fn exec_build_script_cmd(project_dir_path: &String) {
-    // ZJ-TODO: non-Windows support
-    let _ = std::process::Command::new("powershell")
-        .arg("-File")
-        .arg(BUILD_SCRIPT_CMD_PWSH_LOCAL_PATH)
-        .current_dir(project_dir_path)
-        .output()
-        .unwrap();
+    #[cfg(target_os="windows")]
+    {
+        const BUILD_SCRIPT_CMD_PWSH_LOCAL_PATH: &'static str = "build_scripts/build_webapp_frontend.ps1";
+        let _ = std::process::Command::new("powershell")
+            .arg("-File")
+            .arg(BUILD_SCRIPT_CMD_PWSH_LOCAL_PATH)
+            .current_dir(project_dir_path)
+            .output()
+            .unwrap();
+    }
+
+    
+    #[cfg(target_os="linux")]
+    {
+        const BUILD_SCRIPT_CMD_SH_LOCAL_PATH: &'static str = "build_scripts/build_webapp_frontend.sh";
+        let _ = std::process::Command::new("sh")
+            .arg(BUILD_SCRIPT_CMD_SH_LOCAL_PATH)
+            .current_dir(project_dir_path)
+            .output()
+            .unwrap();
+    }
 }
 
 fn main() {

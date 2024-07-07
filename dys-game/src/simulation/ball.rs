@@ -39,7 +39,7 @@ pub(crate) fn simulate_balls(game_state: &mut GameState) -> Vec<SimulationEvent>
 fn explode(
     ball: &mut BallObject,
     query_pipeline: &QueryPipeline,
-    rigid_body_set: &RigidBodySet,
+    rigid_body_set: &mut RigidBodySet,
     collider_set: &ColliderSet,
 ) -> (Vec<SimulationEvent>, Vec<ColliderHandle>) {
     // Only handle balls in the Explode state
@@ -48,20 +48,24 @@ fn explode(
     };
 
     let ball_pos = rigid_body_set.get(ball.rigid_body_handle().unwrap()).unwrap().translation();
-
+    
     const EXPLOSION_CYLINDER_HEIGHT: f32 = 30.0;
     let explosion_radius = ball.charge * 1.0; // ZJ-TODO: figure out explosion radius as compared to charge
     let explosion_shape = Cylinder::new(EXPLOSION_CYLINDER_HEIGHT, explosion_radius);
     let explosion_pos = Isometry::new(ball_pos.to_owned(), vector![0.0, 0.0, 0.0]);
     let query_filter = QueryFilter::only_dynamic()
         .exclude_sensors();
-    // ZJ-TODO: use InteractionGroups to get only combatants and ignore everything else
 
+    // ZJ-TODO: use InteractionGroups to get only combatants and ignore everything else
     let mut affected_colliders = vec![];
     query_pipeline.intersections_with_shape(rigid_body_set, collider_set, &explosion_pos, &explosion_shape, query_filter, |handle| {
         affected_colliders.push(handle);
         true // return true to continue iterating over collisions
     });
+
+    let ball_rb = rigid_body_set.get_mut(ball.rigid_body_handle().unwrap()).unwrap();
+    ball_rb.set_linvel(vector![0.0, 0.0, 0.0], true);
+    ball_rb.set_angvel(vector![0.0, 0.0, 0.0], true);
 
     (vec![SimulationEvent::BallExplosion { ball_id: ball.id, charge: ball.charge }], affected_colliders)
 }
@@ -90,7 +94,7 @@ fn apply_explosion_forces(
 
         // Magnitude of the explosion force is the charge of the ball divided by the square distance
         // This means direct impacts will apply a LOT of force, while nearby combatants will take exponentially less per unit away
-        let position_difference = ball_pos - combatant_pos;
+        let position_difference = combatant_pos - ball_pos;
         let force_direction = vector![position_difference.x, 0.0, position_difference.z];
         let force_magnitude = ball_object.charge * CHARGE_FORCE_MODIFIER / (force_direction.magnitude() + 1.0);
 

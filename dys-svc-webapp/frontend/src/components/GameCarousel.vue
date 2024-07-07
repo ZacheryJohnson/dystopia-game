@@ -4,18 +4,20 @@
 
   const games = ref([
     {
-      game_id: 1,
-      away_team_abbreviation: "FOO",
-      home_team_abbreviation: "BAR",
-      away_team_score: 3,
-      home_team_score: 9,
+      gameId: 1,
+      awayTeamAbbreviation: "FOO",
+      homeTeamAbbreviation: "BAR",
+      awayTeamScore: 3,
+      homeTeamScore: 9,
+      gameLogPath: "/game_log1.bin"
     },    
     {
-      game_id: 2,
-      away_team_abbreviation: "QUUX",
-      home_team_abbreviation: "BAZ",
-      away_team_score: 12,
-      home_team_score: 2,
+      gameId: 2,
+      awayTeamAbbreviation: "QUUX",
+      homeTeamAbbreviation: "BAZ",
+      awayTeamScore: 12,
+      homeTeamScore: 2,
+      gameLogPath: "/game_log2.bin"
     }
   ]);
 </script>
@@ -24,11 +26,12 @@
   <div class="carousel-frame" v-if="games.length > 0">
     <GameCarouselElement
       v-for="game in games"
-      :key="game.game_id"
-      :away_abbr="game.away_team_abbreviation"
-      :home_abbr="game.home_team_abbreviation"
-      :away_score="game.away_team_score"
-      :home_score="game.home_team_score"
+      :key="game.gameId"
+      :awayAbbr="game.awayTeamAbbreviation"
+      :homeAbbr="game.homeTeamAbbreviation"
+      :awayScore="game.awayTeamScore"
+      :homeScore="game.homeTeamScore"
+      :gameLogPath="game.gameLogPath"
     />
   </div>
   <div class="carousel-frame" v-else>

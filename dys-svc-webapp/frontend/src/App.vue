@@ -2,6 +2,9 @@
 import { RouterLink, RouterView } from 'vue-router'
 import GameCarousel from './components/GameCarousel.vue'
 import MatchVisualizer from './components/MatchVisualizer.vue';
+
+import { getMatchVisualizerStore } from '@/stores/MatchVisualizer'
+const matchVisualizerStore = getMatchVisualizerStore();
 </script>
 
 <template>
@@ -21,7 +24,10 @@ import MatchVisualizer from './components/MatchVisualizer.vue';
   <RouterView />
 
   <body>
-    <MatchVisualizer />
+    <MatchVisualizer
+      v-if="matchVisualizerStore.gameLogPath.length > 0"
+      :gameLogPath="matchVisualizerStore.gameLogPath"
+      />
   </body>
 </template>
 

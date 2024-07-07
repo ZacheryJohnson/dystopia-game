@@ -1,33 +1,49 @@
 <script setup lang="ts">
+import { getMatchVisualizerStore } from "@/stores/MatchVisualizer";
+import { computed } from "vue";
+const matchVisualizerStore = getMatchVisualizerStore();
+
 const props = defineProps([
-    "away_abbr",
-    "home_abbr",
-    "away_score",
-    "home_score",
+    "awayAbbr",
+    "homeAbbr",
+    "awayScore",
+    "homeScore",
+    "gameLogPath",
 ])
 
-const game_over = true; // ZJ-TODO: calculate this
-const away_win = game_over && props.away_score > props.home_score;
-const home_win = game_over && props.home_score > props.away_score;
+const isSelected = computed(() => matchVisualizerStore.gameLogPath == props.gameLogPath);
+
+function onElementClicked() {
+    matchVisualizerStore.gameLogPath = props.gameLogPath;
+}
+
+const gameOver = true; // ZJ-TODO: calculate this
+const awayWin = gameOver && props.awayScore > props.homeScore;
+const homeWin = gameOver && props.homeScore > props.awayScore;
 </script>
 
 <template>
-    <div class="game">
+    <div class="game" :class="{'selected': isSelected}" @click="onElementClicked()">
         <!-- TODO: team logo -->
         <p todo="replace with team logo"></p>
-        <p :class="{ 'winner-text': away_win }">{{ away_abbr }}</p>
-        <p :class="{ 'winner-text': away_win }">{{ away_score }}</p>
+        <p :class="{ 'winner-text': awayWin }">{{ awayAbbr }}</p>
+        <p :class="{ 'winner-text': awayWin }">{{ awayScore }}</p>
 
         <!-- TODO: team logo -->
         <p todo="replace with team logo"></p>
-        <p :class="{ 'winner-text': home_win }">{{ home_abbr }}</p>
-        <p :class="{ 'winner-text': home_win }">{{ home_score }}</p>
+        <p :class="{ 'winner-text': homeWin }">{{ homeAbbr }}</p>
+        <p :class="{ 'winner-text': homeWin }">{{ homeScore }}</p>
     </div>
 </template>
 
 <style>
 p {
     font-family: "VarelaRound";
+}
+
+.selected {
+    border-color: green;
+    background-color: lightcyan;
 }
 
 .game {

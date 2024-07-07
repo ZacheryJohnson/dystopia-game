@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::game_tick::{GameTick, TickPerformance};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GameLog {
     ticks: Vec<GameTick>,
     performance: TickPerformance,

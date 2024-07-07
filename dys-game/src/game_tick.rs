@@ -6,7 +6,7 @@ use crate::simulation::simulation_event::SimulationEvent;
 
 pub type GameTickNumber = u32;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct GameTick {
     pub tick_number: u32,
     pub tick_performance: TickPerformance,
@@ -25,7 +25,7 @@ impl GameTick {
     }
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TickPerformance {
     pub physics_duration: Duration,
     pub balls_duration: Duration,
