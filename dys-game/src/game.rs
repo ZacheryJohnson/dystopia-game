@@ -1,6 +1,6 @@
 use dys_world::schedule::schedule_game::ScheduleGame;
 
-use crate::{game_log::GameLog, game_state::GameState};
+use crate::{game_log::GameLog, game_objects::game_object::GameObject, game_state::GameState, game_tick::{GameTick, TickPerformance}, simulation::simulation_event::SimulationEvent};
 
 #[derive(Clone)]
 pub struct Game {
@@ -10,6 +10,38 @@ pub struct Game {
 impl Game {
     fn simulate_internal(&self, mut game_state: GameState) -> GameLog {
         let mut ticks = vec![];
+
+        // Add a "tick 0" for initial state
+        // ZJ-TODO: there should probably be a SimulationEvent::InitialState, rather than a bunch of updates
+        {
+            let (rigid_body_set, _) = game_state.physics_sim.sets();
+            let mut simulation_events = vec![];
+            for (combatant_id, combatant_object) in &game_state.combatants {
+                let combatant_rb = rigid_body_set.get(combatant_object.rigid_body_handle().unwrap()).unwrap();
+                simulation_events.push(SimulationEvent::CombatantPositionUpdate { 
+                    combatant_id: *combatant_id,
+                    position: *combatant_rb.translation(),
+                });
+            }
+            
+            for (ball_id, ball_object) in &game_state.balls {
+                let ball_rb = rigid_body_set.get(ball_object.rigid_body_handle().unwrap()).unwrap();
+                simulation_events.push(SimulationEvent::BallPositionUpdate { 
+                    ball_id: *ball_id,
+                    position: *ball_rb.translation(),
+                });
+            }
+
+            let tick_zero = GameTick {
+                tick_number: 0,
+                tick_performance: TickPerformance::new(Default::default(), Default::default(), Default::default(), Default::default(), Default::default()),
+                simulation_events,
+                is_halftime: false,
+                is_end_of_game: false,
+            };
+
+            ticks.push(tick_zero);
+        }
 
         loop {
             let new_tick = game_state.tick();

@@ -1,5 +1,7 @@
 .idea/
 .vscode/
+.wasm_out/
+
 
 infra/.terraform/
 infra/terraform.tfstate
@@ -9,3 +11,37 @@ infra/.terraform.tfstate.lock.info
 target/
 
 **/generated
+
+# Frontend Custom
+# We copy wasm artifacts at build time - don't check these in
+dys-svc-webapp/frontend/public/matchvisualizer*
+dys-svc-webapp/frontend/src/assets/matchvisualizer*
+
+# Frontend Vue defaults
+# Logs
+dys-svc-webapp/frontend/logs
+dys-svc-webapp/frontend/*.log
+dys-svc-webapp/frontend/npm-debug.log*
+dys-svc-webapp/frontend/yarn-debug.log*
+dys-svc-webapp/frontend/yarn-error.log*
+dys-svc-webapp/frontend/pnpm-debug.log*
+dys-svc-webapp/frontend/lerna-debug.log*
+
+dys-svc-webapp/frontend/node_modules
+dys-svc-webapp/frontend/.DS_Store
+dys-svc-webapp/frontend/dist
+dys-svc-webapp/frontend/dist-ssr
+dys-svc-webapp/frontend/coverage
+dys-svc-webapp/frontend/*.local
+
+dys-svc-webapp/frontend/.vscode/*
+dys-svc-webapp/frontend/!.vscode/extensions.json
+dys-svc-webapp/frontend/.idea
+dys-svc-webapp/frontend/*.suo
+dys-svc-webapp/frontend/*.ntvs*
+dys-svc-webapp/frontend/*.njsproj
+dys-svc-webapp/frontend/*.sln
+dys-svc-webapp/frontend/*.sw?
+
+dys-svc-webapp/frontend/*.tsbuildinfo
+dys-svc-webapp/frontend/vite.config.ts.timestamp*

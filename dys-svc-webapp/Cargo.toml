@@ -1,0 +1,13 @@
+[package]
+name = "dys-svc-webapp"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+build-deps.workspace = true
+
+[dependencies]
+axum.workspace = true
+tokio.workspace = true
+tower.workspace = true
+tower-http.workspace = true

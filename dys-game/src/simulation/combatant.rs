@@ -24,7 +24,7 @@ pub(crate) fn simulate_combatants(game_state: &mut GameState) -> Vec<SimulationE
             CombatantState::Idle => simulate_state_idle(&mut combatant_object, game_state.current_tick),
             CombatantState::MovingToBall { ball_id } => simulate_moving_to_ball(&mut combatant_object, ball_id, &game_state.arena_navmesh, combatant_rb, &collider_set, &game_state.balls, game_state.current_tick),
             CombatantState::MovingToPlate { plate_id } => simulate_moving_to_plate(&mut combatant_object, plate_id, &game_state.arena_navmesh, combatant_rb, &collider_set, &game_state.plates, game_state.current_tick),
-            CombatantState::RecoilingFromExplosion {} => simulate_state_recoiling_from_explosion(&mut combatant_object),
+            CombatantState::RecoilingFromExplosion {} => simulate_state_recoiling_from_explosion(&mut combatant_object, &rigid_body_set, game_state.current_tick),
         });
     }
 
@@ -129,9 +129,20 @@ fn simulate_moving_to_plate(
     }]
 }
 
-fn simulate_state_recoiling_from_explosion(_combatant_obj: &mut CombatantObject) -> Vec<SimulationEvent> {
-    // A combatant's recovery from an explosion should be based on their stats
-    vec![]
+fn simulate_state_recoiling_from_explosion(
+    combatant_obj: &mut CombatantObject,
+    rigid_body_set: &RigidBodySet,
+    current_tick: GameTickNumber,
+) -> Vec<SimulationEvent> {
+    let combatant_rb = rigid_body_set.get(combatant_obj.rigid_body_handle().unwrap()).unwrap();
+    let combatant_position = combatant_rb.translation();
+
+    try_recover_from_explosion(combatant_obj, &combatant_rb, current_tick);
+
+    vec![SimulationEvent::CombatantPositionUpdate {
+        combatant_id: combatant_obj.id,
+        position: *combatant_position,
+    }]
 }
 
 fn are_points_equal(a: Point<f32>, a_height: f32, b: Point<f32>, b_height: f32) -> bool {
@@ -140,4 +151,19 @@ fn are_points_equal(a: Point<f32>, a_height: f32, b: Point<f32>, b_height: f32) 
     let new_b = point![b.coords.x, b.coords.y - b_height, b.coords.z];
 
     (new_a - new_b).magnitude() <= CUSTOM_EPSILON
+}
+
+fn try_recover_from_explosion(combatant_obj: &mut CombatantObject, combatant_rb: &RigidBody, current_tick: GameTickNumber) {
+    match combatant_obj.combatant_state {
+        CombatantState::RecoilingFromExplosion {  } => {},
+        _ => return
+    };
+
+    const KINETIC_ENERGY_THRESHOLD: f32 = 3.0;
+    if combatant_rb.kinetic_energy() >= KINETIC_ENERGY_THRESHOLD {
+        return;
+    }
+
+    // Combatant is too slow - consider them recovered
+    combatant_obj.change_state(current_tick, CombatantState::Idle);
 }

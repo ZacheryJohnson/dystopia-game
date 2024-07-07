@@ -6,7 +6,7 @@ use crate::{game_objects::{ball::{BallObject, BallState}, combatant::CombatantOb
 
 use super::{config::SimulationConfig, simulation_event::SimulationEvent};
 
-const CHARGE_FORCE_MODIFIER: f32 = 2.0;
+const CHARGE_FORCE_MODIFIER: f32 = 3.0;
 
 pub(crate) fn simulate_balls(game_state: &mut GameState) -> Vec<SimulationEvent> {
     let mut events = vec![];

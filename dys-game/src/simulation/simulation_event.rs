@@ -14,6 +14,10 @@ use crate::game_objects::{ball::BallId, combatant::CombatantId};
 /// an entire game, whereas just discrete events may be confusing to see.
 #[derive(Debug, Deserialize, Serialize)]
 pub enum SimulationEvent {
+    // ZJ-TODO: keep?
+    // This is currently only being used for tick zero initial state (eg where are there plates? where are there walls?)
+    ArenaObjectPositionUpdate {  },
+
     /// A ball has moved through the world
     BallPositionUpdate { ball_id: BallId, position: Vector3<f32> },
 

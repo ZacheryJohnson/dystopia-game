@@ -7,11 +7,16 @@ resolver = "2"
 [profile.dev.package.rapier3d]
 opt-level = 3
 
+# For smaller + faster WASM artifacts: https://bevy-cheatbook.github.io/platforms/wasm/size-opt.html#link-time-optimization-lto
+[profile.release.package.dys-matchvisualizer]
+opt-level = "z"
+
 [workspace.dependencies]
 # -----------------------
 # Build dependencies
 # -----------------------
-tonic-build = "0.11" # Build dependency only!
+build-deps = "0.1.4"
+tonic-build = "0.11"
 
 # -----------------------
 # Dev dependencies
@@ -22,6 +27,8 @@ criterion = "0.5.1"
 # Runtime dependencies
 # -----------------------
 
+axum = "0.7.5"
+bevy = { version = "0.14", features = ["bevy_asset", "bevy_color", "bevy_core_pipeline", "bevy_render", "bevy_sprite", "bevy_state", "bevy_text", "default_font"] }
 crossbeam = "0.8.4"
 ordered-float = "4.2.0"
 petgraph = "0.6.5"
@@ -33,6 +40,10 @@ rapier3d = { version = "0.18.0", features = ["serde-serialize"] }
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.36", features = ["full"] }
 tonic = "0.11"
+tower = { version = "0.4.13", features = ["full"] }
+tower-http = { version = "0.5.2", features = ["fs"] }
 tracing = { version = "0.1.40", features = ["log"] }
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 tracing-bunyan-formatter = "0.3"
+wasm-bindgen = "0.2"
+web-time = "1.1.0"
