@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dys-svc-webapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dys-svc-webapp
+  template:
+    metadata:
+      labels:
+        app: dys-svc-webapp
+    spec:
+      containers:
+      - name: dys-svc-webapp
+        image: dystopiadev.azurecr.io/dys-svc-webapp:latest
+        ports:
+        - containerPort: 6080
+        resources:
+          requests:
+            cpu: 1m
+            memory: 50Mi
+          limits:
+            cpu: 75m
+            memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dys-svc-webapp
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: 6080
+  selector:
+    app: dys-svc-webapp

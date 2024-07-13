@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dys-svc-webapp-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - $FQDN
+    secretName: $TLS_SECRET
+  rules:
+  - host: $FQDN
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: dys-svc-webapp
+            port:
+              number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dys-svc-webapp-ingress-assets
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - $FQDN
+    secretName: $TLS_SECRET
+  rules:
+  - host: $FQDN
+    http:
+      paths:
+      - path: /assets
+        pathType: Prefix
+        backend:
+          service:
+            name: dys-svc-webapp
+            port:
+              number: 80

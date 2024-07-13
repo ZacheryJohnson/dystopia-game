@@ -10,13 +10,26 @@ resource "azurerm_kubernetes_cluster" "k8s" {
     dns_prefix = "${each.key}"
     sku_tier = "Free"
 
+    oidc_issuer_enabled = true
+    workload_identity_enabled = true
+
     default_node_pool {
         name = "default"
         node_count = 1
         vm_size = "Standard_A2_v2"
     }
 
+    key_vault_secrets_provider {
+        secret_rotation_enabled = true
+    }
+
     identity {
         type = "SystemAssigned"
+    }
+
+    lifecycle {
+        ignore_changes = [
+            default_node_pool[0].upgrade_settings
+        ]
     }
 }

@@ -11,6 +11,12 @@ variable "k8s_clusters" {
         cluster_name = string
         cluster_container_registry_name = string
         resource_group_name = string
+        dns_zone_base_domain = string
+        dns_zone_sub_domain = string
+        cert_manager_service_account_name = string
+        cert_manager_namespace = string
+        ingress_nginx_service_account_name = string
+        ingress_nginx_namespace = string
         tags = map(string)
     }))
 }
