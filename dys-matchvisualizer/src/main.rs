@@ -76,7 +76,9 @@ pub fn initialize_with_canvas(
         .add_plugins(DefaultPlugins
             .set(WindowPlugin {
                 primary_window: Some(Window {
+                    name: Some(String::from("Match Visualizer")),
                     canvas,
+                    fit_canvas_to_parent: true,
                     ..default()
                 }),
                 ..default()
