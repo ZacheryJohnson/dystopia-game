@@ -1,25 +1,37 @@
 <script setup lang="ts">
-  import {ref} from "vue";
+  import {ref, onMounted, type Ref} from "vue";
   import GameCarouselElement from "./GameCarouselElement.vue";
 
-  const games = ref([
-    {
-      gameId: 1,
-      awayTeamAbbreviation: "FOO",
-      homeTeamAbbreviation: "BAR",
-      awayTeamScore: 3,
-      homeTeamScore: 9,
-      gameLogPath: "/game_log1.bin"
-    },    
-    {
-      gameId: 2,
-      awayTeamAbbreviation: "QUUX",
-      homeTeamAbbreviation: "BAZ",
-      awayTeamScore: 12,
-      homeTeamScore: 2,
-      gameLogPath: "/game_log2.bin"
+  // ZJ-TODO: this should be generated from protocol, not defined in both client + server
+  type MatchResultT = {
+    gameId: number,
+    awayTeamAbbreviation: string,
+    homeTeamAbbreviation: string,
+    awayTeamScore: number,
+    homeTeamScore: number,
+    gameLogData: Uint8Array,
+  };
+
+  const games: Ref<MatchResultT[]> = ref([]);
+
+  onMounted(async () => {
+    const match_results = JSON.parse((await (await fetch(`api/latest_games`)).json()))["match_results"];
+
+    games.value = [];
+    let gameId = 1;
+    for (const match of match_results) {
+      const newGame: MatchResultT = {
+        gameId: gameId++,
+        awayTeamAbbreviation: match["away_team_name"].substring(0, 3).toUpperCase(),
+        homeTeamAbbreviation: match["home_team_name"].substring(0, 3).toUpperCase(),
+        awayTeamScore: match["away_team_score"],
+        homeTeamScore: match["home_team_score"],
+        gameLogData: match["game_log_serialized"],
+      };
+
+      games.value.push(newGame);
     }
-  ]);
+  });
 </script>
 
 <template>
@@ -31,7 +43,7 @@
       :homeAbbr="game.homeTeamAbbreviation"
       :awayScore="game.awayTeamScore"
       :homeScore="game.homeTeamScore"
-      :gameLogPath="game.gameLogPath"
+      :gameLogData="game.gameLogData"
     />
   </div>
   <div class="carousel-frame" v-else>

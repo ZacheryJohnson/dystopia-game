@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
+    "build-k8s": "run-p type-check \"build-only-k8s {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
+    "build-only-k8s": "vite build --mode k8s",
     "type-check": "vue-tsc --build --force",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "format": "prettier --write src/"

@@ -5,7 +5,7 @@
     const isWasmLoaded = ref(false);
 
     const props = defineProps([
-       "gameLogPath" 
+       "gameLogData" 
     ]);
 
     onMounted(async () => {
@@ -19,12 +19,11 @@
     });
 
     onUpdated(() => {
-        loadFromGameLogPath(props.gameLogPath);
+        loadFromGameLogData(props.gameLogData);
     });
 
-    async function loadFromGameLogPath(gameLogPath: string) {
-        const serializedGameLog = new Uint8Array(await (await fetch(gameLogPath)).arrayBuffer());
-        loadGameLog(serializedGameLog);
+    async function loadFromGameLogData(gameLogData: Uint8Array) {
+        loadGameLog(gameLogData);
     }
 
     // This function will block immediately upon calling.

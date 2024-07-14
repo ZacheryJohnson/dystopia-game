@@ -3,11 +3,11 @@
 # --------------------------------------------
 FROM rust:1.79-bookworm as builder
 # Bevy has special requirements on Linux
-RUN apt-get update
-RUN apt-get install -y g++ pkg-config libx11-dev libasound2-dev libudev-dev
+RUN apt update
+RUN apt install -y g++ pkg-config libx11-dev libasound2-dev libudev-dev
 
 # Install nodejs, which includes npm
-RUN apt-get install -y nodejs
+RUN apt install -y nodejs
 
 # Add WASM dependencies
 RUN rustup target add wasm32-unknown-unknown
@@ -32,6 +32,9 @@ RUN ./build_scripts/build_webapp_frontend.sh
 # --------------------------------------------
 FROM debian:bookworm-slim as runtime
 EXPOSE 6080/tcp
+
+RUN apt update
+RUN apt install libssl3
 
 # Copy the binary
 COPY --from=builder /opt/dystopia/target/release/dys-svc-webapp /dys-svc-webapp

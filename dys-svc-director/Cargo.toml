@@ -1,14 +1,16 @@
 [package]
-name = "dys-svc-webapp"
+name = "dys-svc-director"
 version = "0.1.0"
 edition = "2021"
 
-[build-dependencies]
-build-deps.workspace = true
-
 [dependencies]
+dys-game = { path = "../dys-game" }
+dys-world = { path = "../dys-world" }
+
 axum.workspace = true
-reqwest.workspace = true
+postcard.workspace = true
+rand.workspace = true
+serde.workspace = true
 tokio.workspace = true
 tower.workspace = true
 tower-http.workspace = true

@@ -29,3 +29,12 @@ impl GameLog {
         self.performance.perf_string()
     }
 }
+
+impl Default for GameLog {
+    fn default() -> Self {
+        Self { 
+            ticks: vec![],
+            performance: TickPerformance::default()
+        }
+    }
+}

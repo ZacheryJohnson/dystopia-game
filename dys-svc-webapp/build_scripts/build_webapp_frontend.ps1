@@ -1,10 +1,11 @@
 param (
-    [string]$working_dir = $(Get-Location)
+    [string]$mode = ""
 )
-
-Write-Output $(Get-Location)
 
 Set-Location frontend
 npm install
-npm run build
-Set-Location $working_dir
+if ($mode -eq "k8s") {
+    npm run build-k8s
+} else {
+    npm run build
+}

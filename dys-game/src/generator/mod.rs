@@ -290,7 +290,7 @@ impl Generator {
         let combatants = self.generate_combatants(total_combatants_to_generate);
         let teams = combatants
             .clone()
-            .chunks(number_of_teams as usize)
+            .chunks(players_per_team as usize)
             .enumerate()
             .map(|(id, combatants)| Team { 
                 id: id as u64,

@@ -54,6 +54,7 @@ echo "Sleeping 10 seconds to allow ingress-nginx resources to be created..."
 sleep 10s
 
 kubectl apply -f webapp.yaml -n $NAMESPACE
+kubectl apply -f director.yaml -n $NAMESPACE
 
 export USER_ASSIGNED_CLIENT_ID="$(az identity show --resource-group $RESOURCE_GROUP_NAME --name $PROJECT_NAME-cert-manager --query 'clientId' -o tsv)"
 export ZONE_NAME="dev.determinism.dev"

@@ -8,13 +8,13 @@ const props = defineProps([
     "homeAbbr",
     "awayScore",
     "homeScore",
-    "gameLogPath",
+    "gameLogData",
 ])
 
-const isSelected = computed(() => matchVisualizerStore.gameLogPath == props.gameLogPath);
+const isSelected = computed(() => matchVisualizerStore.gameLogData == props.gameLogData);
 
 function onElementClicked() {
-    matchVisualizerStore.gameLogPath = props.gameLogPath;
+    matchVisualizerStore.gameLogData = props.gameLogData;
 }
 
 const gameOver = true; // ZJ-TODO: calculate this

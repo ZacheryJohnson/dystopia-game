@@ -25,8 +25,8 @@ const matchVisualizerStore = getMatchVisualizerStore();
 
   <body>
     <MatchVisualizer
-      v-if="matchVisualizerStore.gameLogPath.length > 0"
-      :gameLogPath="matchVisualizerStore.gameLogPath"
+      v-if="matchVisualizerStore.gameLogData.length > 0"
+      :gameLogData="matchVisualizerStore.gameLogData"
       />
   </body>
 </template>

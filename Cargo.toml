@@ -38,13 +38,15 @@ prost = "0.12"
 rand = "0.8.5"
 rand_pcg = "0.3.1"
 rapier3d = { version = "0.18.0", features = ["serde-serialize"] }
+reqwest = "0.12.5"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0.120" }
 tokio = { version = "1.36", features = ["full"] }
 tonic = "0.11"
 tower = { version = "0.4.13", features = ["full"] }
 tower-http = { version = "0.5.2", features = ["fs"] }
 tracing = { version = "0.1.40", features = ["log"] }
-tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["registry", "env-filter", "json"] }
 tracing-bunyan-formatter = "0.3"
 wasm-bindgen = "0.2"
 web-time = "1.1.0"

@@ -34,7 +34,7 @@ impl Game {
 
             let tick_zero = GameTick {
                 tick_number: 0,
-                tick_performance: TickPerformance::new(Default::default(), Default::default(), Default::default(), Default::default(), Default::default()),
+                tick_performance: TickPerformance::default(),
                 simulation_events,
                 is_halftime: false,
                 is_end_of_game: false,
