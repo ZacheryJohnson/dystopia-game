@@ -1,5 +1,5 @@
 use dys_world::arena::plate::PlateId;
-use rapier3d::na::Vector3;
+use rapier3d::na::{Quaternion, Vector3};
 use serde::{Deserialize, Serialize};
 
 use crate::game_objects::{ball::BallId, combatant::CombatantId};
@@ -16,7 +16,7 @@ use crate::game_objects::{ball::BallId, combatant::CombatantId};
 pub enum SimulationEvent {
     // ZJ-TODO: keep?
     // This is currently only being used for tick zero initial state (eg where are there plates? where are there walls?)
-    ArenaObjectPositionUpdate {  },
+    ArenaObjectPositionUpdate { object_type_id: u32, position: Vector3<f32>, scale: Vector3<f32>, rotation: Quaternion<f32> },
 
     /// A ball has moved through the world
     BallPositionUpdate { ball_id: BallId, position: Vector3<f32> },

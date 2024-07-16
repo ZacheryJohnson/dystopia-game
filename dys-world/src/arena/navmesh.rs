@@ -113,7 +113,48 @@ impl ArenaNavmesh {
         }
 
         // Remove nodes where unpathable features exist
-        // ZJ-TODO
+        let unpathable_arena_features = arena
+            .all_features()
+            .iter()
+            .filter(|filter| !filter.is_pathable());
+        for feature in unpathable_arena_features {
+            let origin = feature.origin();
+            let Some(shape) = feature.shape() else {
+                continue;
+            };
+
+            let shape_isometry = Isometry::new(origin.to_owned(), vector![0., 0., 0.]);
+            let aabb = shape.compute_aabb(&shape_isometry);
+            let vertices = aabb.vertices();
+
+            let min_x = vertices.iter().min_by(|first, second| first.x.partial_cmp(&second.x).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get min_x").x;
+            let max_x = vertices.iter().max_by(|first, second| first.x.partial_cmp(&second.x).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get max_x").x;
+            let min_y = vertices.iter().min_by(|first, second| first.y.partial_cmp(&second.y).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get min_y").y;
+            let max_y = vertices.iter().max_by(|first, second| first.y.partial_cmp(&second.y).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get max_y").y;
+            let min_z = vertices.iter().min_by(|first, second| first.z.partial_cmp(&second.z).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get min_z").z;
+            let max_z = vertices.iter().max_by(|first, second| first.z.partial_cmp(&second.z).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get max_z").z;
+
+            let mut curr_z = min_z;
+            while curr_z <= max_z {
+                let mut curr_x = min_x;
+                while curr_x <= max_x {
+                    let mut curr_y = min_y;
+                    while curr_y <= max_y {
+                        let curr_point = point![curr_x, curr_y, curr_z];
+                        if shape.contains_point(&shape_isometry, &curr_point) {
+                            if let Some(node) = ArenaNavmesh::get_closest_node(&graph, curr_point, config.unit_resolution) {
+                                graph.remove_node(node);
+                            }
+                        }
+
+                        curr_y += config.unit_resolution;
+                    }
+                    curr_x += config.unit_resolution;
+                }                 
+                curr_z += config.unit_resolution;
+            }
+        }
+        
 
         // Add edges between nodes
         let mut new_edges = vec![];
@@ -209,7 +250,7 @@ impl ArenaNavmesh {
         // Generate a random amount of bias. This isn't a prod-ready solution, and should instead
         // read the stats from the pathing combatant, where combatants with good "game sense" have a smaller factor
         // (and thus are less affected by the potentially suboptimal vector).
-        let suboptimal_decision_bias_factor = rand::thread_rng().gen_range(0.0..1.0);
+        let suboptimal_decision_bias_factor = rand::thread_rng().gen_range(0.0..0.1);
         let suboptimal_bias_vector = random_vector * suboptimal_decision_bias_factor;
 
         let astar_result = algo::astar(

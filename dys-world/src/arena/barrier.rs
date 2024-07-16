@@ -1,3 +1,4 @@
+use nalgebra::Quaternion;
 use rapier3d::{na::Vector3, prelude::*};
 
 use super::ArenaFeature;
@@ -18,7 +19,7 @@ pub struct ArenaBarrier {
     shape: SharedShape,
 
     /// Quaternion of the rotation
-    rotation: Vector3<f32>,
+    rotation: Quaternion<f32>,
 
     /// Is this 
     pathing: BarrierPathing,
@@ -28,7 +29,7 @@ impl ArenaBarrier {
     pub fn new(
         origin: Vector3<f32>,
         size: Vector3<f32>,
-        rotation: Vector3<f32>,
+        rotation: Quaternion<f32>,
         pathing: BarrierPathing,
     ) -> ArenaBarrier {
         let shape = SharedShape::cuboid(size.x / 2.0, size.y / 2.0, size.z / 2.0);
@@ -46,7 +47,7 @@ impl ArenaFeature for ArenaBarrier {
     fn build_rigid_body(&self) -> Option<RigidBody> {
         let rigid_body = RigidBodyBuilder::fixed()
             .translation(self.origin)
-            .rotation(self.rotation)
+            .rotation(self.rotation.vector().into())
             .build();
 
         Some(rigid_body)
@@ -73,5 +74,9 @@ impl ArenaFeature for ArenaBarrier {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+    
+    fn rotation(&self) -> &Quaternion<f32> {
+        &self.rotation
     }
 }

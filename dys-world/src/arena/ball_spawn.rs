@@ -1,4 +1,4 @@
-use rapier3d::na::Vector3;
+use rapier3d::na::{Quaternion, Vector3};
 
 use super::feature::ArenaFeature;
 
@@ -6,6 +6,8 @@ use super::feature::ArenaFeature;
 pub struct ArenaBallSpawn {    
     /// Center point of the ball spawn spot
     pub origin: Vector3<f32>,
+
+    pub rotation: Quaternion<f32>
 }
 
 impl ArenaFeature for ArenaBallSpawn {
@@ -19,5 +21,9 @@ impl ArenaFeature for ArenaBallSpawn {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+    
+    fn rotation(&self) -> &Quaternion<f32> {
+        &self.rotation
     }
 }

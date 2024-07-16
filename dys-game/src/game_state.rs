@@ -69,8 +69,8 @@ impl GameState {
                         let collider_handle = collider_set.insert_with_parent(collider, rigid_body_handle, rigid_body_set);
                         let game_object_type = get_game_object_type_from_feature(feature);
                         match game_object_type {
-                            GameObjectType::Plate(plate_id) => plates.insert(plate_id, PlateObject::new(collider_handle)),
-                            _ => None,
+                            GameObjectType::Plate(plate_id) => { plates.insert(plate_id, PlateObject::new(collider_handle)); },
+                            _ => {},
                         };
 
                         active_colliders.insert(collider_handle, game_object_type);

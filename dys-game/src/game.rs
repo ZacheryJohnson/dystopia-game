@@ -1,4 +1,5 @@
-use dys_world::schedule::schedule_game::ScheduleGame;
+use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, feature::ArenaFeature, plate::ArenaPlate}, schedule::schedule_game::ScheduleGame};
+use rapier3d::prelude::*;
 
 use crate::{game_log::GameLog, game_objects::game_object::GameObject, game_state::GameState, game_tick::{GameTick, TickPerformance}, simulation::simulation_event::SimulationEvent};
 
@@ -30,6 +31,35 @@ impl Game {
                     ball_id: *ball_id,
                     position: *ball_rb.translation(),
                 });
+            }
+
+            let arena = self.schedule_game.arena.lock().unwrap();
+            let arena_features = arena.all_features();
+            for feature in arena_features.iter().filter(|feature| feature.shape().is_some()) {
+                let shape = feature.shape().unwrap();
+                let object_type_id: u32 = {
+                    if let Some(barrier) = feature.as_any().downcast_ref::<ArenaBarrier>() {
+                        if barrier.is_pathable() { 1 } else { 2 }
+                    } else if feature.as_any().downcast_ref::<ArenaBallSpawn>().is_some() {
+                        3
+                    } else if feature.as_any().downcast_ref::<ArenaPlate>().is_some() {
+                        4
+                    } else {
+                        0
+                    }
+                };
+                simulation_events.push(SimulationEvent::ArenaObjectPositionUpdate {
+                    object_type_id,  
+                    position: *feature.origin(),
+                    scale: match shape.shape_type() {
+                        rapier3d::geometry::ShapeType::Ball => vector![shape.as_ball().unwrap().radius, shape.as_ball().unwrap().radius, shape.as_ball().unwrap().radius],
+                        rapier3d::geometry::ShapeType::Cuboid => shape.as_cuboid().unwrap().half_extents * 2.0,
+                        rapier3d::geometry::ShapeType::Capsule => vector![shape.as_capsule().unwrap().radius, shape.as_capsule().unwrap().height(), shape.as_capsule().unwrap().radius],
+                        rapier3d::geometry::ShapeType::Cylinder => vector![shape.as_cylinder().unwrap().radius, shape.as_cylinder().unwrap().half_height * 2.0, shape.as_cylinder().unwrap().radius],
+                        _ => panic!("shape unsupported")
+                    },
+                    rotation: *feature.rotation(),
+                })
             }
 
             let tick_zero = GameTick {

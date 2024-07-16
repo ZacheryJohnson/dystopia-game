@@ -1,4 +1,4 @@
-use rapier3d::na::Vector3;
+use rapier3d::na::{Quaternion, Vector3};
 
 use super::feature::ArenaFeature;
 
@@ -9,6 +9,8 @@ pub struct ArenaCombatantStart {
 
     /// Which team does this spawn point belong to
     pub is_home_team: bool,
+
+    pub rotation: Quaternion<f32>
 }
 
 impl ArenaFeature for ArenaCombatantStart {
@@ -23,4 +25,8 @@ impl ArenaFeature for ArenaCombatantStart {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+    
+    fn rotation(&self) -> &Quaternion<f32> {
+        &self.rotation
+    }    
 }

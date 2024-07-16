@@ -1,8 +1,8 @@
 use std::sync::{Arc, Mutex};
 
-use dys_game::{game_log::GameLog, game_objects::{ball::BallId, combatant::{self, CombatantId}}, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
+use dys_game::{game_log::GameLog, game_objects::{ball::BallId, combatant::CombatantId}, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 
-use bevy::{math::VectorSpace, prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
+use bevy::{math::{bounding::{Aabb2d, IntersectsVolume}, vec2}, prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}, window::PrimaryWindow};
 use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_time::{Duration, Instant};
@@ -21,6 +21,9 @@ fn main() {
         initialize_with_canvas(String::new());
     }
 }
+
+#[derive(Component)]
+struct DebugPositionText;
 
 #[derive(Debug)]
 enum VisualizationMode {
@@ -68,6 +71,9 @@ struct BallVisualizer {
     pub desired_location: Vec3,
 }
 
+#[derive(Component)]
+struct BarrierVisualizer;
+
 #[wasm_bindgen(js_name = initializeWithCanvas)]
 pub fn initialize_with_canvas(
     canvas_id: String
@@ -95,6 +101,7 @@ pub fn initialize_with_canvas(
         .add_systems(Startup, setup)
         .add_systems(Update, (
             update,
+            display_mouse_hover,
             try_reload_game_state.before(update),
         ))
         .run();
@@ -125,12 +132,34 @@ fn setup(
         projection: OrthographicProjection {
             near: -100.0, // Default sets this to zero, when it should be negative
             far: 1000.0,
-            scale: 0.10,
+            scale: 0.1667,
             ..default()
         },
         transform: Transform::from_xyz(50.0, 50.0, 0.0),
         ..default()
     });
+
+    commands.spawn((
+        // Create a TextBundle that has a Text with a single section.
+        TextBundle::from_section(
+            // Accepts a `String` or any type that converts into a `String`, such as `&str`
+            "",
+            TextStyle {
+                // This font is loaded and will be used instead of the default font.
+                font_size: 50.0,
+                ..default()
+            },
+        ) // Set the justification of the Text
+        .with_text_justify(JustifyText::Center)
+        // Set the style of the TextBundle itself.
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(5.0),
+            right: Val::Px(5.0),
+            ..default()
+        }),
+        DebugPositionText
+    ));
 }
 
 fn try_reload_game_state(
@@ -177,7 +206,45 @@ fn setup_after_reload_game_log(
 
     for evt in &tick_zero.simulation_events {
         match evt {
-            SimulationEvent::ArenaObjectPositionUpdate {  } => { /* ZJ-TODO */ },
+            SimulationEvent::ArenaObjectPositionUpdate { object_type_id, position, scale, rotation } => {
+                let z_index = match object_type_id {
+                    1 => -10.0,
+                    2 => -9.0,
+                    3 => -8.0,
+                    4 => -7.0,
+                    _ => -50.0,
+                };
+                let translation = Vec3::new(position.x, position.z, z_index);
+                let transform = Transform {
+                    translation: translation.clone(),
+                    rotation: Quat::from_xyzw(rotation.i, rotation.k, rotation.j, rotation.w),
+                    scale: Vec3::new(1.0, 1.0, 1.0), // ZJ-TODO
+                };
+
+                let color = match object_type_id {
+                    1 => Color::linear_rgb(0.2, 0.2, 0.2),
+                    2 => Color::linear_rgb(0.2, 0.2, 0.8),
+                    3 => Color::linear_rgb(0.5, 0.5, 0.5),
+                    4 => Color::linear_rgb(0.7, 0.0, 0.7),
+                    _ => Color::linear_rgb(0.0, 0.0, 0.0),
+                };
+
+                let mesh_shape: Mesh = match object_type_id {
+                    4 => Circle { radius: scale.x }.into(),
+                    _ => Rectangle { half_size: vec2(scale.x / 2.0, scale.z / 2.0) }.into(),
+                };
+
+                commands.spawn((
+                    VisualizationObject,
+                    BarrierVisualizer, // ZJ-TODO: assuming barrier here, probably not the right idea
+                    MaterialMesh2dBundle {
+                        mesh: Mesh2dHandle(meshes.add(mesh_shape)),
+                        material: materials.add(color),
+                        transform,
+                        ..default()
+                    },
+                ));
+            },
             SimulationEvent::BallPositionUpdate { ball_id, position } => {
                 let translation = Vec3::new(position.x, position.z, position.y);
                 let transform = Transform {
@@ -248,13 +315,17 @@ fn update(
     }
 
     game_state.current_tick += 1;
-    let game_log = game_state.game_log.as_ref().unwrap();
 
     let current_tick = game_state.current_tick;
-    let events_this_tick = game_log.ticks().iter().nth(current_tick as usize).unwrap();
+    let events_this_tick = 
+    {
+        let game_log = game_state.game_log.as_ref().unwrap();
+        game_log.ticks().iter().nth(current_tick as usize).unwrap()
+    };
+        
     for event in &events_this_tick.simulation_events {
         match event {
-            SimulationEvent::ArenaObjectPositionUpdate {  } => {},
+            SimulationEvent::ArenaObjectPositionUpdate { .. } => { /* no-op, nothing to move with arena objects currently - this may change if plates start moving */},
             SimulationEvent::BallPositionUpdate { ball_id, position } => {
                 let (mut ball_vis, _) = balls_query.iter_mut()
                     .filter(|(ball_vis, _)| ball_vis.id == *ball_id)
@@ -284,4 +355,53 @@ fn update(
     }
 
     game_state.last_update_time = Instant::now();
+}
+
+
+fn display_mouse_hover(
+    mut camera_query: Query<(&Camera, &GlobalTransform)>,
+    vis_objects_query: Query<&Transform, Or<(With<CombatantVisualizer>, With<BallVisualizer>)>>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    mut text_query: Query<&mut Text, With<DebugPositionText>>,
+) {   
+    let mut text = text_query.get_single_mut().expect("failed to get debug position text component");
+    text.sections[0].value = format!("");
+
+    let Ok((camera, camera_global_transform)) = camera_query.get_single_mut() else {
+        return;
+    };
+
+    let window = window_query
+        .get_single()
+        .expect("failed to get primary camera");
+
+    let Some(cursor_position) = window.cursor_position() else {
+        return;
+    };
+
+    // use it to convert ndc to world-space coordinates
+    let Some(world_pos) =
+        camera.viewport_to_world_2d(camera_global_transform, cursor_position)
+    else {
+        // Couldn't convert - mouse likely outside of window
+        // Don't log - this would get spammy
+        return;
+    };
+
+    let world_pos_collider = Aabb2d::new(world_pos, Vec2 { x: 1.0, y: 1.0 });
+    for vis_object_transform in &vis_objects_query {
+        let vis_object_collider = Aabb2d::new(
+            Vec2::new(vis_object_transform.translation.x, vis_object_transform.translation.y),
+            Vec2 { x: vis_object_transform.scale.x, y: vis_object_transform.scale.y });
+        if !world_pos_collider.intersects(&vis_object_collider) {
+            continue;
+        }
+
+        text.sections[0].value = format!("({}, {}, {})",
+            vis_object_transform.translation.x.round(),
+            vis_object_transform.translation.y.round(),
+            vis_object_transform.translation.z.round(),
+        );
+        return;
+    }
 }
