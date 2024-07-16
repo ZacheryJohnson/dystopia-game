@@ -12,6 +12,8 @@ target/
 
 **/generated
 
+**/game_log.bin
+
 # Frontend Custom
 # We copy wasm artifacts at build time - don't check these in
 dys-svc-webapp/frontend/public/matchvisualizer*

@@ -1,8 +1,8 @@
 use std::sync::{Arc, Mutex};
 
-use dys_game::{game_log::GameLog, game_objects::{ball::BallId, combatant::CombatantId}, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
+use dys_game::{game_log::GameLog, game_objects::{ball::BallId, combatant::{self, CombatantId}}, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 
-use bevy::{prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
+use bevy::{math::VectorSpace, prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
 use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_time::{Duration, Instant};
@@ -59,11 +59,13 @@ struct VisualizationObject;
 #[derive(Component)]
 struct CombatantVisualizer {
     pub id: CombatantId,
+    pub desired_location: Vec3,
 }
 
 #[derive(Component)]
 struct BallVisualizer {
     pub id: BallId,
+    pub desired_location: Vec3,
 }
 
 #[wasm_bindgen(js_name = initializeWithCanvas)]
@@ -123,7 +125,7 @@ fn setup(
         projection: OrthographicProjection {
             near: -100.0, // Default sets this to zero, when it should be negative
             far: 1000.0,
-            scale: 0.1667,
+            scale: 0.10,
             ..default()
         },
         transform: Transform::from_xyz(50.0, 50.0, 0.0),
@@ -177,14 +179,15 @@ fn setup_after_reload_game_log(
         match evt {
             SimulationEvent::ArenaObjectPositionUpdate {  } => { /* ZJ-TODO */ },
             SimulationEvent::BallPositionUpdate { ball_id, position } => {
+                let translation = Vec3::new(position.x, position.z, position.y);
                 let transform = Transform {
-                    translation: Vec3::new(position.x, position.z, position.y),
+                    translation: translation.clone(),
                     rotation: Quat::default(),
                     scale: Vec3::ONE, // ZJ-TODO
                 };
                 commands.spawn((
                     VisualizationObject,
-                    BallVisualizer { id: *ball_id },
+                    BallVisualizer { id: *ball_id, desired_location: translation },
                     MaterialMesh2dBundle {
                         mesh: Mesh2dHandle(meshes.add(Circle { radius: 0.5 })), // ZJ-TODO: read radius from ball object
                         material: materials.add(Color::linear_rgb(1.0, 0.0, 0.0)),
@@ -194,14 +197,15 @@ fn setup_after_reload_game_log(
                 ));
             },
             SimulationEvent::CombatantPositionUpdate { combatant_id, position } => {
+                let translation = Vec3::new(position.x, position.z, position.y);
                 let transform = Transform {
-                    translation: Vec3::new(position.x, position.z, position.y),
+                    translation: translation.clone(),
                     rotation: Quat::default(),
                     scale: Vec3::ONE, // ZJ-TODO
                 };
                 commands.spawn((
                     VisualizationObject,
-                    CombatantVisualizer { id: *combatant_id },
+                    CombatantVisualizer { id: *combatant_id, desired_location: translation },
                     MaterialMesh2dBundle {
                         mesh: Mesh2dHandle(meshes.add(Capsule2d::new(1.0, 2.0))), // ZJ-TODO: read radius
                         material: materials.add(Color::linear_rgb(0.0, 1.0, 0.0)),
@@ -217,13 +221,23 @@ fn setup_after_reload_game_log(
 
 fn update(
     mut game_state: ResMut<GameState>,
-    mut combatants_query: Query<(&CombatantVisualizer, &mut Transform), Without<BallVisualizer>>,
-    mut balls_query: Query<(&BallVisualizer, &mut Transform), Without<CombatantVisualizer>>,
+    mut combatants_query: Query<(&mut CombatantVisualizer, &mut Transform), Without<BallVisualizer>>,
+    mut balls_query: Query<(&mut BallVisualizer, &mut Transform), Without<CombatantVisualizer>>,
+    timer: Res<Time>,
 ) {
     if !matches!(game_state.mode, VisualizationMode::Play) {
         // Only play is support at the moment
         // ZJ-TODO: add input checking to switch modes
         return;
+    }
+
+    // Visual updates can occur ever frame
+    for (combatant_vis, mut combatant_transform) in combatants_query.iter_mut() {
+        combatant_transform.translation = combatant_transform.translation.lerp(combatant_vis.desired_location, timer.delta_seconds() * 5.0)
+    }
+
+    for (ball_vis, mut ball_transform) in balls_query.iter_mut() {
+        ball_transform.translation = ball_transform.translation.lerp(ball_vis.desired_location, timer.delta_seconds() * 5.0)
     }
 
     // Only update the simulation every second, otherwise would be too fast
@@ -242,20 +256,20 @@ fn update(
         match event {
             SimulationEvent::ArenaObjectPositionUpdate {  } => {},
             SimulationEvent::BallPositionUpdate { ball_id, position } => {
-                let (_, mut ball_transform) = balls_query.iter_mut()
+                let (mut ball_vis, _) = balls_query.iter_mut()
                     .filter(|(ball_vis, _)| ball_vis.id == *ball_id)
                     .next()
                     .unwrap();
 
-                ball_transform.translation = Vec3::new(position.x, position.z, position.y);
+                ball_vis.desired_location = Vec3::new(position.x, position.z, position.y);
             },
             SimulationEvent::CombatantPositionUpdate { combatant_id, position } => {
-                let (_, mut combatant_transform) = combatants_query.iter_mut()
+                let (mut combatant_vis, _) = combatants_query.iter_mut()
                     .filter(|(combatant_vis, _)| combatant_vis.id == *combatant_id)
                     .next()
                     .unwrap();
 
-                combatant_transform.translation = Vec3::new(position.x, position.z, position.y);
+                combatant_vis.desired_location = Vec3::new(position.x, position.z, position.y);
             },
             SimulationEvent::CombatantOnPlate { combatant_id, plate_id } => {},
             SimulationEvent::CombatantOffPlate { combatant_id, plate_id } => {},

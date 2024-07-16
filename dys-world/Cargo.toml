@@ -11,6 +11,7 @@ criterion.workspace = true
 [dependencies]
 ordered-float.workspace = true
 petgraph.workspace = true
+rand.workspace = true
 rapier3d.workspace = true
 
 [lib]

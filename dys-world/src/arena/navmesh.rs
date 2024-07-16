@@ -4,8 +4,9 @@ use std::sync::{Arc, Mutex};
 use ordered_float::{self, OrderedFloat};
 
 use petgraph::algo;
-use petgraph::graphmap::UnGraphMap;
 use petgraph::visit::EdgeRef;
+use petgraph::graphmap::UnGraphMap;
+use rand::Rng;
 use rapier3d::prelude::*;
 use rapier3d::na::vector;
 
@@ -187,20 +188,45 @@ impl ArenaNavmesh {
             .to_owned())
     }
 
-    fn get_path_between_nodes(&self, from: ArenaNavmeshNode, to: ArenaNavmeshNode) -> Vec<ArenaNavmeshNode> {
+    fn get_path_between_nodes(
+        &self,
+        from: ArenaNavmeshNode,
+        to: ArenaNavmeshNode
+    ) -> Vec<ArenaNavmeshNode> {
+        // To introduce suboptimal pathing for combatants,
+        // we'll add a random vector to A*'s normal heuristic algorithm of euclidean distance.
+
+        // Generate a random vector. This isn't a prod-ready solution, as this can produce illogical vectors
+        // (such as the exact opposite direction of where we want to go).
+        // We'd fix this by comparing the cross product of the random vector with the euclidean vector,
+        // and if a very small negative number, flipping the random vector (eg multiplying by -1).
+        let random_vector = vector![
+            rand::thread_rng().gen_range(-1.0..1.0),
+            0.0,
+            rand::thread_rng().gen_range(-1.0..1.0),
+        ].normalize();
+
+        // Generate a random amount of bias. This isn't a prod-ready solution, and should instead
+        // read the stats from the pathing combatant, where combatants with good "game sense" have a smaller factor
+        // (and thus are less affected by the potentially suboptimal vector).
+        let suboptimal_decision_bias_factor = rand::thread_rng().gen_range(0.0..1.0);
+        let suboptimal_bias_vector = random_vector * suboptimal_decision_bias_factor;
+
         let astar_result = algo::astar(
             &self.graph, 
             from, 
             |node| node.as_point() == to.as_point(), 
             |edge| *edge.weight(), 
-            |node| (node.as_point() - to.as_point()).magnitude()
+            |node| {
+                let euclidean_vector = to.as_point() - node.as_point();
+                let scaled_suboptimal_vector = suboptimal_bias_vector * euclidean_vector.magnitude();
+                (euclidean_vector + scaled_suboptimal_vector).magnitude()
+            }
         );
 
-        if astar_result.is_none() {
+        let Some((_total_cost, path)) = astar_result else {
             return vec![];
-        }
-
-        let (_total_cost, path) = astar_result.unwrap();
+        };
 
         path
     }
