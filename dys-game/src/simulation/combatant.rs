@@ -13,17 +13,14 @@ pub(crate) fn simulate_combatants(game_state: &mut GameState) -> Vec<SimulationE
     let mut events = vec![];
 
     for (_combatant_id, mut combatant_object) in combatants {
-        let (rigid_body_set, collider_set) = game_state.physics_sim.sets_mut();
+        let (rigid_body_set, collider_set, joint_set) = game_state.physics_sim.sets_mut();
 
-        ai::combatant_ai::process_combatant(combatant_object, &rigid_body_set, game_state.current_tick);
-
-        let combatant_rb_handle = combatant_object.rigid_body_handle().expect("combatants should have a valid rigidbody handle");
-        let combatant_rb = rigid_body_set.get_mut(combatant_rb_handle).expect("combatants rigid bodies should be registered with main set");
+        ai::combatant_ai::process_combatant(combatant_object, &rigid_body_set, &collider_set, &mut game_state.plates, &mut game_state.balls, game_state.current_tick);
         
         events.extend(match combatant_object.combatant_state {
             CombatantState::Idle => simulate_state_idle(&mut combatant_object, game_state.current_tick),
-            CombatantState::MovingToBall { ball_id } => simulate_moving_to_ball(&mut combatant_object, ball_id, &game_state.arena_navmesh, combatant_rb, &collider_set, &game_state.balls, game_state.current_tick),
-            CombatantState::MovingToPlate { plate_id } => simulate_moving_to_plate(&mut combatant_object, plate_id, &game_state.arena_navmesh, combatant_rb, &collider_set, &game_state.plates, game_state.current_tick),
+            CombatantState::MovingToBall { ball_id } => simulate_moving_to_ball(&mut combatant_object, ball_id, &game_state.arena_navmesh, rigid_body_set, joint_set, &mut game_state.balls, game_state.current_tick),
+            CombatantState::MovingToPlate { plate_id } => simulate_moving_to_plate(&mut combatant_object, plate_id, &game_state.arena_navmesh, rigid_body_set, &collider_set, &game_state.plates, game_state.current_tick),
             CombatantState::RecoilingFromExplosion {} => simulate_state_recoiling_from_explosion(&mut combatant_object, &rigid_body_set, game_state.current_tick),
         });
     }
@@ -59,12 +56,11 @@ fn simulate_move(
         total_distance_can_travel_this_tick = (total_distance_can_travel_this_tick - UNIT_RESOLUTION).max(0.0);
     }
 
-    let should_wake_up = false;
-
     // ZJ-TODO: don't blindly copy original y
     //          this assumes we're on a perfectly flat plane
     new_combatant_position.y = combatant_position.y;
-    combatant_rb.set_translation(new_combatant_position, should_wake_up);
+    combatant_rb.set_translation(new_combatant_position, true);
+    //combatant_rb.set_next_kinematic_translation(new_combatant_position);
 
     new_combatant_position.into()
 }
@@ -73,24 +69,34 @@ fn simulate_moving_to_ball(
     combatant_obj: &mut CombatantObject,
     ball_id: BallId,
     arena_navmesh: &ArenaNavmesh,
-    combatant_rb: &mut RigidBody,
-    collider_set: &ColliderSet,
-    balls: &HashMap<BallId, BallObject>,
+    rigid_body_set: &mut RigidBodySet,
+    joint_set: &mut MultibodyJointSet,
+    balls: &mut HashMap<BallId, BallObject>,
     current_tick: GameTickNumber,
 ) -> Vec<SimulationEvent> {
-    let Some(ball_object) = balls.get(&ball_id) else {
+    let Some(ball_object) = balls.get_mut(&ball_id) else {
         panic!("failed to find BallObject to pathfind to");
     };
 
-    let ball_collider_handle = ball_object.collider_handle().unwrap();
-    let ball_collider = collider_set.get(ball_collider_handle).expect("failed to find ball collider");
+    // If someone else is holding the ball, change our state back to idle
+    if ball_object.held_by.is_some() {
+        combatant_obj.change_state(current_tick, CombatantState::Idle);
+        return vec![];
+    }
 
-    let ball_position = ball_collider.translation();
-    let new_combatant_position = simulate_move(combatant_obj, arena_navmesh, combatant_rb, ball_position);
+    let ball_rigid_body_handle = ball_object.rigid_body_handle().unwrap();
+    let ball_position = {
+        let ball_rb = rigid_body_set.get(ball_rigid_body_handle).unwrap();
+        ball_rb.translation().to_owned()
+    };
 
-    // ZJ-TODO: if we're close enough to the ball, pick it up
-    if are_points_equal(new_combatant_position, combatant_rb.translation().y, (*ball_position).into(), ball_position.y) {
+    let combatant_rb = rigid_body_set.get_mut(combatant_obj.rigid_body_handle().unwrap()).unwrap();
+    let new_combatant_position = simulate_move(combatant_obj, arena_navmesh, combatant_rb, &ball_position);
+
+    if are_points_equal(new_combatant_position, combatant_rb.translation().y, ball_position.into(), ball_position.y) {
         combatant_obj.pickup_ball(ball_id);
+        ball_object.set_held_by(Some(combatant_obj.id), current_tick);
+        
         combatant_obj.change_state(current_tick, CombatantState::Idle);
     }
 
@@ -104,7 +110,7 @@ fn simulate_moving_to_plate(
     combatant_obj: &mut CombatantObject,
     plate_id: PlateId,
     arena_navmesh: &ArenaNavmesh,
-    combatant_rb: &mut RigidBody,
+    rigid_body_set: &mut RigidBodySet,
     collider_set: &ColliderSet,
     plates: &HashMap<PlateId, PlateObject>,
     current_tick: GameTickNumber,
@@ -117,6 +123,8 @@ fn simulate_moving_to_plate(
     let plate_collider = collider_set.get(plate_collider_handle).expect("failed to find plate collider");
 
     let plate_position = plate_collider.translation();
+    
+    let combatant_rb = rigid_body_set.get_mut(combatant_obj.rigid_body_handle().unwrap()).unwrap();
     let new_combatant_position = simulate_move(combatant_obj, arena_navmesh, combatant_rb, plate_position);
 
     if are_points_equal(new_combatant_position, combatant_rb.translation().y, (*plate_position).into(), plate_position.y) {

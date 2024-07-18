@@ -2,6 +2,7 @@ use nalgebra::Quaternion;
 use rapier3d::na::Vector3;
 use rapier3d::prelude::*;
 
+use super::feature::NavmeshPathingType;
 use super::ArenaFeature;
 
 pub type PlateId = u8;
@@ -48,8 +49,8 @@ impl ArenaFeature for ArenaPlate {
         Some(&self.shape)
     }
 
-    fn is_pathable(&self) -> bool {
-        true
+    fn pathing_type(&self) -> NavmeshPathingType {
+        NavmeshPathingType::Skip
     }
     
     fn as_any(&self) -> &dyn std::any::Any {

@@ -19,12 +19,8 @@
     });
 
     onUpdated(() => {
-        loadFromGameLogData(props.gameLogData);
+        loadGameLog(props.gameLogData);
     });
-
-    async function loadFromGameLogData(gameLogData: Uint8Array) {
-        loadGameLog(gameLogData);
-    }
 
     // This function will block immediately upon calling.
     // Any logic that should be run after initialization should be passed through a lambda.

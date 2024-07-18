@@ -10,6 +10,7 @@ use rand::Rng;
 use rapier3d::prelude::*;
 use rapier3d::na::vector;
 
+use super::feature::NavmeshPathingType;
 use super::Arena;
 
 #[derive(Clone)]
@@ -68,7 +69,7 @@ impl ArenaNavmesh {
         let pathable_arena_features = arena
             .all_features()
             .iter()
-            .filter(|filter| filter.is_pathable());
+            .filter(|filter| filter.pathing_type() == NavmeshPathingType::Generate);
 
         let mut graph = UnGraphMap::<ArenaNavmeshNode, f32>::new();
 
@@ -116,7 +117,7 @@ impl ArenaNavmesh {
         let unpathable_arena_features = arena
             .all_features()
             .iter()
-            .filter(|filter| !filter.is_pathable());
+            .filter(|filter| filter.pathing_type() == NavmeshPathingType::Block);
         for feature in unpathable_arena_features {
             let origin = feature.origin();
             let Some(shape) = feature.shape() else {
@@ -250,7 +251,7 @@ impl ArenaNavmesh {
         // Generate a random amount of bias. This isn't a prod-ready solution, and should instead
         // read the stats from the pathing combatant, where combatants with good "game sense" have a smaller factor
         // (and thus are less affected by the potentially suboptimal vector).
-        let suboptimal_decision_bias_factor = rand::thread_rng().gen_range(0.0..0.1);
+        let suboptimal_decision_bias_factor = rand::thread_rng().gen_range(0.0..1.0);
         let suboptimal_bias_vector = random_vector * suboptimal_decision_bias_factor;
 
         let astar_result = algo::astar(

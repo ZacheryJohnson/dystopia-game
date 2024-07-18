@@ -12,6 +12,7 @@ criterion.workspace = true
 dys-world = { path = "../dys-world" }
 
 crossbeam.workspace = true
+ordered-float.workspace = true
 rand.workspace = true
 rand_pcg.workspace = true
 rapier3d.workspace = true

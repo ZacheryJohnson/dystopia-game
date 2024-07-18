@@ -1876,6 +1876,7 @@ dependencies = [
  "criterion",
  "crossbeam",
  "dys-world",
+ "ordered-float",
  "rand",
  "rand_pcg",
  "rapier3d",

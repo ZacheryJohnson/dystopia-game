@@ -1,7 +1,7 @@
 use nalgebra::Quaternion;
 use rapier3d::{na::Vector3, prelude::*};
 
-use super::ArenaFeature;
+use super::{feature::NavmeshPathingType, ArenaFeature};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum BarrierPathing {
@@ -68,8 +68,8 @@ impl ArenaFeature for ArenaBarrier {
         Some(&self.shape)
     }
 
-    fn is_pathable(&self) -> bool { 
-        self.pathing == BarrierPathing::Enabled
+    fn pathing_type(&self) -> NavmeshPathingType {
+        if self.pathing == BarrierPathing::Enabled { NavmeshPathingType::Generate } else { NavmeshPathingType::Block }
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

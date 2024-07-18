@@ -1,6 +1,6 @@
 use rapier3d::na::{Quaternion, Vector3};
 
-use super::feature::ArenaFeature;
+use super::feature::{ArenaFeature, NavmeshPathingType};
 
 /// Location where a player can be spawned
 pub struct ArenaCombatantStart {    
@@ -18,8 +18,8 @@ impl ArenaFeature for ArenaCombatantStart {
         &self.origin
     }
 
-    fn is_pathable(&self) -> bool {
-        true
+    fn pathing_type(&self) -> NavmeshPathingType {
+        NavmeshPathingType::Skip
     }
     
     fn as_any(&self) -> &dyn std::any::Any {

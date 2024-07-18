@@ -15,7 +15,7 @@ impl Game {
         // Add a "tick 0" for initial state
         // ZJ-TODO: there should probably be a SimulationEvent::InitialState, rather than a bunch of updates
         {
-            let (rigid_body_set, _) = game_state.physics_sim.sets();
+            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
             let mut simulation_events = vec![];
             for (combatant_id, combatant_object) in &game_state.combatants {
                 let combatant_rb = rigid_body_set.get(combatant_object.rigid_body_handle().unwrap()).unwrap();
@@ -39,7 +39,11 @@ impl Game {
                 let shape = feature.shape().unwrap();
                 let object_type_id: u32 = {
                     if let Some(barrier) = feature.as_any().downcast_ref::<ArenaBarrier>() {
-                        if barrier.is_pathable() { 1 } else { 2 }
+                        match barrier.pathing_type() {
+                            dys_world::arena::feature::NavmeshPathingType::Generate => 1,
+                            dys_world::arena::feature::NavmeshPathingType::Skip => 0,
+                            dys_world::arena::feature::NavmeshPathingType::Block => 2,
+                        }
                     } else if feature.as_any().downcast_ref::<ArenaBallSpawn>().is_some() {
                         3
                     } else if feature.as_any().downcast_ref::<ArenaPlate>().is_some() {

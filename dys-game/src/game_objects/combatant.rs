@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use dys_world::{arena::plate::PlateId, combatant::combatant::Combatant};
-use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
+use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 
 use crate::game_tick::GameTickNumber;
 
@@ -11,6 +11,7 @@ pub type CombatantId = u64;
 
 const COMBATANT_HALF_HEIGHT: f32 = 2.0; // ZJ-TODO: this should be derived from the character's limbs
 const COMBATANT_RADIUS: f32 = 0.5; // ZJ-TODO: this should be derived from the character's limbs
+const COMBATANT_MASS: f32 = 150.0;
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum TeamAlignment {
@@ -41,12 +42,14 @@ pub enum CombatantState {
 
 impl CombatantObject {
     pub fn new(id: CombatantId, combatant: Arc<Mutex<Combatant>>, position: Vector3<f32>, team: TeamAlignment, rigid_body_set: &mut RigidBodySet, collider_set: &mut ColliderSet) -> CombatantObject {
-        let rigid_body = RigidBodyBuilder::dynamic()
+        let rigid_body = RigidBodyBuilder::dynamic() // RigidBodyBuilder::kinematic_position_based()
             .translation(position)
             .build();
         
         let collider = ColliderBuilder::capsule_y(COMBATANT_HALF_HEIGHT, COMBATANT_RADIUS)
             .active_events(ActiveEvents::COLLISION_EVENTS)
+            .active_collision_types(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_FIXED | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
+            .density(COMBATANT_MASS)
             .build();
 
         let rigid_body_handle = rigid_body_set.insert(rigid_body);
@@ -73,6 +76,8 @@ impl CombatantObject {
         force_direction: Vector3<f32>,
         rigid_body_set: &mut RigidBodySet)
     {
+        // ZJ-TODO: rework; when we moved to kinematic rigid bodies, we can't apply impulses any more
+
         let self_rb = rigid_body_set.get_mut(self.rigid_body_handle).expect("failed to get own rigidbody");
         let impulse = force_direction.normalize() * force_magnitude;
         self_rb.apply_impulse(impulse, true);

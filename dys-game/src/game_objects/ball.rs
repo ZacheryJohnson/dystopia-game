@@ -37,6 +37,7 @@ pub struct BallObject {
     pub state_tick_stamp: GameTickNumber,
     pub charge: f32,
     pub is_dirty: bool,
+    pub held_by: Option<CombatantId>,
 }
 
 impl BallObject {
@@ -62,7 +63,18 @@ impl BallObject {
             state: BallState::Idle,
             state_tick_stamp: creation_tick,
             charge: 0.0,
-            is_dirty: false
+            is_dirty: false,
+            held_by: None,
+        }
+    }
+
+    pub fn set_held_by(&mut self, combatant_id: Option<CombatantId>, current_tick: GameTickNumber) {
+        self.held_by = combatant_id;
+
+        if let Some(id) = combatant_id {
+            self.change_state(current_tick, BallState::Held { holder_id: id });
+        } else {
+            self.change_state(current_tick, BallState::Idle);
         }
     }
 }

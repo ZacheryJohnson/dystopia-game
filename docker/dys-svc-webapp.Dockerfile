@@ -14,18 +14,18 @@ RUN rustup target add wasm32-unknown-unknown
 RUN cargo install wasm-bindgen-cli
 RUN cargo install wasm-opt --locked
 
+WORKDIR /opt/dystopia
 COPY ./Cargo.toml /opt/dystopia/Cargo.toml
 COPY ./dys-game/ /opt/dystopia/dys-game/
 COPY ./dys-world/ /opt/dystopia/dys-world/
-COPY ./dys-matchvisualizer/ /opt/dystopia/dys-matchvisualizer/
-COPY ./dys-svc-webapp/ /opt/dystopia/dys-svc-webapp/
 
-WORKDIR /opt/dystopia
+COPY ./dys-matchvisualizer/ /opt/dystopia/dys-matchvisualizer/
 RUN dys-matchvisualizer/build_scripts/matchvisualizer-wasm.sh
+COPY ./dys-svc-webapp/ /opt/dystopia/dys-svc-webapp/
+RUN dys-svc-webapp/build_scripts/build_webapp_frontend.sh dys-svc-webapp
 
 WORKDIR /opt/dystopia/dys-svc-webapp
 RUN cargo build --release -p dys-svc-webapp
-RUN ./build_scripts/build_webapp_frontend.sh
 
 # --------------------------------------------
 #   Runtime

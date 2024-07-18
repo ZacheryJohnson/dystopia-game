@@ -6,13 +6,16 @@ use crate::{game_objects::{ball::{BallObject, BallState}, combatant::CombatantOb
 
 use super::{config::SimulationConfig, simulation_event::SimulationEvent};
 
-const CHARGE_FORCE_MODIFIER: f32 = 3.0;
+const CHARGE_FORCE_MODIFIER: f32 = 250.0;
 
 pub(crate) fn simulate_balls(game_state: &mut GameState) -> Vec<SimulationEvent> {
     let mut events = vec![];
 
     let (query_pipeline, rigid_body_set, collider_set) = game_state.physics_sim.query_pipeline_and_sets();
     for (ball_id, ball_object) in &mut game_state.balls {
+        {
+            try_move_if_held(ball_object, &game_state.combatants, rigid_body_set);
+        }
         { 
             let (explosion_simulation_events, affected_colliders) = explode(ball_object, query_pipeline, rigid_body_set, collider_set);
             events.extend(explosion_simulation_events);
@@ -34,6 +37,28 @@ pub(crate) fn simulate_balls(game_state: &mut GameState) -> Vec<SimulationEvent>
     }
 
     events
+}
+
+fn try_move_if_held(
+    ball: &mut BallObject,
+    combatants: &HashMap<u64, CombatantObject>,
+    rigid_body_set: &mut RigidBodySet
+) {
+    let BallState::Held { holder_id } = ball.state else {
+        return;
+    };
+
+    let holding_combatant_object = combatants.get(&holder_id).expect("failed to finding holder combatant object");
+
+    // Don't love setting the ball's position to exactly the combatant's position but it works for now
+    // Would love to actually figure out parenting one rigid body to another (joints?)
+
+    let combatant_pos = {
+        let combatant_rb = rigid_body_set.get(holding_combatant_object.rigid_body_handle().unwrap()).unwrap();
+        combatant_rb.translation().to_owned()
+    };
+    let ball_rb = rigid_body_set.get_mut(ball.rigid_body_handle().unwrap()).unwrap();
+    ball_rb.set_translation(combatant_pos, true);
 }
 
 fn explode(
@@ -95,10 +120,10 @@ fn apply_explosion_forces(
         // Magnitude of the explosion force is the charge of the ball divided by the square distance
         // This means direct impacts will apply a LOT of force, while nearby combatants will take exponentially less per unit away
         let position_difference = combatant_pos - ball_pos;
-        let force_direction = vector![position_difference.x, 0.0, position_difference.z];
-        let force_magnitude = ball_object.charge * CHARGE_FORCE_MODIFIER / (force_direction.magnitude() + 1.0);
+        let force_direction = vector![position_difference.x, 0.0, position_difference.z].normalize();
+        let force_magnitude = ball_object.charge * CHARGE_FORCE_MODIFIER / position_difference.magnitude().powi(2);
 
-        combatant.apply_explosion_force(current_tick, force_magnitude, force_direction.normalize(), rigid_body_set);
+        combatant.apply_explosion_force(current_tick, force_magnitude, force_direction, rigid_body_set);
         events.push(SimulationEvent::BallExplosionForceApplied { ball_id: ball_object.id, combatant_id: *combatant_id, force_magnitude, force_direction });
     }
 
@@ -116,7 +141,7 @@ fn decrease_charge(ball: &mut BallObject, simulation_config: &SimulationConfig) 
 
 fn try_freeze_slow_moving_ball(current_tick: GameTickNumber, ball_object: &mut BallObject, ball_rb: &mut RigidBody) {
     match ball_object.state {
-        BallState::Explode => return,
+        BallState::Explode | BallState::Held { .. } => return,
         _ => (),
     };
 

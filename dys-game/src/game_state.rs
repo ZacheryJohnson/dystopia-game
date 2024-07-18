@@ -5,7 +5,7 @@ use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
 use rapier3d::prelude::*;
 
-use crate::{game::Game, game_objects::{ball::{BallId, BallObject, BallState}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType, plate::PlateObject}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::{config::SimulationConfig, simulate_tick}, targeting::get_throw_vector_towards_target};
+use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType, plate::PlateObject}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::{config::SimulationConfig, simulate_tick}};
 
 pub type SeedT = [u8; 32];
 
@@ -52,8 +52,7 @@ impl GameState {
 
         let simulation_config = SimulationConfig::default();
         let mut physics_sim = PhysicsSim::new(simulation_config.ticks_per_second());
-        let gravity_y = physics_sim.gravity_y();
-        let (rigid_body_set, collider_set) = physics_sim.sets_mut();
+        let (rigid_body_set, collider_set, _) = physics_sim.sets_mut();
 
         let mut active_colliders = HashMap::new();
         let mut balls = HashMap::new();
@@ -124,42 +123,6 @@ impl GameState {
                 active_colliders.insert(combatant_object.collider_handle().expect("combatant game objects must have collider handles"), GameObjectType::Combatant(combatant_id));
                 combatants.insert(combatant_id, combatant_object);
             }
-        }
-
-        // ZJ-TODO: delete this block. Testing ball collisions
-        {
-            let (_, ball_obj) = balls.iter_mut().next().unwrap();
-            let ball_rb = rigid_body_set.get(ball_obj.rigid_body_handle().expect("balls should have rigid bodies")).expect("failed to find ball rigid body");
-            let ball_pos = ball_rb.translation();
-
-            let (thrower_id, _) = combatants
-                .iter().find(|(_, combatant_obj)| combatant_obj.team == TeamAlignment::Home)
-                .expect("failed to find home team combatant");
-            
-            let (target_id, target_obj) = combatants
-                .iter().find(|(_, combatant_obj)| combatant_obj.team == TeamAlignment::Away)
-                .expect("failed to find away team combatant");
-            let target_pos = rigid_body_set
-                .get(target_obj.rigid_body_handle().expect("combatants should have rigid bodies"))
-                .expect("failed to get target rigid body")
-                .translation();
-
-            let throw_speed_units_per_sec = 25.0; // ZJ-TODO: read from combatant stats
-            let accuracy = 1.0_f32.clamp(0.0, 1.0); // ZJ-TODO: read from combatant stats
-            let y_axis_gravity = gravity_y;
-            let impulse = get_throw_vector_towards_target(target_pos, ball_pos, throw_speed_units_per_sec, accuracy, y_axis_gravity);
-
-            let new_state = BallState::ThrownAtTarget { 
-                direction: impulse, 
-                thrower_id: *thrower_id,
-                target_id: *target_id,
-            };
-
-            ball_obj.charge = 80.0; // ZJ-TODO: don't add arbitrary charge
-            ball_obj.change_state(current_tick, new_state);
-
-            let mut_ball_rb = rigid_body_set.get_mut(ball_obj.rigid_body_handle().expect("balls should have rigid bodies")).expect("failed to find ball rigid body");
-            mut_ball_rb.apply_impulse(impulse, true);
         }
 
         let arena_navmesh = ArenaNavmesh::new_from(game.schedule_game.arena.clone(), ArenaNavmeshConfig::default());

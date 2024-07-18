@@ -23,6 +23,9 @@ fn main() {
 }
 
 #[derive(Component)]
+struct GameLogPerfText;
+
+#[derive(Component)]
 struct DebugPositionText;
 
 #[derive(Debug)]
@@ -101,6 +104,7 @@ pub fn initialize_with_canvas(
         .add_systems(Startup, setup)
         .add_systems(Update, (
             update,
+            display_game_log_perf,
             display_mouse_hover,
             try_reload_game_state.before(update),
         ))
@@ -111,11 +115,9 @@ pub fn initialize_with_canvas(
 pub fn load_game_log(
     serialized_game_log: Vec<u8>,
 ) {
-    // ZJ-TODO: gracefully handle failures in parsing
     let game_log: GameLog = postcard::from_bytes(&serialized_game_log).unwrap();
 
-    let updated_game_state = UPDATED_GAME_STATE.get()
-        .expect("failed to get static updated game state");
+    let updated_game_state = UPDATED_GAME_STATE.get().unwrap();
 
     updated_game_state.lock().unwrap().replace(GameState {
         game_log: Some(game_log),
@@ -160,6 +162,28 @@ fn setup(
         }),
         DebugPositionText
     ));
+
+    commands.spawn((
+        // Create a TextBundle that has a Text with a single section.
+        TextBundle::from_section(
+            // Accepts a `String` or any type that converts into a `String`, such as `&str`
+            "",
+            TextStyle {
+                // This font is loaded and will be used instead of the default font.
+                font_size: 30.0,
+                ..default()
+            },
+        ) // Set the justification of the Text
+        .with_text_justify(JustifyText::Center)
+        // Set the style of the TextBundle itself.
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(5.0),
+            left: Val::Px(5.0),
+            ..default()
+        }),
+        GameLogPerfText
+    ));
 }
 
 fn try_reload_game_state(
@@ -179,7 +203,6 @@ fn try_reload_game_state(
     };
 
     // We have new game state - blow away all of our current state
-    // ZJ-TODO: maybe show temporary "reloading..." text?
     for entity in &entity_query {
         commands.entity(entity).despawn();
     }
@@ -246,7 +269,9 @@ fn setup_after_reload_game_log(
                 ));
             },
             SimulationEvent::BallPositionUpdate { ball_id, position } => {
-                let translation = Vec3::new(position.x, position.z, position.y);
+                // ZJ-TODO: adding 10.0 sucks, but is necessary for balls to show above combatants in z-ordering
+                //          otherwise the ball can "hide" under combatants
+                let translation = Vec3::new(position.x, position.z, position.y + 10.0);
                 let transform = Transform {
                     translation: translation.clone(),
                     rotation: Quat::default(),
@@ -355,6 +380,20 @@ fn update(
     }
 
     game_state.last_update_time = Instant::now();
+}
+
+fn display_game_log_perf(
+    game_state: Res<GameState>,
+    mut text_query: Query<&mut Text, With<GameLogPerfText>>,
+) {
+    let mut text = text_query.get_single_mut().expect("failed to get debug position text component");
+    let Some(ref game_log) = game_state.game_log else {
+        return;
+    };
+
+    // Bevy default font doesn't display unicode (or at least 'μ')
+    // Just replace with 'u'
+    text.sections[0].value = game_log.perf_string().replace("μ", "u");
 }
 
 

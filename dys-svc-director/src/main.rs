@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
 
 use axum::http::HeaderValue;
@@ -27,7 +27,7 @@ struct MatchResult {
 #[derive(Clone)]
 struct WorldState {
     game_world: Arc<Mutex<World>>,
-    match_results: Arc<Mutex<Vec<MatchResult>>>,
+    match_results: Arc<RwLock<Vec<MatchResult>>>,
 }
 
 #[tokio::main]
@@ -39,7 +39,7 @@ async fn main() {
     
     let world_state = WorldState {
         game_world: game_world.clone(),
-        match_results: Arc::new(Mutex::new(vec![]))
+        match_results: Arc::new(RwLock::new(vec![]))
     };
 
     let world_state_thread = world_state.clone();
@@ -47,12 +47,14 @@ async fn main() {
         loop {
             tracing::info!("Executing simulations...");
             // Do core logic
-            {
-                let game_world = world_state_thread.game_world.lock().unwrap();
-                
+            {                
                 // Generate matches
                 let mut scheduled_games = vec![];
-                let mut teams = game_world.teams.clone();
+                let mut teams = { 
+                    tracing::info!("Acquiring game world lock...");
+                    let game_world = world_state_thread.game_world.lock().unwrap();
+                    game_world.teams.clone()
+                };
                 teams.shuffle(&mut thread_rng());
                 while !teams.is_empty() {
                     let home_team = teams.pop().expect("failed to pop home team from shuffled teams list");
@@ -73,6 +75,9 @@ async fn main() {
                 for scheduled_game in scheduled_games {
                     let away_team_name = scheduled_game.away_team.lock().unwrap().name.clone();
                     let home_team_name = scheduled_game.home_team.lock().unwrap().name.clone();
+
+                    tracing::info!("Simulating match: {} vs {}", away_team_name, home_team_name);
+
                     let game = Game { schedule_game: scheduled_game };
                     let game_log = game.simulate();
 
@@ -93,7 +98,8 @@ async fn main() {
 
                 // Swap simulation results
                 // ZJ-TODO: store these in a datastore
-                *world_state_thread.match_results.lock().unwrap() = match_results;
+                tracing::info!("Acquiring game world write-lock...");
+                *world_state_thread.match_results.write().unwrap() = match_results;
             }
 
             // Sleep for 60 seconds before simulating more matches
@@ -116,12 +122,15 @@ struct LatestGamesResponse {
 }
 
 async fn latest_games(State(world_state): State<WorldState>) -> Response {
-    let match_results = world_state.match_results.lock().unwrap().to_owned();
+    tracing::info!("Trying to acquire match results read-lock...");
+    let match_results = world_state.match_results.read().unwrap().to_owned();
     
-    let mut response = 
-    axum::Json(LatestGamesResponse{
-        match_results,
-    }).into_response();
+    tracing::info!("Sending response...");
+    let mut response = axum::Json(
+        LatestGamesResponse{
+            match_results,
+        }
+    ).into_response();
       
     response.headers_mut()
         // ZJ-TODO: not *

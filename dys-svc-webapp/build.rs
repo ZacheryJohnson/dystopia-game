@@ -52,7 +52,6 @@ fn exec_build_script_cmd(project_dir_path: &String) {
         const BUILD_SCRIPT_CMD_SH_LOCAL_PATH: &'static str = "build_scripts/build_webapp_frontend.sh";
         let _ = std::process::Command::new("sh")
             .arg(BUILD_SCRIPT_CMD_SH_LOCAL_PATH)
-            .arg("-k") // -k enables "k8s" mode, using k8s DNS names for API calls
             .current_dir(project_dir_path)
             .output()
             .unwrap();

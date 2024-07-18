@@ -22,7 +22,7 @@ rm $OUT_DIR/${BIN_NAME}_bg.wasm
 rm $OUT_DIR/${BIN_NAME}_bg.wasm.d.ts
 
 cp $OUT_DIR/matchvisualizer_opt.wasm ./$WEBAPP_PUBLIC_DIR_PATH/matchvisualizer_opt.wasm
-cp $OUT_DIR/matchvisualizer.d.ts ./$WEBAPP_INTERNAL_DIR_PATH/matchvisualizer_opt.d.ts
+cp $OUT_DIR/matchvisualizer.d.ts ./$WEBAPP_INTERNAL_DIR_PATH/matchvisualizer.d.ts
 cp $OUT_DIR/matchvisualizer.js ./$WEBAPP_INTERNAL_DIR_PATH/matchvisualizer.js
 
 echo "Done!"

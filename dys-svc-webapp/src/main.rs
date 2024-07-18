@@ -21,6 +21,8 @@ async fn query_latest_games(_: Request) -> Result<Response, Infallible> {
     //   - return that data to client
     let director_api_base_uri = std::env::var("SVC_DIRECTOR_API_BASE_URI").unwrap_or(String::from("http://localhost:6081"));
     let request_url = format!("{director_api_base_uri}/latest_games");
+
+    tracing::info!("Requesting latest games from director...");
     let Ok(response) = reqwest::get(request_url).await else {
         tracing::warn!("Failed to get latest_games from {}", director_api_base_uri);
         return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get latest_games").into_response());
@@ -31,6 +33,7 @@ async fn query_latest_games(_: Request) -> Result<Response, Infallible> {
         return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get latest_games").into_response());
     };
 
+    tracing::info!("Sending response...");
     let json = axum::Json(response_body);
     Ok(json.into_response())
 }
