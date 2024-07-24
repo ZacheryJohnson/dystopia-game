@@ -1,6 +1,6 @@
 <script setup lang="ts">
     import { onMounted, onUpdated, ref } from "vue";
-    import { initSync, initializeWithCanvas, loadGameLog } from "@/assets/matchvisualizer.js"
+    import init, { initializeWithCanvas, loadGameLog } from "@/assets/matchvisualizer.js"
 
     const isWasmLoaded = ref(false);
 
@@ -11,11 +11,16 @@
     onMounted(async () => {
         const wasmFileContents = await (await fetch("/matchvisualizer_opt.wasm")).arrayBuffer();
         const wasmModule = new WebAssembly.Module(wasmFileContents);
-        initSync(wasmModule);
 
-        startGameThen(async () => { 
-            isWasmLoaded.value = true;
-        });
+        init(wasmModule)
+            .then(() => startGameThen(async () => { 
+                isWasmLoaded.value = true;
+            }))
+            .catch(err => {
+                if (!err.message.startsWith("Using exceptions for control flow,")) {
+                    throw err;
+                }
+            });
     });
 
     onUpdated(() => {
