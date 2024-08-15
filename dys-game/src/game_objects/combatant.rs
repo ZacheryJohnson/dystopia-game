@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use dys_world::{arena::plate::PlateId, combatant::combatant::Combatant};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 
-use crate::game_tick::GameTickNumber;
+use crate::{ai::goap::agent::Agent, game_state::GameState, game_tick::GameTickNumber};
 
 use super::{ball::BallId, game_object::GameObject};
 
