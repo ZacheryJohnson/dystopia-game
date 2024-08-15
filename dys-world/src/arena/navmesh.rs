@@ -191,6 +191,10 @@ impl ArenaNavmesh {
         }
     }
 
+    pub fn config(&self) -> &ArenaNavmeshConfig {
+        &self.config
+    }
+
     /// Attempts to create a path from one point to another point. Returns an empty vector if a path cannot be made.
     pub fn create_path(&self, from: Point<f32>, to: Point<f32>) -> Vec<Point<f32>> {
         let start_node = ArenaNavmesh::get_closest_node(&self.graph, from, self.config.unit_resolution);
