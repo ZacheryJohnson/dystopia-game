@@ -1,5 +1,3 @@
-pub mod combatant_ai;
-
 // Goal Oriented Action Planning
 pub mod agent;
 

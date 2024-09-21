@@ -1,4 +1,4 @@
-use crate::game_state::GameState;
+use crate::{game_state::GameState, simulation::simulation_event::SimulationEvent};
 
 use super::agent::Agent;
 
@@ -9,9 +9,7 @@ pub trait Strategy {
     /// Was this strategy running and is now complete?
     fn is_complete(&self) -> bool;
 
-    fn start(&mut self, agent: &mut dyn Agent, game_state: &mut GameState);
-
-    fn tick(&mut self, agent: &mut dyn Agent, game_state: &mut GameState);
-
-    fn stop(&mut self, agent: &mut dyn Agent, game_state: &mut GameState);
+    /// Run the strategy on the agent given the game state,
+    /// returning a collection of events that happened during the tick.
+    fn tick(&mut self, agent: &mut dyn Agent, game_state: &mut GameState) -> Vec<SimulationEvent>;
 }

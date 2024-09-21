@@ -1,6 +1,4 @@
-use rapier3d::prelude::{ColliderHandle, RigidBodyHandle};
-
-use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::combatant::CombatantState, game_state::GameState};
+use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::game_object::GameObject, game_state::GameState, simulation::simulation_event::SimulationEvent};
 
 pub(in crate::ai) struct NoopStrategy;
 
@@ -13,19 +11,20 @@ impl Strategy for NoopStrategy {
         true
     }
 
-    fn start(&mut self, agent: &mut dyn Agent, _game_state: &mut GameState) {
-        // no-op
-    }
-
     fn tick(
         &mut self,
         agent: &mut dyn Agent,
         game_state: &mut GameState,
-    ) {
-        // no-op
-    }
+    ) -> Vec<SimulationEvent> {
+        let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+        let combatant_rb_handle = agent.combatant().rigid_body_handle().unwrap();
+        let combatant_rb = rigid_body_set.get(combatant_rb_handle).unwrap();
 
-    fn stop(&mut self, agent: &mut dyn Agent, _game_state: &mut GameState) {
-        // no-op
+        vec![
+            SimulationEvent::CombatantPositionUpdate {
+                combatant_id: agent.combatant().id,
+                position: *combatant_rb.translation(),
+            }
+        ]
     }
 }

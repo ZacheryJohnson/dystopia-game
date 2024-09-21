@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use crate::game_state::GameState;
+use crate::simulation::simulation_event::SimulationEvent;
 
 use super::agent::Agent;
 use super::belief::Belief;
@@ -35,6 +36,10 @@ impl Action {
         self.name.clone()
     }
 
+    pub fn cost(&self) -> f32 {
+        self.cost
+    }
+
     pub fn can_perform(&self, owned_beliefs: &[Belief]) -> bool {
         let all_prereqs = self.prerequisite_beliefs.iter().all(|belief| owned_beliefs.contains(belief));
         let none_prohibited = self.prohibited_beliefs.iter().all(|belief| !owned_beliefs.contains(belief));
@@ -50,17 +55,14 @@ impl Action {
         &mut self,
         agent: &mut impl Agent,
         game_state: &mut GameState,
-    ) {
+    ) -> Vec<SimulationEvent> {
         let mut strategy = self.strategy.lock().unwrap();
         if !strategy.can_perform() {
-            return;
+            tracing::debug!("Cannot perform action {}", self.name());
+            return vec![];
         }
 
-        strategy.tick(agent, game_state);
-
-        if strategy.is_complete() {
-            todo!("grant completion beliefs")
-        }
+        strategy.tick(agent, game_state)
     }
 
     pub fn completion_beliefs(&self) -> Vec<Belief> {

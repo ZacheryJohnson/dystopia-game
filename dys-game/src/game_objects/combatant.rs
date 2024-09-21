@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use dys_world::{arena::plate::PlateId, combatant::combatant::Combatant};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 
-use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner::Planner}, game_state::GameState, game_tick::GameTickNumber};
+use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner::Planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 
 use super::{ball::BallId, game_object::GameObject};
 
@@ -159,23 +159,33 @@ impl Agent for CombatantObject {
         &self.beliefs
     }
 
-    fn tick(&mut self, game_state: &mut GameState) {
+    fn tick(&mut self, game_state: &mut GameState) -> Vec<SimulationEvent> {
+        let mut events = vec![];
+
         if self.current_action.is_none() {
             if self.plan.is_empty() {
                 self.plan = Planner::plan(self, game_state);
             }
 
-            self.current_action = Some(self.plan.pop().expect("failed to pop action from plan"));
+            let Some(next_action) = self.plan.pop() else {
+                return events;
+            };
+            
+            self.current_action = Some(next_action);
         }
 
         let mut action = self.current_action.take().expect("failed to get current action");
 
-        action.tick(self, game_state);
+        tracing::debug!("Executing action {}", action.name());
+        events.append(&mut action.tick(self, game_state));
 
         if !action.is_complete() {
             self.current_action = Some(action);
         } else {
+            tracing::debug!("Action {} complete - rewarding completion beliefs", action.name());
             self.beliefs.append(&mut action.completion_beliefs());
         }
+
+        events
     }
 }

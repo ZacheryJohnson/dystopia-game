@@ -7,7 +7,7 @@ pub struct Goal {
 
     /// Priority of the goal. 
     /// Goals with higher priorities will be selected and executed before goals with lower priorities.
-    priority: f32,
+    priority: u32,
 
     /// Beliefs about the world that we would like to be true.
     /// 
@@ -17,6 +17,14 @@ pub struct Goal {
 }
 
 impl Goal {
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    pub fn priority(&self) -> u32 {
+        self.priority
+    }
+
     pub fn desired_beliefs(&self) -> Vec<Belief> {
         self.desired_beliefs.clone()
     }
@@ -31,7 +39,7 @@ impl GoalBuilder {
         GoalBuilder {
             goal: Goal {
                 name: String::new(),
-                priority: 0.0_f32,
+                priority: 0_u32,
                 desired_beliefs: vec![]
             },  
         }
@@ -50,7 +58,7 @@ impl GoalBuilder {
         self
     }
 
-    pub(super) fn priority(mut self, priority: f32) -> GoalBuilder {
+    pub(super) fn priority(mut self, priority: u32) -> GoalBuilder {
         self.goal.priority = priority;
         self
     }
