@@ -3,26 +3,26 @@ use std::collections::HashMap;
 use dys_world::arena::{navmesh::ArenaNavmesh, plate::PlateId};
 use rapier3d::{dynamics::RigidBody, geometry::ColliderSet, math::Point, na::Matrix3x1, prelude::*};
 
-use crate::{ai, game_objects::{ball::{BallId, BallObject}, combatant::{CombatantObject, CombatantState}, game_object::GameObject, plate::PlateObject}, game_state::GameState, game_tick::GameTickNumber};
+use crate::{ai::{self, agent::Agent}, game_objects::{ball::{BallId, BallObject}, combatant::{CombatantObject, CombatantState}, game_object::GameObject, plate::PlateObject}, game_state::{CombatantsMapT, GameState}, game_tick::GameTickNumber};
 
 use super::simulation_event::SimulationEvent;
 
-pub(crate) fn simulate_combatants(game_state: &mut GameState) -> Vec<SimulationEvent> {
-    let combatants = &mut game_state.combatants;
-
+pub(crate) fn simulate_combatants(combatants: &mut CombatantsMapT, game_state: &mut GameState) -> Vec<SimulationEvent> {
     let mut events = vec![];
 
     for (_combatant_id, mut combatant_object) in combatants {
-        let (rigid_body_set, collider_set, joint_set) = game_state.physics_sim.sets_mut();
+        // let (rigid_body_set, collider_set, joint_set) = game_state.physics_sim.sets_mut();
 
-        ai::combatant_ai::process_combatant(combatant_object, &rigid_body_set, &collider_set, &mut game_state.plates, &mut game_state.balls, game_state.current_tick);
+        // ai::combatant_ai::process_combatant(combatant_object, &rigid_body_set, &collider_set, &mut game_state.plates, &mut game_state.balls, game_state.current_tick);
         
-        events.extend(match combatant_object.combatant_state {
-            CombatantState::Idle => simulate_state_idle(&mut combatant_object, game_state.current_tick),
-            CombatantState::MovingToBall { ball_id } => simulate_moving_to_ball(&mut combatant_object, ball_id, &game_state.arena_navmesh, rigid_body_set, joint_set, &mut game_state.balls, game_state.current_tick),
-            CombatantState::MovingToPlate { plate_id } => simulate_moving_to_plate(&mut combatant_object, plate_id, &game_state.arena_navmesh, rigid_body_set, &collider_set, &game_state.plates, game_state.current_tick),
-            CombatantState::RecoilingFromExplosion {} => simulate_state_recoiling_from_explosion(&mut combatant_object, &rigid_body_set, game_state.current_tick),
-        });
+        // events.extend(match combatant_object.combatant_state {
+        //     CombatantState::Idle => simulate_state_idle(&mut combatant_object, game_state.current_tick),
+        //     CombatantState::MovingToBall { ball_id } => simulate_moving_to_ball(&mut combatant_object, ball_id, &game_state.arena_navmesh, rigid_body_set, joint_set, &mut game_state.balls, game_state.current_tick),
+        //     CombatantState::MovingToPlate { plate_id } => simulate_moving_to_plate(&mut combatant_object, plate_id, &game_state.arena_navmesh, rigid_body_set, &collider_set, &game_state.plates, game_state.current_tick),
+        //     CombatantState::RecoilingFromExplosion {} => simulate_state_recoiling_from_explosion(&mut combatant_object, &rigid_body_set, game_state.current_tick),
+        // });
+
+        combatant_object.tick(game_state);
     }
 
     events
