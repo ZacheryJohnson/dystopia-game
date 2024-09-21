@@ -1,6 +1,6 @@
 use rapier3d::{na::Point3, prelude::RigidBodyHandle};
 
-use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::combatant::CombatantState, game_state::GameState};
+use crate::{ai::{agent::Agent, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
 
 pub struct MoveToLocationStrategy {
     can_perform: bool,
@@ -12,7 +12,7 @@ pub struct MoveToLocationStrategy {
 impl MoveToLocationStrategy {
     pub fn new(target_location: Point3<f32>, combatant_rigid_body_handle: RigidBodyHandle) -> MoveToLocationStrategy {
         MoveToLocationStrategy {
-            can_perform: false,
+            can_perform: true,
             is_complete: false,
             target_location,
             combatant_rigid_body_handle,
@@ -29,23 +29,25 @@ impl Strategy for MoveToLocationStrategy {
         self.is_complete
     }
 
-    fn start(&mut self, agent: &mut dyn Agent, _game_state: &mut GameState) {
-        // no-op
-    }
-
     fn tick(
         &mut self,
         agent: &mut dyn Agent,
         game_state: &mut GameState,
-    ) {
+    ) -> Vec<SimulationEvent> {
+        let mut events = vec![];
+
         if !self.can_perform {
             tracing::warn!("Trying to tick strategy but can_perform is false!");
-            return;
+            return events;
         }
 
         let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
         let combatant_rb = rigid_body_set.get_mut(self.combatant_rigid_body_handle).unwrap();
         let combatant_position = combatant_rb.translation();
+
+        // ZJ-TODO: HACK: y coordinate is wonky
+        //                ignore whatever we see initially and just maintain the combatant's y-pos
+        self.target_location.y = combatant_position.y;
 
         // ZJ-TODO: read this from combatant stats
         let mut total_distance_can_travel_this_tick = 2.0_f32;
@@ -68,14 +70,14 @@ impl Strategy for MoveToLocationStrategy {
             self.is_complete = true;
         }
     
-        // ZJ-TODO: don't blindly copy original y
-        //          this assumes we're on a perfectly flat plane
-        new_combatant_position.y = combatant_position.y;
         combatant_rb.set_translation(new_combatant_position, true);
         //combatant_rb.set_next_kinematic_translation(new_combatant_position);
-    }
 
-    fn stop(&mut self, agent: &mut dyn Agent, _game_state: &mut GameState) {
-        // no-op
+        events.push(SimulationEvent::CombatantPositionUpdate { 
+            combatant_id: agent.combatant().id,
+            position: new_combatant_position
+        });
+
+        events
     }
 }

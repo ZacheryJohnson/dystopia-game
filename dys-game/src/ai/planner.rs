@@ -1,15 +1,31 @@
 use crate::{ai::goals::goals, game_state::GameState};
 
-use super::{action::Action, actions::actions, agent::Agent};
+use super::{action::Action, actions::actions, agent::Agent, goals::idle_goal};
 
 pub struct Planner;
 
 impl Planner {
     pub fn plan(agent: &impl Agent, game_state: &GameState) -> Vec<Action> {
         // Pick a goal
-        let goals = goals();
-        // ZJ-TODO: don't always pick this goal
-        let goal = goals.first().unwrap();
+        let all_goals = goals();
+        let goals: Vec<_> = all_goals
+            .into_iter()
+            .filter(|goal| {
+                for desired_belief in goal.desired_beliefs() {
+                    if !agent.beliefs().contains(&desired_belief) {
+                        return true;
+                    }
+                }
+                
+                false
+            })
+            .collect();
+        
+        // ZJ-TODO: don't always pick the first goal; use priority
+        let idle_goal = &idle_goal();
+        let goal = goals
+            .first()
+            .unwrap_or(&idle_goal);
 
         // Determine actions to get to goal
         let mut action_plan = vec![];

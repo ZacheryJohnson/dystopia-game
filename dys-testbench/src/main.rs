@@ -7,7 +7,7 @@ use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 
 fn register_tracing_subscriber() {
     let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+        .unwrap_or_else(|_| EnvFilter::new("debug"));
     let formatting_layer = BunyanFormattingLayer::new(
         "dystopia".into(), 
         std::io::stdout
