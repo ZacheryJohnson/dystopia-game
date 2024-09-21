@@ -1,11 +1,16 @@
-use crate::game_objects::combatant::CombatantObject;
+use std::sync::{Arc, Mutex};
+
 use crate::game_state::GameState;
 
+use super::agent::Agent;
 use super::belief::Belief;
 use super::strategies::noop::NoopStrategy;
 use super::strategy::Strategy;
 
-pub(super) struct Action {
+pub type StrategyT = Arc<Mutex<dyn Strategy>>;
+
+#[derive(Clone)]
+pub struct Action {
     /// Name of the action
     name: String,
 
@@ -13,7 +18,7 @@ pub(super) struct Action {
     /// Arbitrary float value
     cost: f32,
 
-    strategy: Box<dyn Strategy>,
+    strategy: StrategyT,
 
     /// Beliefs required for the action to be taken
     prerequisite_beliefs: Vec<Belief>,
@@ -26,34 +31,39 @@ pub(super) struct Action {
 }
 
 impl Action {
-    pub(super) fn name(&self) -> String {
+    pub fn name(&self) -> String {
         self.name.clone()
     }
 
-    pub(super) fn can_perform(&self, owned_beliefs: &[Belief]) -> bool {
+    pub fn can_perform(&self, owned_beliefs: &[Belief]) -> bool {
         let all_prereqs = self.prerequisite_beliefs.iter().all(|belief| owned_beliefs.contains(belief));
         let none_prohibited = self.prohibited_beliefs.iter().all(|belief| !owned_beliefs.contains(belief));
 
         all_prereqs && none_prohibited
     }
 
-    pub(super) fn is_complete(&self) -> bool {
-        self.strategy.is_complete()
+    pub fn is_complete(&self) -> bool {
+        self.strategy.lock().unwrap().is_complete()
     }
 
-    pub(super) fn tick(&mut self, combatant: &mut CombatantObject, game_state: &mut GameState) {
-        if !self.strategy.can_perform() {
+    pub fn tick(
+        &mut self,
+        agent: &mut impl Agent,
+        game_state: &mut GameState,
+    ) {
+        let mut strategy = self.strategy.lock().unwrap();
+        if !strategy.can_perform() {
             return;
         }
 
-        self.strategy.tick(combatant, game_state);
+        strategy.tick(agent, game_state);
 
-        if self.strategy.is_complete() {
+        if strategy.is_complete() {
             todo!("grant completion beliefs")
         }
     }
 
-    pub(super) fn completion_beliefs(&self) -> Vec<Belief> {
+    pub fn completion_beliefs(&self) -> Vec<Belief> {
         self.completion_beliefs.clone()
     }
 }
@@ -68,7 +78,7 @@ impl ActionBuilder {
             action: Action {
                 name: String::new(),
                 cost: 0.0_f32,
-                strategy: Box::new(NoopStrategy),
+                strategy: Arc::new(Mutex::new(NoopStrategy)),
                 prerequisite_beliefs: vec![],
                 prohibited_beliefs: vec![],
                 completion_beliefs: vec![],
@@ -89,7 +99,7 @@ impl ActionBuilder {
         self
     }
 
-    pub fn strategy(mut self, strategy: Box<dyn Strategy>) -> ActionBuilder {
+    pub fn strategy(mut self, strategy: StrategyT) -> ActionBuilder {
         self.action.strategy = strategy;
         self
     }
@@ -113,8 +123,8 @@ impl ActionBuilder {
 #[cfg(test)]
 mod tests {
     mod fn_can_perform {
-        use crate::ai::goap::action::ActionBuilder;
-        use crate::ai::goap::belief::Belief;
+        use crate::ai::action::ActionBuilder;
+        use crate::ai::belief::Belief;
     
         #[test]
         fn no_prereqs_no_prohibited_no_beliefs_allowed() {

@@ -1,19 +1,21 @@
-use rapier3d::na::Point3;
+use rapier3d::{na::Point3, prelude::RigidBodyHandle};
 
-use crate::{ai::goap::strategy::Strategy, game_objects::{combatant::CombatantObject, game_object::GameObject}, game_state::GameState};
+use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::combatant::CombatantState, game_state::GameState};
 
-pub(in crate::ai::goap) struct MoveToLocationStrategy {
+pub struct MoveToLocationStrategy {
     can_perform: bool,
     is_complete: bool,
     target_location: Point3<f32>,
+    combatant_rigid_body_handle: RigidBodyHandle,
 }
 
 impl MoveToLocationStrategy {
-    pub fn new(target_location: Point3<f32>) -> MoveToLocationStrategy {
+    pub fn new(target_location: Point3<f32>, combatant_rigid_body_handle: RigidBodyHandle) -> MoveToLocationStrategy {
         MoveToLocationStrategy {
             can_perform: false,
             is_complete: false,
             target_location,
+            combatant_rigid_body_handle,
         }
     }
 }
@@ -27,18 +29,22 @@ impl Strategy for MoveToLocationStrategy {
         self.is_complete
     }
 
-    fn start(&mut self, _combatant: &mut CombatantObject, _game_state: &mut GameState) {
+    fn start(&mut self, agent: &mut dyn Agent, _game_state: &mut GameState) {
         // no-op
     }
 
-    fn tick(&mut self, combatant: &mut CombatantObject, game_state: &mut GameState) {
+    fn tick(
+        &mut self,
+        agent: &mut dyn Agent,
+        game_state: &mut GameState,
+    ) {
         if !self.can_perform {
             tracing::warn!("Trying to tick strategy but can_perform is false!");
             return;
         }
 
         let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
-        let combatant_rb = rigid_body_set.get_mut(combatant.rigid_body_handle().unwrap()).unwrap();
+        let combatant_rb = rigid_body_set.get_mut(self.combatant_rigid_body_handle).unwrap();
         let combatant_position = combatant_rb.translation();
 
         // ZJ-TODO: read this from combatant stats
@@ -69,7 +75,7 @@ impl Strategy for MoveToLocationStrategy {
         //combatant_rb.set_next_kinematic_translation(new_combatant_position);
     }
 
-    fn stop(&mut self, _combatant: &mut CombatantObject, _game_state: &mut GameState) {
+    fn stop(&mut self, agent: &mut dyn Agent, _game_state: &mut GameState) {
         // no-op
     }
 }

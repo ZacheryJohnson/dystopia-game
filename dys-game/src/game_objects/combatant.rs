@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use dys_world::{arena::plate::PlateId, combatant::combatant::Combatant};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 
-use crate::{ai::goap::agent::Agent, game_state::GameState, game_tick::GameTickNumber};
+use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner::Planner}, game_state::GameState, game_tick::GameTickNumber};
 
 use super::{ball::BallId, game_object::GameObject};
 
@@ -19,6 +19,7 @@ pub enum TeamAlignment {
     Away,
 }
 
+#[derive(Clone)]
 pub struct CombatantObject {
     pub id: CombatantId,
     pub combatant: Arc<Mutex<Combatant>>,
@@ -30,6 +31,9 @@ pub struct CombatantObject {
     is_dirty: bool,
     on_plate: Option<PlateId>,
     holding_ball: Option<BallId>,
+    current_action: Option<Action>,
+    plan: Vec<Action>,
+    beliefs: Vec<Belief>,
 }
 
 #[derive(Clone)]
@@ -65,7 +69,10 @@ impl CombatantObject {
             collider_handle,
             is_dirty: false,
             on_plate: None,
-            holding_ball: None
+            holding_ball: None,
+            current_action: None,
+            plan: vec![],
+            beliefs: vec![]
         }
     }
 
@@ -136,5 +143,39 @@ impl GameObject for CombatantObject {
 
     fn is_dirty(&self) -> bool {
         self.is_dirty
+    }
+}
+
+impl Agent for CombatantObject {
+    fn combatant(&self) -> &CombatantObject {
+        self
+    }
+
+    fn combatant_mut(&mut self) -> &mut CombatantObject {
+        self
+    }
+
+    fn beliefs(&self) -> &Vec<Belief> {
+        &self.beliefs
+    }
+
+    fn tick(&mut self, game_state: &mut GameState) {
+        if self.current_action.is_none() {
+            if self.plan.is_empty() {
+                self.plan = Planner::plan(self, game_state);
+            }
+
+            self.current_action = Some(self.plan.pop().expect("failed to pop action from plan"));
+        }
+
+        let mut action = self.current_action.take().expect("failed to get current action");
+
+        action.tick(self, game_state);
+
+        if !action.is_complete() {
+            self.current_action = Some(action);
+        } else {
+            self.beliefs.append(&mut action.completion_beliefs());
+        }
     }
 }

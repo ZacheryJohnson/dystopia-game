@@ -8,16 +8,20 @@ use rapier3d::prelude::*;
 use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType, plate::PlateObject}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::{config::SimulationConfig, simulate_tick}};
 
 pub type SeedT = [u8; 32];
+pub type CombatantsMapT = HashMap<CombatantId, CombatantObject>;
+pub type BallsMapT = HashMap<BallId, BallObject>;
+pub type PlatesMapT = HashMap<PlateId, PlateObject>;
+pub type CollidersMapT = HashMap<ColliderHandle, GameObjectType>;
 
 pub struct GameState {
     pub game: Game,
     pub seed: SeedT,
     pub rng: Pcg64,
     pub physics_sim: PhysicsSim,
-    pub combatants: HashMap<CombatantId, CombatantObject>,
-    pub balls: HashMap<BallId, BallObject>,
-    pub plates: HashMap<PlateId, PlateObject>,
-    pub active_colliders: HashMap<ColliderHandle, GameObjectType>,
+    pub combatants: CombatantsMapT,
+    pub balls: BallsMapT,
+    pub plates: PlatesMapT,
+    pub active_colliders: CollidersMapT,
     pub home_points: u16,
     pub away_points: u16,
     pub current_tick: GameTickNumber,

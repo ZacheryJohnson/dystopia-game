@@ -113,7 +113,9 @@ pub fn simulate_tick(game_state: &mut GameState) -> GameTick {
     let post_balls_timestamp = Instant::now();
 
     let pre_combatant_timestamp = Instant::now();
-    let combatant_simulation_events = simulate_combatants(game_state);
+    let mut combatants = game_state.combatants.clone();
+    let combatant_simulation_events = simulate_combatants(&mut combatants, game_state);
+    game_state.combatants = combatants;
     simulation_events.extend(combatant_simulation_events);
     let post_combatant_timestamp = Instant::now();
 

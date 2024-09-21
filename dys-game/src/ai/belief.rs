@@ -12,7 +12,7 @@ use crate::game_objects::{ball::BallId, combatant::CombatantId};
 /// However, the enemy combatant is not affected by or aware of that belief,
 /// and may choose to do any action.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub(super) enum Belief {
+pub enum Belief {
     SelfOnPlate,
     SelfHasBall,
     NearestEnemyCombatant { distance: OrderedFloat<f32>, combatant_id: CombatantId },

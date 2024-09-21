@@ -1,7 +1,7 @@
 use super::belief::Belief;
 
 /// Goals are a set of beliefs about the world.
-pub(super) struct Goal {
+pub struct Goal {
     /// Name of the goal.
     name: String,
 

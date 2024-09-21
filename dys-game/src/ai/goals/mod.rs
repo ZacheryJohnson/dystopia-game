@@ -1,9 +1,8 @@
-use crate::ai::goap::{belief::Belief, goal::GoalBuilder};
+use crate::ai::{belief::Belief, goal::GoalBuilder};
 
 use super::goal::Goal;
 
-pub(in crate::ai::goap)
-fn goals() -> Vec<Goal> {
+pub fn goals() -> Vec<Goal> {
     vec![
         GoalBuilder::new()
             .name("Score Points")
