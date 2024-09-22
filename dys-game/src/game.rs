@@ -102,6 +102,9 @@ impl Game {
     }
 }
 
+// Game simulations can be horrendously slow when run in debug mode because of the physics sim
+// In the current version of Rust, the below line effectively checks for Release build configurations
+#[cfg(not(debug_assertions))]
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
