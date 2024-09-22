@@ -288,10 +288,27 @@ impl ArenaNavmesh {
 
 #[cfg(test)]
 mod tests {
+    use nalgebra::Quaternion;
+
+    use crate::arena::barrier::{ArenaBarrier, BarrierPathing};
+
     use super::*;
 
+    const TEST_SQUARE_ARENA_SIZE: f32 = 100.0;
+
+    fn get_test_square_arena_at_origin() -> Arena {
+        Arena {
+            all_features: vec![
+                // Floor
+                Box::new(
+                    ArenaBarrier::new(vector![0.0, -5.0, 0.0], vector![TEST_SQUARE_ARENA_SIZE, 10.0, TEST_SQUARE_ARENA_SIZE], Quaternion::identity(), BarrierPathing::Enabled)
+                ),
+            ]
+        }
+    }
+
     fn test_defaults() -> (Arc<Mutex<Arena>>, ArenaNavmeshConfig) {
-        let test_arena = Arena::new_with_testing_defaults();
+        let test_arena = get_test_square_arena_at_origin();
         let test_config = ArenaNavmeshConfig {
             unit_resolution: 1.0,
         };
@@ -324,9 +341,10 @@ mod tests {
         let unit_resolution = test_config.unit_resolution;
 
         let navmesh = ArenaNavmesh::new_from(test_arena, test_config);
-        let closest_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![-1.0, 0.0, 1.3], unit_resolution);
-
-        assert!(closest_node.is_none());
+        assert!(ArenaNavmesh::get_closest_node(&navmesh.graph, point![-TEST_SQUARE_ARENA_SIZE - unit_resolution, 0.0, 0.0], unit_resolution).is_none());
+        assert!(ArenaNavmesh::get_closest_node(&navmesh.graph, point![TEST_SQUARE_ARENA_SIZE + unit_resolution, 0.0, 0.0], unit_resolution).is_none());
+        assert!(ArenaNavmesh::get_closest_node(&navmesh.graph, point![0.0, 0.0, -TEST_SQUARE_ARENA_SIZE - unit_resolution], unit_resolution).is_none());
+        assert!(ArenaNavmesh::get_closest_node(&navmesh.graph, point![0.0, 0.0, TEST_SQUARE_ARENA_SIZE + unit_resolution], unit_resolution).is_none());
     }
 
     #[test]
