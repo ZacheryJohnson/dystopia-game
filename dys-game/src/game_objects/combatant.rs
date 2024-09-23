@@ -24,24 +24,20 @@ pub struct CombatantObject {
     pub id: CombatantId,
     pub combatant: Arc<Mutex<Combatant>>,
     pub combatant_state: CombatantState,
-    pub state_tick_stamp: GameTickNumber,
     pub team: TeamAlignment,
     rigid_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
-    is_dirty: bool,
-    on_plate: Option<PlateId>,
-    holding_ball: Option<BallId>,
-    current_action: Option<Action>,
-    plan: Vec<Action>,
-    beliefs: Vec<Belief>,
 }
 
 #[derive(Clone)]
-pub enum CombatantState {
-    Idle,
-    MovingToBall { ball_id: BallId },
-    MovingToPlate { plate_id: PlateId },
-    RecoilingFromExplosion {},
+pub struct CombatantState {
+    current_action: Option<Action>,
+    plan: Vec<Action>,
+    beliefs: Vec<Belief>,
+
+    on_plate: Option<PlateId>,
+    holding_ball: Option<BallId>,
+    stunned_by_explosion: bool,
 }
 
 impl CombatantObject {
@@ -62,17 +58,17 @@ impl CombatantObject {
         CombatantObject {
             id,
             combatant,
-            combatant_state: CombatantState::Idle,
-            state_tick_stamp: 0,
+            combatant_state: CombatantState { 
+                on_plate: None,
+                holding_ball: None,
+                current_action: None,
+                plan: vec![],
+                beliefs: vec![],
+                stunned_by_explosion: false,
+            },
             team,
             rigid_body_handle,
             collider_handle,
-            is_dirty: false,
-            on_plate: None,
-            holding_ball: None,
-            current_action: None,
-            plan: vec![],
-            beliefs: vec![]
         }
     }
 
@@ -91,36 +87,37 @@ impl CombatantObject {
 
         // ZJ-TODO: apply damage to limbs, etc
         
-        self.change_state(current_tick, CombatantState::RecoilingFromExplosion {});
+        self.combatant_state.stunned_by_explosion = true;
     }
 
     pub fn set_on_plate(&mut self, plate_id: PlateId) {
-        self.on_plate = Some(plate_id);
+        self.combatant_state.on_plate = Some(plate_id);
     }
 
     pub fn set_off_plate(&mut self) {
-        self.on_plate = None;
+        self.combatant_state.on_plate = None;
     }
 
     pub fn plate(&self) -> Option<PlateId> {
-        self.on_plate
+        self.combatant_state.on_plate
     }
 
     pub fn pickup_ball(&mut self, ball_id: BallId) {
-        self.holding_ball = Some(ball_id);
+        self.combatant_state.holding_ball = Some(ball_id);
     }
 
     pub fn drop_ball(&mut self) {
-        self.holding_ball = None;
+        self.combatant_state.holding_ball = None;
     }
 
     pub fn ball(&self) -> Option<BallId> {
-        self.holding_ball
+        self.combatant_state.holding_ball
     }
 }
 
 impl GameObject for CombatantObject {
-    type GameStateT = CombatantState;
+    // ZJ-TODO: remove
+    type GameStateT = ();
 
     fn rigid_body_handle(&self) -> Option<RigidBodyHandle> {
         Some(self.rigid_body_handle)
@@ -131,18 +128,13 @@ impl GameObject for CombatantObject {
     }
     
     fn change_state(&mut self, current_tick: GameTickNumber, new_state: Self::GameStateT) -> (Self::GameStateT, GameTickNumber) {
-        let old_state = self.combatant_state.clone();
-        let old_tick_timestamp = self.state_tick_stamp;
-        
-        self.combatant_state = new_state;
-        self.state_tick_stamp = current_tick;
-        self.is_dirty = true;
-
-        (old_state, old_tick_timestamp)
+        // ZJ-TODO: remove
+        ((), 0)
     }
 
     fn is_dirty(&self) -> bool {
-        self.is_dirty
+        // ZJ-TODO: remove
+        false
     }
 }
 
@@ -156,34 +148,34 @@ impl Agent for CombatantObject {
     }
 
     fn beliefs(&self) -> &Vec<Belief> {
-        &self.beliefs
+        &self.combatant_state.beliefs
     }
 
     fn tick(&mut self, game_state: &mut GameState) -> Vec<SimulationEvent> {
         let mut events = vec![];
 
-        if self.current_action.is_none() {
-            if self.plan.is_empty() {
-                self.plan = Planner::plan(self, game_state);
+        if self.combatant_state.current_action.is_none() {
+            if self.combatant_state.plan.is_empty() {
+                self.combatant_state.plan = Planner::plan(self, game_state);
             }
 
-            let Some(next_action) = self.plan.pop() else {
+            let Some(next_action) = self.combatant_state.plan.pop() else {
                 return events;
             };
             
-            self.current_action = Some(next_action);
+            self.combatant_state.current_action = Some(next_action);
         }
 
-        let mut action = self.current_action.take().expect("failed to get current action");
+        let mut action = self.combatant_state.current_action.take().expect("failed to get current action");
 
         tracing::debug!("Executing action {}", action.name());
         events.append(&mut action.tick(self, game_state));
 
         if !action.is_complete() {
-            self.current_action = Some(action);
+            self.combatant_state.current_action = Some(action);
         } else {
             tracing::debug!("Action {} complete - rewarding completion beliefs", action.name());
-            self.beliefs.append(&mut action.completion_beliefs());
+            self.combatant_state.beliefs.append(&mut action.completion_beliefs());
         }
 
         events
