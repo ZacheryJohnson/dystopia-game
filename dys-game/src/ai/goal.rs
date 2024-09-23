@@ -17,10 +17,6 @@ pub struct Goal {
 }
 
 impl Goal {
-    pub fn name(&self) -> String {
-        self.name.clone()
-    }
-
     pub fn priority(&self) -> u32 {
         self.priority
     }
@@ -43,10 +39,6 @@ impl GoalBuilder {
                 desired_beliefs: vec![]
             },  
         }
-    }
-
-    pub(super) fn empty() -> Goal {
-        GoalBuilder::new().build()
     }
 
     pub(super) fn build(self) -> Goal {
