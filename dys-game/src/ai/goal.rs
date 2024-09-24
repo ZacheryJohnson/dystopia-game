@@ -17,6 +17,10 @@ pub struct Goal {
 }
 
 impl Goal {
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+
     pub fn priority(&self) -> u32 {
         self.priority
     }

@@ -3,7 +3,7 @@ use crate::stat::stat::{Stat, StatType};
 use crate::stat::stat_display::StatDisplay;
 use crate::stat::stat_source::StatSource;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum LimbType {
     Head,
     Eye,
@@ -19,7 +19,7 @@ pub enum LimbType {
     Toe
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum LimbModifierType {
     Regular,
     Giant,
@@ -29,13 +29,13 @@ pub enum LimbModifierType {
     // etc
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ModifierAcquisitionMethod {
     Inherent,
     GameInjury,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LimbModifier {
     pub modifier_type: LimbModifierType,
     pub acquisition: ModifierAcquisitionMethod,
@@ -54,7 +54,7 @@ impl StatSource for LimbModifier {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Limb {
     pub limb_type: LimbType,
     pub modifiers: Vec<LimbModifier>,

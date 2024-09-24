@@ -1,9 +1,9 @@
-use std::sync::{Arc, Mutex};
+use std::{fmt::Debug, sync::{Arc, Mutex}};
 
 use dys_world::{arena::plate::PlateId, combatant::combatant::Combatant};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 
-use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner::Planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
+use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 
 use super::{ball::BallId, game_object::GameObject};
 
@@ -25,11 +25,11 @@ pub struct CombatantObject {
     pub combatant: Arc<Mutex<Combatant>>,
     pub combatant_state: CombatantState,
     pub team: TeamAlignment,
-    rigid_body_handle: RigidBodyHandle,
-    collider_handle: ColliderHandle,
+    pub rigid_body_handle: RigidBodyHandle,
+    pub collider_handle: ColliderHandle,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default, Debug)]
 pub struct CombatantState {
     current_action: Option<Action>,
     plan: Vec<Action>,
@@ -151,12 +151,13 @@ impl Agent for CombatantObject {
         &self.combatant_state.beliefs
     }
 
+    #[tracing::instrument(name = "agent::tick", fields(combatant_id = self.id), skip_all, level = "trace")]
     fn tick(&mut self, game_state: &mut GameState) -> Vec<SimulationEvent> {
         let mut events = vec![];
 
         if self.combatant_state.current_action.is_none() {
             if self.combatant_state.plan.is_empty() {
-                self.combatant_state.plan = Planner::plan(self, game_state);
+                self.combatant_state.plan = planner::plan(self, game_state);
             }
 
             let Some(next_action) = self.combatant_state.plan.pop() else {
@@ -179,5 +180,18 @@ impl Agent for CombatantObject {
         }
 
         events
+    }
+}
+
+impl Debug for CombatantObject {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CombatantObject")
+            .field("id", &self.id)
+            .field("combatant", &self.combatant.lock().unwrap())
+            .field("combatant_state", &self.combatant_state)
+            .field("team", &self.team)
+            .field("rigid_body_handle", &self.rigid_body_handle)
+            .field("collider_handle", &self.collider_handle)
+            .finish()
     }
 }

@@ -3,6 +3,10 @@ use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::game_object::G
 pub(in crate::ai) struct NoopStrategy;
 
 impl Strategy for NoopStrategy {
+    fn name(&self) -> String {
+        String::from("Noop")
+    }
+
     fn can_perform(&self) -> bool {
         true
     }

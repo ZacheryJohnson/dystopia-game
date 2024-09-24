@@ -21,6 +21,10 @@ impl MoveToLocationStrategy {
 }
 
 impl Strategy for MoveToLocationStrategy {
+    fn name(&self) -> String {
+        String::from("Move to Location")
+    }
+
     fn can_perform(&self) -> bool {
         self.can_perform
     }
@@ -29,6 +33,7 @@ impl Strategy for MoveToLocationStrategy {
         self.is_complete
     }
 
+    #[tracing::instrument(name = "move_to_location::tick", fields(combatant_id = agent.combatant().id), skip_all, level = "trace")]
     fn tick(
         &mut self,
         agent: &mut dyn Agent,

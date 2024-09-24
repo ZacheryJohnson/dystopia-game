@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 
 use crate::game_state::GameState;
@@ -51,6 +52,7 @@ impl Action {
         self.strategy.lock().unwrap().is_complete()
     }
 
+    #[tracing::instrument(name = "action::tick", fields(combatant_id = agent.combatant().id), skip_all, level = "trace")]
     pub fn tick(
         &mut self,
         agent: &mut impl Agent,
@@ -69,6 +71,20 @@ impl Action {
         self.completion_beliefs.clone()
     }
 }
+
+impl Debug for Action {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Action")
+            .field("name", &self.name)
+            .field("cost", &self.cost)
+            .field("strategy", &self.strategy.lock().unwrap().name())
+            .field("prerequisite_beliefs", &self.prerequisite_beliefs)
+            .field("prohibited_beliefs", &self.prohibited_beliefs)
+            .field("completion_beliefs", &self.completion_beliefs)
+            .finish()
+    }
+}
+
 
 pub(super) struct ActionBuilder {
     action: Action,

@@ -1956,6 +1956,7 @@ dependencies = [
  "petgraph",
  "rand",
  "rapier3d",
+ "tracing",
 ]
 
 [[package]]

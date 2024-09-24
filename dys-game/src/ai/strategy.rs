@@ -3,6 +3,8 @@ use crate::{game_state::GameState, simulation::simulation_event::SimulationEvent
 use super::agent::Agent;
 
 pub trait Strategy {
+    fn name(&self) -> String;
+
     /// Can this strategy be performed given the current state of the world?
     fn can_perform(&self) -> bool;
 

@@ -215,7 +215,8 @@ impl ArenaNavmesh {
             .map(|node| node.as_point())
             .collect()
     }
-
+    
+    #[tracing::instrument(name = "arenanavmesh::get_next_point", skip(self), level = "trace")]
     pub fn get_next_point(&self, from: Point<f32>, to: Point<f32>) -> Option<Point<f32>> {
         // ZJ-TODO: refactor. We shouldn't assume ground = 0.0 - what if there's ramps?
         let grounded_from = point![from.x, 0.0, from.z];
