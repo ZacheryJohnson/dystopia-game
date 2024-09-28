@@ -1,4 +1,29 @@
-use rapier3d::{na::Vector3, prelude::*};
+use rapier3d::{na::{Point3, Vector3}, prelude::*};
+
+use crate::{ai::{agent::Agent, belief::Belief, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
+
+pub struct ThrowBallAtTargetLocationStrategy {
+    target_location: Point3<f32>,
+}
+
+impl Strategy for ThrowBallAtTargetLocationStrategy {
+    fn name(&self) -> String {
+        String::from("Throw Ball at Target Location")
+    }
+
+    fn can_perform(&self, owned_beliefs: &[Belief]) -> bool {
+        owned_beliefs.contains(&Belief::SelfHasBall)
+    }
+
+    fn is_complete(&self) -> bool {
+        todo!()
+    }
+
+    fn tick(&mut self, agent: &mut dyn Agent, game_state: &mut GameState) -> Vec<SimulationEvent> {
+        // ZJ-TODO: wait for some delay to simulate a "windup" for a throw - should we allow movement in a direction (eg crow hop)?
+        todo!()
+    }
+}
 
 /// Returns a vector aiming towards a given target from a starting position. This function does **not** account for rotational velocity, and does not support balls curving through the air.
 /// 
@@ -9,7 +34,7 @@ use rapier3d::{na::Vector3, prelude::*};
 /// * `start_pos` - the world position where the throw will originate from
 /// * `throw_speed_units_per_sec` - how many in-world non-vertical units the throw will travel per second, ignoring gravity.
 /// * `accuracy` - how accurate the throw is, in range `[0.0, 1.0]`, where 1.0 is perfectly accurate and 0.0 will go in a completely random direction.
-pub fn get_throw_vector_towards_target(
+fn get_throw_vector_towards_target(
     target_pos: &Vector3<f32>,
     start_pos: &Vector3<f32>,
     throw_speed_units_per_sec: f32,

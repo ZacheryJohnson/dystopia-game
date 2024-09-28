@@ -95,6 +95,15 @@ impl ArenaNavmesh {
             .iter()
             .filter(|filter| filter.pathing_type() == NavmeshPathingType::Generate);
 
+        let unpathable_arena_shapes = arena
+            .all_features()
+            .iter()
+            .filter(|filter| filter.pathing_type() == NavmeshPathingType::Block)
+            .map(|feature| {
+                (feature.shape().expect("failed to get unpathable feature shape"), Isometry::new(feature.origin().to_owned(), vector![0., 0., 0.]))
+            })
+            .collect::<Vec<_>>();
+
         let mut graph = UnGraphMap::<ArenaNavmeshNode, f32>::new();
 
         // Add all pathable features
@@ -123,6 +132,19 @@ impl ArenaNavmesh {
                     while curr_y >= min_y {
                         let curr_point = point![curr_x, curr_y, curr_z];
                         if shape.contains_point(&shape_isometry, &curr_point) {
+                            // If any of our unpathable geometry is in the way, skip the potential node instead
+                            let mut is_unpathable = false;
+                            for (unpathable_shape, unpathable_isometry) in &unpathable_arena_shapes {
+                                if unpathable_shape.contains_point(&unpathable_isometry, &curr_point) {
+                                    is_unpathable = true;
+                                    break;
+                                }
+                            }
+
+                            if is_unpathable {
+                                continue;
+                            }
+
                             let node = ArenaNavmeshNode::from_point(curr_point);
                             graph.add_node(node);
 
@@ -135,51 +157,7 @@ impl ArenaNavmesh {
                 }                 
                 curr_z += config.unit_resolution;
             }
-        }
-
-        // Remove nodes where unpathable features exist
-        let unpathable_arena_features = arena
-            .all_features()
-            .iter()
-            .filter(|filter| filter.pathing_type() == NavmeshPathingType::Block);
-        for feature in unpathable_arena_features {
-            let origin = feature.origin();
-            let Some(shape) = feature.shape() else {
-                continue;
-            };
-
-            let shape_isometry = Isometry::new(origin.to_owned(), vector![0., 0., 0.]);
-            let aabb = shape.compute_aabb(&shape_isometry);
-            let vertices = aabb.vertices();
-
-            let min_x = vertices.iter().min_by(|first, second| first.x.partial_cmp(&second.x).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get min_x").x;
-            let max_x = vertices.iter().max_by(|first, second| first.x.partial_cmp(&second.x).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get max_x").x;
-            let min_y = vertices.iter().min_by(|first, second| first.y.partial_cmp(&second.y).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get min_y").y;
-            let max_y = vertices.iter().max_by(|first, second| first.y.partial_cmp(&second.y).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get max_y").y;
-            let min_z = vertices.iter().min_by(|first, second| first.z.partial_cmp(&second.z).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get min_z").z;
-            let max_z = vertices.iter().max_by(|first, second| first.z.partial_cmp(&second.z).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get max_z").z;
-
-            let mut curr_z = min_z;
-            while curr_z <= max_z {
-                let mut curr_x = min_x;
-                while curr_x <= max_x {
-                    let mut curr_y = min_y;
-                    while curr_y <= max_y {
-                        let curr_point = point![curr_x, curr_y, curr_z];
-                        if shape.contains_point(&shape_isometry, &curr_point) {
-                            if let Some(node) = ArenaNavmesh::get_closest_node(&graph, curr_point, config.unit_resolution) {
-                                graph.remove_node(node);
-                            }
-                        }
-
-                        curr_y += config.unit_resolution;
-                    }
-                    curr_x += config.unit_resolution;
-                }                 
-                curr_z += config.unit_resolution;
-            }
-        }
-        
+        }        
 
         // Add edges between nodes
         let mut new_edges = vec![];

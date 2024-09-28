@@ -8,4 +8,3 @@ pub mod simulation;
 pub mod physics_sim;
 
 mod ai;
-mod targeting;
