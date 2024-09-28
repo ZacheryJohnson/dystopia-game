@@ -35,9 +35,9 @@ pub struct CombatantState {
     plan: Vec<Action>,
     beliefs: Vec<Belief>,
 
-    on_plate: Option<PlateId>,
-    holding_ball: Option<BallId>,
-    stunned_by_explosion: bool,
+    pub on_plate: Option<PlateId>,
+    pub holding_ball: Option<BallId>,
+    pub stunned_by_explosion: bool,
 }
 
 impl CombatantObject {
@@ -140,6 +140,10 @@ impl GameObject for CombatantObject {
 
 impl Agent for CombatantObject {
     fn combatant(&self) -> &CombatantObject {
+        self
+    }
+
+    fn combatant_mut(&mut self) -> &mut CombatantObject {
         self
     }
 

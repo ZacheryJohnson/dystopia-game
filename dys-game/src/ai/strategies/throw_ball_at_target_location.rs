@@ -1,14 +1,24 @@
-use rapier3d::{na::{Point3, Vector3}, prelude::*};
+use rapier3d::{na::Vector3, prelude::*};
 
-use crate::{ai::{agent::Agent, belief::Belief, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
+use crate::{ai::{agent::Agent, belief::Belief, strategy::Strategy}, game_objects::{combatant::CombatantId, game_object::GameObject}, game_state::{GameState}, simulation::simulation_event::SimulationEvent};
 
-pub struct ThrowBallAtTargetLocationStrategy {
-    target_location: Point3<f32>,
+pub struct ThrowBallAtTargetStrategy {
+    target: CombatantId,
+    is_complete: bool,
 }
 
-impl Strategy for ThrowBallAtTargetLocationStrategy {
+impl ThrowBallAtTargetStrategy {
+    pub fn new(target_combatant: CombatantId) -> ThrowBallAtTargetStrategy {
+        ThrowBallAtTargetStrategy {
+            target: target_combatant,
+            is_complete: false,
+        }
+    }
+}
+
+impl Strategy for ThrowBallAtTargetStrategy {
     fn name(&self) -> String {
-        String::from("Throw Ball at Target Location")
+        String::from("Throw Ball at Target")
     }
 
     fn can_perform(&self, owned_beliefs: &[Belief]) -> bool {
@@ -16,12 +26,56 @@ impl Strategy for ThrowBallAtTargetLocationStrategy {
     }
 
     fn is_complete(&self) -> bool {
-        todo!()
+        self.is_complete
     }
 
-    fn tick(&mut self, agent: &mut dyn Agent, game_state: &mut GameState) -> Vec<SimulationEvent> {
+    fn tick(
+        &mut self,
+        agent: &mut dyn Agent,
+        game_state: &mut GameState
+    ) -> Vec<SimulationEvent> {        
+        // Agents may believe that they're holding a ball, but not actually holding a ball per the simulation
+        // If the authoritative game state says they're not holding a ball, consider this strategy complete
+        // ZJ-TODO: delay first?
+        let Some(ball_id) = agent.combatant_mut().combatant_state.holding_ball else {
+            self.is_complete = true;
+            return vec![];
+        };
+
+        let y_axis_gravity = game_state.physics_sim.gravity_y();
+        let target_object = game_state.combatants.get(&self.target).unwrap();
+        let is_same_team = agent.combatant().team == target_object.team;
+
+        let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+        
+        let target_pos = rigid_body_set.get(target_object.rigid_body_handle).unwrap().translation().to_owned();
+
+        let ball_object = game_state.balls.get(&ball_id).unwrap();
+        let ball_rb = rigid_body_set.get_mut(ball_object.rigid_body_handle().unwrap()).unwrap();
+
+        let throw_speed_units_per_sec_hack = 30.0_f32;
+        let accuracy_hack = 1.0_f32;
+
+        let ball_impulse = get_throw_vector_towards_target(
+            &target_pos, 
+            ball_rb.translation(),
+            throw_speed_units_per_sec_hack,
+            accuracy_hack,
+            y_axis_gravity
+        );
+
         // ZJ-TODO: wait for some delay to simulate a "windup" for a throw - should we allow movement in a direction (eg crow hop)?
-        todo!()
+
+        ball_rb.apply_impulse(ball_impulse, true);
+        agent.combatant_mut().combatant_state.holding_ball = None;
+
+        vec![
+            if is_same_team {
+                SimulationEvent::BallThrownAtTeammate { thrower_id: agent.combatant().id, teammate_id: self.target, ball_id }                
+            } else {
+                SimulationEvent::BallThrownAtEnemy { thrower_id: agent.combatant().id, enemy_id: self.target, ball_id }
+            }
+        ]
     }
 }
 

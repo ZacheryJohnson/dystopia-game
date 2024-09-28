@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::{ai::{action::ActionBuilder, belief::Belief, strategies::move_to_location::MoveToLocationStrategy}, game_objects::{combatant::CombatantObject, game_object::GameObject}, game_state::GameState};
 
-use super::action::Action;
+use super::{action::Action, strategies::throw_ball_at_target_location::ThrowBallAtTargetStrategy};
 
 /// ZJ-TODO: HACK: this value should be passed in through simulation settings.
 /// This value allows us to make all movement actions cheaper/more expensive,
@@ -25,6 +25,24 @@ pub fn actions(combatant: &CombatantObject, game_state: &GameState) -> Vec<Actio
                 ))
                 .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (plate_location - combatant_pos).magnitude() / combatant.combatant.lock().unwrap().move_speed())
                 .completion(vec![Belief::SelfOnPlate])
+                .build()
+        );
+    }
+
+    for (combatant_id, _) in &game_state.combatants {
+        // Don't try to throw a ball at ourselves
+        if *combatant_id == combatant.id {
+            continue;
+        }
+
+        actions.push(
+            ActionBuilder::new()
+                .name(format!("Throw Ball at/to Combatant {}", combatant_id))
+                .strategy(Arc::new(Mutex::new(
+                    ThrowBallAtTargetStrategy::new(*combatant_id)
+                )))
+                .cost(10.0_f32 /* ZJ-TODO */)
+                .prerequisites(vec![Belief::SelfHasBall])
                 .build()
         );
     }
