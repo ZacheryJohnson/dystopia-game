@@ -1,6 +1,7 @@
 use std::fmt::Display;
 use std::sync::{Arc, Mutex};
 
+use nalgebra::Vector3;
 use ordered_float::{self, OrderedFloat};
 
 use petgraph::algo;
@@ -30,14 +31,14 @@ impl Default for ArenaNavmeshConfig {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct ArenaNavmeshNode {
+pub struct ArenaNavmeshNode {
     x_pos: OrderedFloat<f32>,
     y_pos: OrderedFloat<f32>,
     z_pos: OrderedFloat<f32>,
 }
 
 impl ArenaNavmeshNode {
-    fn from_point(point: Point<f32>) -> ArenaNavmeshNode {
+    pub fn from_point(point: Point<f32>) -> ArenaNavmeshNode {
         ArenaNavmeshNode {
             x_pos: OrderedFloat::from(point.x),
             y_pos: OrderedFloat::from(point.y),
@@ -45,14 +46,37 @@ impl ArenaNavmeshNode {
         }
     }
 
-    fn as_point(&self) -> Point<f32> {
+    pub fn as_point(&self) -> Point<f32> {
         point![*self.x_pos, *self.y_pos, *self.z_pos]
+    }
+
+    pub fn as_vector(&self) -> Vector3<f32> {
+        vector![*self.x_pos, *self.y_pos, *self.z_pos]
     }
 }
 
 impl Display for ArenaNavmeshNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(format!("({}, {}, {})", self.x_pos, self.y_pos, self.z_pos).as_str())
+    }
+}
+
+pub struct ArenaNavmeshPath {
+    path: Vec<ArenaNavmeshNode>
+}
+
+impl ArenaNavmeshPath {
+    pub fn new(mut path: Vec<ArenaNavmeshNode>) -> ArenaNavmeshPath {
+        path.reverse();
+        ArenaNavmeshPath { path }
+    }
+
+    pub fn next(&mut self) -> Option<ArenaNavmeshNode> {
+        self.path.pop()
+    }
+
+    pub fn len(&self) -> usize {
+        self.path.len()
     }
 }
 
@@ -196,43 +220,25 @@ impl ArenaNavmesh {
     }
 
     /// Attempts to create a path from one point to another point. Returns an empty vector if a path cannot be made.
-    pub fn create_path(&self, from: Point<f32>, to: Point<f32>) -> Vec<Point<f32>> {
+    pub fn create_path(&self, from: Point<f32>, to: Point<f32>) -> Option<ArenaNavmeshPath> {
+        // ZJ-TODO: HACK: grounding the coordinates to 0.0 is sad and bad
+        let from = point![from.x, 0.0, from.z];
+        let to = point![to.x, 0.0, to.z];
+
         let start_node = ArenaNavmesh::get_closest_node(&self.graph, from, self.config.unit_resolution);
         let end_node = ArenaNavmesh::get_closest_node(&self.graph, to, self.config.unit_resolution);
         
         let Some(start) = start_node else {
-            return vec![];
+            return None;
         };
 
         let Some(end) = end_node else {
-            return vec![];
+            return None;
         };
 
         let node_path = self.get_path_between_nodes(start, end);
 
-        node_path
-            .iter()
-            .map(|node| node.as_point())
-            .collect()
-    }
-    
-    #[tracing::instrument(name = "arenanavmesh::get_next_point", skip(self), level = "trace")]
-    pub fn get_next_point(&self, from: Point<f32>, to: Point<f32>) -> Option<Point<f32>> {
-        // ZJ-TODO: refactor. We shouldn't assume ground = 0.0 - what if there's ramps?
-        let grounded_from = point![from.x, 0.0, from.z];
-        let grounded_to = point![to.x, 0.0, to.z];
-
-        // ZJ-TODO: refactor - we shouldn't reconstruct a new path each time, we should do it once and cache it
-        let path = self.create_path(grounded_from, grounded_to);
-        if path.len() < 2 {
-            return None;
-        }
-
-        Some(path.iter()
-            .skip(1)
-            .next()
-            .unwrap()
-            .to_owned())
+        Some(ArenaNavmeshPath::new(node_path))
     }
 
     fn get_path_between_nodes(

@@ -1,4 +1,4 @@
-use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::game_object::GameObject, game_state::GameState, simulation::simulation_event::SimulationEvent};
+use crate::{ai::{agent::Agent, belief::Belief, strategy::Strategy}, game_objects::game_object::GameObject, game_state::GameState, simulation::simulation_event::SimulationEvent};
 
 pub(in crate::ai) struct NoopStrategy;
 
@@ -7,7 +7,7 @@ impl Strategy for NoopStrategy {
         String::from("Noop")
     }
 
-    fn can_perform(&self) -> bool {
+    fn can_perform(&self, _: &[Belief]) -> bool {
         true
     }
 

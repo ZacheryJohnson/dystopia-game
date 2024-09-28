@@ -58,11 +58,7 @@ impl Agent for TestAgent {
     fn combatant(&self) -> &crate::game_objects::combatant::CombatantObject {
         &self.combatant
     }
-
-    fn combatant_mut(&mut self) -> &mut crate::game_objects::combatant::CombatantObject {
-        &mut self.combatant
-    }
-
+    
     fn beliefs(&self) -> &Vec<super::belief::Belief> {
         &self.beliefs
     }

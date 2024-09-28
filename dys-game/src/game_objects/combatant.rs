@@ -143,10 +143,6 @@ impl Agent for CombatantObject {
         self
     }
 
-    fn combatant_mut(&mut self) -> &mut CombatantObject {
-        self
-    }
-
     fn beliefs(&self) -> &Vec<Belief> {
         &self.combatant_state.beliefs
     }

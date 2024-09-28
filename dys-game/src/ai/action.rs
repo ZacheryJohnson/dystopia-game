@@ -59,7 +59,7 @@ impl Action {
         game_state: &mut GameState,
     ) -> Vec<SimulationEvent> {
         let mut strategy = self.strategy.lock().unwrap();
-        if !strategy.can_perform() {
+        if !strategy.can_perform(agent.beliefs()) {
             tracing::debug!("Cannot perform action {}", self.name());
             return vec![];
         }
@@ -114,6 +114,11 @@ impl ActionBuilder {
 
     pub fn name(mut self, name: impl Into<String>) -> ActionBuilder {
         self.action.name = name.into();
+        self
+    }
+
+    pub fn cost(mut self, cost: f32) -> ActionBuilder {
+        self.action.cost = cost;
         self
     }
 
