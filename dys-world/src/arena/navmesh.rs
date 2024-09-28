@@ -1,7 +1,7 @@
 use std::fmt::Display;
 use std::sync::{Arc, Mutex};
 
-use nalgebra::Vector3;
+use nalgebra::{Point3, Vector3};
 use ordered_float::{self, OrderedFloat};
 
 use petgraph::algo;
@@ -86,8 +86,6 @@ pub struct ArenaNavmesh {
 }
 
 impl ArenaNavmesh {
-    // ZJ-TODO: refactor
-    //          it's costly to re-iterate over all nodes to add edges
     pub fn new_from(arena: Arc<Mutex<Arena>>, config: ArenaNavmeshConfig) -> ArenaNavmesh {
         let arena = arena.lock().unwrap();
         let pathable_arena_features = arena
@@ -117,12 +115,14 @@ impl ArenaNavmesh {
             let aabb = shape.compute_aabb(&shape_isometry);
             let vertices = aabb.vertices();
 
-            let min_x = vertices.iter().min_by(|first, second| first.x.partial_cmp(&second.x).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get min_x").x;
-            let max_x = vertices.iter().max_by(|first, second| first.x.partial_cmp(&second.x).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get max_x").x;
-            let min_y = vertices.iter().min_by(|first, second| first.y.partial_cmp(&second.y).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get min_y").y;
-            let max_y = vertices.iter().max_by(|first, second| first.y.partial_cmp(&second.y).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get max_y").y;
-            let min_z = vertices.iter().min_by(|first, second| first.z.partial_cmp(&second.z).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get min_z").z;
-            let max_z = vertices.iter().max_by(|first, second| first.z.partial_cmp(&second.z).unwrap_or(std::cmp::Ordering::Equal)).expect("failed to get max_z").z;
+            let comparator_fn = |first: &&Point3<f32>, second: &&Point3<f32>| first.x.partial_cmp(&second.x).unwrap_or(std::cmp::Ordering::Equal);
+
+            let min_x = vertices.iter().min_by(comparator_fn).expect("failed to get min_x").x;
+            let max_x = vertices.iter().max_by(comparator_fn).expect("failed to get max_x").x;
+            let min_y = vertices.iter().min_by(comparator_fn).expect("failed to get min_y").y;
+            let max_y = vertices.iter().max_by(comparator_fn).expect("failed to get max_y").y;
+            let min_z = vertices.iter().min_by(comparator_fn).expect("failed to get min_z").z;
+            let max_z = vertices.iter().max_by(comparator_fn).expect("failed to get max_z").z;
 
             let mut curr_z = min_z;
             while curr_z <= max_z {
@@ -141,14 +141,12 @@ impl ArenaNavmesh {
                                 }
                             }
 
-                            if is_unpathable {
-                                continue;
+                            if !is_unpathable {
+                                let node = ArenaNavmeshNode::from_point(curr_point);
+                                graph.add_node(node);
+
+                                break;
                             }
-
-                            let node = ArenaNavmeshNode::from_point(curr_point);
-                            graph.add_node(node);
-
-                            break;
                         }
 
                         curr_y -= config.unit_resolution;
