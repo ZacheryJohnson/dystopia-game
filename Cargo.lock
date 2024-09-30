@@ -1917,6 +1917,7 @@ dependencies = [
  "tower",
  "tower-http",
  "tracing",
+ "tracing-bunyan-formatter",
  "tracing-subscriber",
 ]
 
@@ -1931,6 +1932,7 @@ dependencies = [
  "tower",
  "tower-http",
  "tracing",
+ "tracing-bunyan-formatter",
  "tracing-subscriber",
 ]
 

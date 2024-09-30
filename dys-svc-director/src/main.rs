@@ -10,6 +10,9 @@ use dys_world::schedule::calendar::{Date, Month};
 use dys_world::schedule::schedule_game::ScheduleGame;
 use dys_world::world::World;
 use serde::Serialize;
+use tracing::subscriber::set_global_default;
+use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
+use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 
 use rand::{thread_rng, RngCore};
 use rand::seq::SliceRandom;
@@ -30,9 +33,25 @@ struct WorldState {
     match_results: Arc<RwLock<Vec<MatchResult>>>,
 }
 
+fn register_tracing_subscriber() {
+    let env_filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("info"));
+    
+    let format = tracing_subscriber::fmt::format().json();
+    let fmt_layer = tracing_subscriber::fmt::layer().event_format(format);
+
+    let subscriber = Registry::default()
+        .with(env_filter)
+        .with(JsonStorageLayer)
+        .with(fmt_layer);
+    
+    set_global_default(subscriber).expect("Failed to set subscriber");
+}
+
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt().json().init();
+    register_tracing_subscriber();
+
     tracing::info!("Starting server...");
 
     let game_world = Arc::new(Mutex::new(dys_game::generator::Generator::new().generate_world()));
@@ -121,6 +140,7 @@ struct LatestGamesResponse {
     match_results: Vec<MatchResult>,
 }
 
+#[tracing::instrument(skip_all)]
 async fn latest_games(State(world_state): State<WorldState>) -> Response {
     tracing::info!("Trying to acquire match results read-lock...");
     let match_results = world_state.match_results.read().unwrap().to_owned();

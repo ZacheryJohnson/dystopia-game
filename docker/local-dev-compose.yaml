@@ -1,0 +1,17 @@
+services:
+  director:  
+    container_name: "director"
+    build:
+      context: ..
+      dockerfile: docker/dys-svc-director.Dockerfile
+    ports:
+    - "6081:6081"
+  webapp:
+    container_name: "webapp"
+    build:
+      context: ..
+      dockerfile: docker/dys-svc-webapp.Dockerfile
+    environment:
+      SVC_DIRECTOR_API_BASE_URI: http://director:6081
+    ports:
+    - "6080:6080"
