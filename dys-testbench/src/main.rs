@@ -1,28 +1,10 @@
-use std::sync::{Arc, Mutex};
+use std::{sync::{Arc, Mutex}, time::Duration};
 use dys_game::{game::Game, game_log::GameLog, generator::Generator};
 use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}};
-use tracing::subscriber::set_global_default;
-use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
-use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 
-fn register_tracing_subscriber() {
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
-    let formatting_layer = BunyanFormattingLayer::new(
-        "dystopia".into(), 
-        std::io::stdout
-    );
-    
-    let subscriber = Registry::default()
-        .with(env_filter)
-        .with(JsonStorageLayer)
-        .with(formatting_layer);
-    
-    set_global_default(subscriber).expect("Failed to set subscriber");
-}
-
-fn main() {
-    register_tracing_subscriber();
+#[tokio::main]
+async fn main() {
+    dys_observability::logger::initialize("testbench");
 
     let generator = Generator::new();
     let world = generator.generate_world();
@@ -54,4 +36,6 @@ fn main() {
             tracing::info!("\t{:?}", evt);
         }
     }
+
+    tokio::time::sleep(Duration::from_secs(1)).await;
 }

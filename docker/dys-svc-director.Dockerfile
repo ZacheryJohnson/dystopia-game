@@ -12,6 +12,7 @@ RUN apt install -y g++ pkg-config libx11-dev libasound2-dev libudev-dev
 COPY $WORKING_DIR/Cargo.toml /opt/dystopia/Cargo.toml
 COPY $WORKING_DIR/dys-svc-director/ /opt/dystopia/dys-svc-director/
 COPY $WORKING_DIR/dys-game/ /opt/dystopia/dys-game/
+COPY $WORKING_DIR/dys-observability/ /opt/dystopia/dys-observability/
 COPY $WORKING_DIR/dys-world/ /opt/dystopia/dys-world/
 
 WORKDIR /opt/dystopia/dys-svc-director

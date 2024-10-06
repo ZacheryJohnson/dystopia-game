@@ -7,6 +7,8 @@ edition = "2021"
 build-deps.workspace = true
 
 [dependencies]
+dys-observability = { path = "../dys-observability" }
+
 axum.workspace = true
 reqwest.workspace = true
 tokio.workspace = true

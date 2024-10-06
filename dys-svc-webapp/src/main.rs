@@ -1,11 +1,9 @@
 use std::convert::Infallible;
 
 use axum::{extract::Request, http::{header, HeaderValue, StatusCode}, middleware::{self, Next}, response::{IntoResponse, Response}, Router};
-use tower::{service_fn, ServiceBuilder};
-use tower_http::services::{ServeDir, ServeFile};
-use tracing::subscriber::set_global_default;
-use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
-use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
+use dys_observability::middleware::{make_span, map_trace_context, record_trace_id};
+use tower::ServiceBuilder;
+use tower_http::{services::{ServeDir, ServeFile}, trace::TraceLayer};
 
 const DEFAULT_DIST_PATH: &'static str = "dys-svc-webapp/frontend/dist";
 
@@ -18,13 +16,13 @@ async fn static_cache_control(request: Request, next: Next) -> Response {
     response
 }
 
-#[tracing::instrument(skip_all)]
+#[tracing::instrument]
 async fn query_latest_games(_: Request) -> Result<Response, Infallible> {
     let director_api_base_uri = std::env::var("SVC_DIRECTOR_API_BASE_URI").unwrap_or(String::from("http://localhost:6081"));
     let request_url = format!("{director_api_base_uri}/latest_games");
 
     tracing::info!("Requesting latest games from director...");
-    let maybe_response = reqwest::get(request_url).await;
+    let maybe_response = dys_observability::reqwest::get(request_url).await;
     if let Err(err) = maybe_response {
         tracing::warn!("Failed to get latest_games from {}: {err}", director_api_base_uri);
         return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get latest_games").into_response());
@@ -42,24 +40,9 @@ async fn query_latest_games(_: Request) -> Result<Response, Infallible> {
     Ok(json.into_response())
 }
 
-fn register_tracing_subscriber() {
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
-    
-    let format = tracing_subscriber::fmt::format().json();
-    let fmt_layer = tracing_subscriber::fmt::layer().event_format(format);
-
-    let subscriber = Registry::default()
-        .with(env_filter)
-        .with(JsonStorageLayer)
-        .with(fmt_layer);
-    
-    set_global_default(subscriber).expect("Failed to set subscriber");
-}
-
 #[tokio::main]
 async fn main() {
-    register_tracing_subscriber();
+    dys_observability::logger::initialize("webapp");
 
     tracing::info!("Starting server...");
     let dist_path = std::env::var("DIST_PATH").unwrap_or(DEFAULT_DIST_PATH.to_string());
@@ -68,7 +51,11 @@ async fn main() {
     let app = Router::new()
         .nest_service(
             "/api/latest_games",
-            service_fn(query_latest_games)
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
+                .map_request(map_trace_context)    
+                .map_request(record_trace_id)    
+                .service_fn(query_latest_games)
         )
         .nest_service(
             "/assets",
