@@ -53,6 +53,23 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
 echo "Sleeping 10 seconds to allow ingress-nginx resources to be created..."
 sleep 10s
 
+# Grafana
+GRAFANA_NAMESPACE=grafana-alloy
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+kubectl create namespace $GRAFANA_NAMESPACE
+
+read -p "Enter Grafana cloud user (all numeric): " GRAFANA_CLOUD_USER
+read -p "Enter Grafana API token: " GRAFANA_CLOUD_API_TOKEN
+export GRAFANA_CLOUD_USER
+export GRAFANA_CLOUD_API_TOKEN
+
+envsubst < config.alloy.template > config.alloy
+kubectl create configmap --namespace $GRAFANA_NAMESPACE alloy-config "--from-file=config.alloy=./config.alloy"
+rm config.alloy
+
+helm install --namespace $GRAFANA_NAMESPACE alloy grafana/alloy -f alloy-values.yaml
+
 kubectl apply -f webapp.yaml -n $NAMESPACE
 kubectl apply -f director.yaml -n $NAMESPACE
 

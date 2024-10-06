@@ -17,7 +17,7 @@ pub fn initialize(application_name: impl Into<String>) {
         .tracing()
         .with_exporter(opentelemetry_otlp::new_exporter()
             .tonic()
-            .with_endpoint(otel_endpoint)
+            .with_endpoint(otel_endpoint.clone())
         )
         .with_trace_config(Config::default()
             .with_resource(Resource::new(vec![
@@ -39,4 +39,6 @@ pub fn initialize(application_name: impl Into<String>) {
         .with(telemetry_layer);
 
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set subscriber");
+
+    tracing::info!("Using OTEL_ENDPOINT={otel_endpoint}");
 }

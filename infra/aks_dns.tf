@@ -44,6 +44,10 @@ resource "azurerm_public_ip" "lb_ingress_ip" {
     location = azurerm_resource_group.rg[each.value.resource_group_name].location
     allocation_method = "Static"
     sku = "Standard"
+    
+    lifecycle {
+        create_before_destroy = true
+    }
 }
 
 resource "azurerm_dns_a_record" "webapp_dns" {
