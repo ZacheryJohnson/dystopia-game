@@ -5,6 +5,7 @@ use axum::http::HeaderValue;
 use axum::response::{IntoResponse, Response};
 use axum::{extract::State, routing::get, Router};
 use dys_game::game::Game;
+use dys_observability::logger::LoggerOptions;
 use dys_observability::middleware::{make_span, map_trace_context, record_trace_id};
 use dys_world::arena::Arena;
 use dys_world::schedule::calendar::{Date, Month};
@@ -35,7 +36,12 @@ struct WorldState {
 
 #[tokio::main]
 async fn main() {
-    dys_observability::logger::initialize("director");
+    let logger_options = LoggerOptions {
+        application_name: "director".to_string(),
+        ..Default::default()
+    };
+
+    dys_observability::logger::initialize(logger_options);
 
     tracing::info!("Starting server...");
 

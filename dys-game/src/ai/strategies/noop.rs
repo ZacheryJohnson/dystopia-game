@@ -19,16 +19,16 @@ impl Strategy for NoopStrategy {
         &mut self,
         agent: &mut dyn Agent,
         game_state: &mut GameState,
-    ) -> Vec<SimulationEvent> {
+    ) -> Option<Vec<SimulationEvent>> {
         let (rigid_body_set, _, _) = game_state.physics_sim.sets();
         let combatant_rb_handle = agent.combatant().rigid_body_handle().unwrap();
         let combatant_rb = rigid_body_set.get(combatant_rb_handle).unwrap();
 
-        vec![
+        Some(vec![
             SimulationEvent::CombatantPositionUpdate {
                 combatant_id: agent.combatant().id,
                 position: *combatant_rb.translation(),
             }
-        ]
+        ])
     }
 }

@@ -2,12 +2,13 @@ use std::sync::{Arc, Mutex};
 
 use crate::{ai::{action::ActionBuilder, belief::Belief, strategies::move_to_location::MoveToLocationStrategy}, game_objects::{combatant::CombatantObject, game_object::GameObject}, game_state::GameState};
 
-use super::{action::Action, strategies::throw_ball_at_target_location::ThrowBallAtTargetStrategy};
+use super::{action::Action, strategies::{pick_up_ball::PickUpBallStrategy, throw_ball_at_target_location::ThrowBallAtTargetStrategy}};
 
 /// ZJ-TODO: HACK: this value should be passed in through simulation settings.
 /// This value allows us to make all movement actions cheaper/more expensive,
 /// as other actions may have lower/higher absolute costs.
 const MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK: f32 = 0.2_f32;
+const MOVE_TO_BALL_WEIGHT_HARDCODE_HACK: f32 = 0.2_f32;
 
 pub fn actions(combatant: &CombatantObject, game_state: &GameState) -> Vec<Action> {
     let mut actions = vec![];
@@ -25,6 +26,40 @@ pub fn actions(combatant: &CombatantObject, game_state: &GameState) -> Vec<Actio
                 ))
                 .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (plate_location - combatant_pos).magnitude() / combatant.combatant.lock().unwrap().move_speed())
                 .completion(vec![Belief::SelfOnPlate])
+                .build()
+        );
+    }
+
+    for (ball_id, ball_object) in &game_state.balls {
+        let ball_location = rigid_body_set.get(ball_object.rigid_body_handle().unwrap()).unwrap().translation();
+        actions.push(
+            ActionBuilder::new()
+                .name(format!("Move to Ball {ball_id}"))
+                .strategy(Arc::new(Mutex::new(
+                    MoveToLocationStrategy::new((*combatant_pos).into(), (*ball_location).into(), game_state))
+                ))
+                .cost(MOVE_TO_BALL_WEIGHT_HARDCODE_HACK * (ball_location - combatant_pos).magnitude() / combatant.combatant.lock().unwrap().move_speed())
+                .prohibited(vec![
+                    Belief::SelfHasBall
+                ])
+                .completion(vec![
+                    Belief::SelfCanReachBall { ball_id: *ball_id }
+                ])
+                .build()
+        );
+
+        actions.push(
+            ActionBuilder::new()
+                .name(format!("Pick Up Ball {ball_id}"))
+                .strategy(Arc::new(Mutex::new(
+                    PickUpBallStrategy::new(ball_id.to_owned())
+                )))
+                .prerequisites(vec![
+                    Belief::SelfCanReachBall { ball_id: *ball_id }
+                ])
+                .completion(vec![
+                    Belief::SelfHasBall
+                ])
                 .build()
         );
     }

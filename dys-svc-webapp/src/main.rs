@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 
 use axum::{extract::Request, http::{header, HeaderValue, StatusCode}, middleware::{self, Next}, response::{IntoResponse, Response}, Router};
-use dys_observability::middleware::{make_span, map_trace_context, record_trace_id};
+use dys_observability::{logger::LoggerOptions, middleware::{make_span, map_trace_context, record_trace_id}};
 use tower::ServiceBuilder;
 use tower_http::{services::{ServeDir, ServeFile}, trace::TraceLayer};
 
@@ -42,7 +42,12 @@ async fn query_latest_games(_: Request) -> Result<Response, Infallible> {
 
 #[tokio::main]
 async fn main() {
-    dys_observability::logger::initialize("webapp");
+    let logger_options = LoggerOptions {
+        application_name: "webapp".to_string(),
+        ..Default::default()
+    };
+
+    dys_observability::logger::initialize(logger_options);
 
     tracing::info!("Starting server...");
     let dist_path = std::env::var("DIST_PATH").unwrap_or(DEFAULT_DIST_PATH.to_string());

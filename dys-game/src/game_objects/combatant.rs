@@ -96,6 +96,7 @@ impl CombatantObject {
 
     pub fn set_off_plate(&mut self) {
         self.combatant_state.on_plate = None;
+        self.combatant_state.beliefs.retain(|belief| !belief.is_a(&Belief::SelfOnPlate));
     }
 
     pub fn plate(&self) -> Option<PlateId> {
@@ -116,8 +117,13 @@ impl CombatantObject {
 }
 
 impl GameObject for CombatantObject {
+    type GameObjectIdT = CombatantId;
     // ZJ-TODO: remove
     type GameStateT = ();
+
+    fn id(&self) -> Self::GameObjectIdT {
+        self.id
+    }
 
     fn rigid_body_handle(&self) -> Option<RigidBodyHandle> {
         Some(self.rigid_body_handle)
@@ -169,14 +175,26 @@ impl Agent for CombatantObject {
 
         let mut action = self.combatant_state.current_action.take().expect("failed to get current action");
 
+        if !action.can_perform(self.beliefs()) {
+            tracing::debug!("Can no longer perform action; setting to None to replan next tick");
+            return vec![];
+        }
+
         tracing::debug!("Executing action {}", action.name());
-        events.append(&mut action.tick(self, game_state));
+
+        let Some(action_result_events) = action.tick(self, game_state) else {
+            tracing::debug!("Failed to execute action (the world state may have changed) - setting current action to None to replan next tick");
+            return vec![];
+        };
+
+        events.extend(action_result_events);
 
         if !action.is_complete() {
+            // The action is not complete - set it to the same action again
             self.combatant_state.current_action = Some(action);
         } else {
             tracing::debug!("Action {} complete - rewarding completion beliefs", action.name());
-            self.combatant_state.beliefs.append(&mut action.completion_beliefs());
+            self.combatant_state.beliefs.append(&mut action.completion_beliefs().to_owned());
         }
 
         events

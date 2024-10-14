@@ -80,7 +80,12 @@ impl BallObject {
 }
 
 impl GameObject for BallObject {
+    type GameObjectIdT = BallId;
     type GameStateT = BallState;
+
+    fn id(&self) -> Self::GameObjectIdT {
+        self.id
+    }
 
     fn rigid_body_handle(&self) -> Option<RigidBodyHandle> {
         Some(self.rigid_body_handle)

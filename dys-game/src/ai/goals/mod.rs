@@ -15,6 +15,11 @@ pub fn goals(_combatant_object: &CombatantObject, _game_state: &GameState) -> Ve
             .desired_beliefs(vec![Belief::SelfOnPlate])
             .priority(10)
             .build(),
+        GoalBuilder::new()
+            .name("Hold Ball")
+            .desired_beliefs(vec![Belief::SelfHasBall])
+            .priority(10)
+            .build(),
         idle_goal()
     ]
 }

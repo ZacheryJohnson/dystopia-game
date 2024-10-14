@@ -44,8 +44,9 @@ impl Action {
     pub fn can_perform(&self, owned_beliefs: &[Belief]) -> bool {
         let all_prereqs = self.prerequisite_beliefs.iter().all(|belief| owned_beliefs.contains(belief));
         let none_prohibited = self.prohibited_beliefs.iter().all(|belief| !owned_beliefs.contains(belief));
+        let can_perform_strategy = self.strategy.lock().unwrap().can_perform(owned_beliefs);
 
-        all_prereqs && none_prohibited
+        all_prereqs && none_prohibited && can_perform_strategy
     }
 
     pub fn is_complete(&self) -> bool {
@@ -57,18 +58,26 @@ impl Action {
         &mut self,
         agent: &mut impl Agent,
         game_state: &mut GameState,
-    ) -> Vec<SimulationEvent> {
+    ) -> Option<Vec<SimulationEvent>> {
         let mut strategy = self.strategy.lock().unwrap();
         if !strategy.can_perform(agent.beliefs()) {
             tracing::debug!("Cannot perform action {}", self.name());
-            return vec![];
+            return None;
         }
 
         strategy.tick(agent, game_state)
     }
 
-    pub fn completion_beliefs(&self) -> Vec<Belief> {
-        self.completion_beliefs.clone()
+    pub fn completion_beliefs(&self) -> &Vec<Belief> {
+        &self.completion_beliefs
+    }
+
+    pub fn prohibited_beliefs(&self) -> &Vec<Belief> {
+        &self.prohibited_beliefs
+    }
+
+    pub fn prerequisite_beliefs(&self) -> &Vec<Belief> {
+        &self.prerequisite_beliefs
     }
 }
 

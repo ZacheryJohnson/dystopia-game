@@ -1,17 +1,32 @@
 use opentelemetry_otlp::{self, WithExportConfig};
 use opentelemetry::{trace::TracerProvider, KeyValue};
 use opentelemetry_sdk::{propagation::TraceContextPropagator, trace::Config, Resource};
+use tracing::Level;
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 
-pub fn initialize(application_name: impl Into<String>) {
+pub struct LoggerOptions {
+    pub application_name: String,
+    pub log_level: Level,
+}
+
+impl Default for LoggerOptions {
+    fn default() -> Self {
+        Self { 
+            application_name: String::new(),
+            log_level: Level::INFO,
+        }
+    }
+}
+
+pub fn initialize(logger_options: LoggerOptions) {
     opentelemetry::global::set_text_map_propagator(TraceContextPropagator::default());
 
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+    let env_filter = EnvFilter::from_default_env()
+        .add_directive(logger_options.log_level.into());
 
     let otel_endpoint = std::env::var("OTEL_ENDPOINT").unwrap_or_default();
 
-    let application_name = application_name.into();
+    let application_name = logger_options.application_name;
 
     let tracer = opentelemetry_otlp::new_pipeline()
         .tracing()
