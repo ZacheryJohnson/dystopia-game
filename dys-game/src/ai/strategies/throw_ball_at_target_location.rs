@@ -33,13 +33,13 @@ impl Strategy for ThrowBallAtTargetStrategy {
         &mut self,
         agent: &mut dyn Agent,
         game_state: &mut GameState
-    ) -> Vec<SimulationEvent> {        
+    ) -> Option<Vec<SimulationEvent>> {        
         // Agents may believe that they're holding a ball, but not actually holding a ball per the simulation
         // If the authoritative game state says they're not holding a ball, consider this strategy complete
         // ZJ-TODO: delay first?
         let Some(ball_id) = agent.combatant_mut().combatant_state.holding_ball else {
             self.is_complete = true;
-            return vec![];
+            return None;
         };
 
         let y_axis_gravity = game_state.physics_sim.gravity_y();
@@ -69,13 +69,13 @@ impl Strategy for ThrowBallAtTargetStrategy {
         ball_rb.apply_impulse(ball_impulse, true);
         agent.combatant_mut().combatant_state.holding_ball = None;
 
-        vec![
+        Some(vec![
             if is_same_team {
                 SimulationEvent::BallThrownAtTeammate { thrower_id: agent.combatant().id, teammate_id: self.target, ball_id }                
             } else {
                 SimulationEvent::BallThrownAtEnemy { thrower_id: agent.combatant().id, enemy_id: self.target, ball_id }
             }
-        ]
+        ])
     }
 }
 

@@ -3,7 +3,10 @@ use rapier3d::{dynamics::RigidBodyHandle, geometry::ColliderHandle};
 use crate::game_tick::GameTickNumber;
 
 pub trait GameObject {
+    type GameObjectIdT: Eq;
     type GameStateT;
+
+    fn id(&self) -> Self::GameObjectIdT;
 
     fn rigid_body_handle(&self) -> Option<RigidBodyHandle>;
 

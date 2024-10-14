@@ -17,6 +17,8 @@ use crate::game_objects::{ball::BallId, combatant::CombatantId};
 pub enum Belief {
     SelfOnPlate,
     SelfHasBall,
+    SelfCanReachBall { ball_id: BallId, },
+    BallNotHeld { ball_id: BallId },
     NearestEnemyCombatant { distance: OrderedFloat<f32>, combatant_id: CombatantId },
     NearestAvailableBall { distance: OrderedFloat<f32>, ball_id: BallId },
     NearestFriendlyCombatant { distance: OrderedFloat<f32>, combatant_id: CombatantId },

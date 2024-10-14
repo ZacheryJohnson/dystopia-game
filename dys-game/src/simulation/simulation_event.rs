@@ -30,6 +30,9 @@ pub enum SimulationEvent {
     /// A combatant has stopped being on a plate
     CombatantOffPlate { combatant_id: CombatantId, plate_id: PlateId },
 
+    /// A combatant has picked up a ball that was on the ground.
+    CombatantPickedUpBall { combatant_id: CombatantId, ball_id: BallId },
+
     /// A ball has been thrown targeting an enemy
     BallThrownAtEnemy { thrower_id: CombatantId, enemy_id: CombatantId, ball_id: BallId },
 

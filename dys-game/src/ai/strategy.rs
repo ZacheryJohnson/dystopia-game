@@ -13,5 +13,7 @@ pub trait Strategy {
 
     /// Run the strategy on the agent given the game state,
     /// returning a collection of events that happened during the tick.
-    fn tick(&mut self, agent: &mut dyn Agent, game_state: &mut GameState) -> Vec<SimulationEvent>;
+    /// If the strategy fails to execute successfully, None will be returned.
+    /// Otherwise, failure has not been encountered, and any simulation events are returned.
+    fn tick(&mut self, agent: &mut dyn Agent, game_state: &mut GameState) -> Option<Vec<SimulationEvent>>;
 }

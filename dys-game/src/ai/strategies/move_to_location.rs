@@ -45,7 +45,7 @@ impl Strategy for MoveToLocationStrategy {
         &mut self,
         agent: &mut dyn Agent,
         game_state: &mut GameState,
-    ) -> Vec<SimulationEvent> {
+    ) -> Option<Vec<SimulationEvent>> {
         let mut events = vec![];
 
         let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
@@ -97,6 +97,6 @@ impl Strategy for MoveToLocationStrategy {
             position: new_combatant_position
         });
 
-        events
+        Some(events)
     }
 }

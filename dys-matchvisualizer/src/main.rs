@@ -359,6 +359,9 @@ fn update(
 
                 ball_vis.desired_location = Vec3::new(position.x, position.z, position.y);
             },
+            SimulationEvent::CombatantPickedUpBall { combatant_id, ball_id } => {
+                // ZJ-TODO
+            },
             SimulationEvent::CombatantPositionUpdate { combatant_id, position } => {
                 let (mut combatant_vis, _) = combatants_query.iter_mut()
                     .filter(|(combatant_vis, _)| combatant_vis.id == *combatant_id)

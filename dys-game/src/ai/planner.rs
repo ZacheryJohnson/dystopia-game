@@ -2,7 +2,14 @@ use crate::{ai::goals::goals, game_state::GameState};
 
 use super::{action::Action, actions::actions, agent::Agent, goal::Goal, goals::idle_goal};
 
-#[tracing::instrument(fields(combatant_id = agent.combatant().id), skip_all, level = "trace")]
+#[tracing::instrument(
+    skip_all,
+    level = "trace",
+    fields(
+        combatant_id = agent.combatant().id,
+        tick = game_state.current_tick,
+    )
+)]
 pub fn plan(agent: &impl Agent, game_state: &GameState) -> Vec<Action> {
     // Pick a goal
     let all_goals = goals(agent.combatant(), game_state);
@@ -11,18 +18,38 @@ pub fn plan(agent: &impl Agent, game_state: &GameState) -> Vec<Action> {
     // Determine actions to get to goal
     let mut action_plan: Vec<Action> = vec![];
     let mut desired_beliefs_remaining = goal.desired_beliefs();
+    
+    tracing::trace!("Picked goal {} as best; need beliefs: {:?}", goal.name(), desired_beliefs_remaining);
+
     while let Some(desired_belief) = desired_beliefs_remaining.pop() {
         let actions = actions(agent.combatant(), game_state);
+
+        tracing::trace!("Considering all available actions: {:?}", actions);
+
         let mut potential_actions: Vec<Action> = actions.into_iter().filter(|action| {
-            action.can_perform(agent.beliefs()) && action.completion_beliefs().iter().any(|belief| belief.is_a(&desired_belief))
+            action.completion_beliefs().iter().any(|belief| belief.is_a(&desired_belief))
+                && !action.prohibited_beliefs().iter().any(|belief| agent.beliefs().contains(belief))
         }).collect();
+
+        tracing::trace!("Considering potential actions: {:?}", potential_actions);
 
         let Some(action) = potential_actions.pop() else {
             tracing::warn!("failed to get potential action for desired belief {:?}", desired_belief);
             return vec![];
         };
 
-        tracing::debug!("Adding action {} to plan", action.name());
+        let newly_desired_beliefs = action
+            .prerequisite_beliefs()
+            .into_iter()
+            .filter(|belief| !agent.beliefs().contains(belief))
+            .map(|belief| belief.to_owned())
+            .collect::<Vec<_>>();
+
+        tracing::trace!("Adding prerequisite beliefs for action {}: {:?}", action.name(), newly_desired_beliefs);
+
+        desired_beliefs_remaining.extend(newly_desired_beliefs);
+
+        tracing::trace!("Adding action {} to plan", action.name());
         action_plan.push(action);
     }
 

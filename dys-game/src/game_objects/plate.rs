@@ -2,20 +2,29 @@ use rapier3d::{dynamics::RigidBodyHandle, geometry::ColliderHandle};
 
 use super::game_object::GameObject;
 
+pub type PlateId = u8;
+
 pub struct PlateObject {
+    id: PlateId,
     collider_handle: ColliderHandle,
 }
 
 impl PlateObject {
-    pub fn new(collider_handle: ColliderHandle) -> PlateObject {
+    pub fn new(id: PlateId, collider_handle: ColliderHandle) -> PlateObject {
         PlateObject {
+            id,
             collider_handle
         }
     }
 }
 
 impl GameObject for PlateObject {
+    type GameObjectIdT = PlateId;
     type GameStateT = ();
+
+    fn id(&self) -> Self::GameObjectIdT {
+        self.id
+    }
 
     fn rigid_body_handle(&self) -> Option<RigidBodyHandle> {
         None

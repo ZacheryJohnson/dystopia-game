@@ -1,10 +1,17 @@
 use std::{sync::{Arc, Mutex}, time::Duration};
 use dys_game::{game::Game, game_log::GameLog, generator::Generator};
+use dys_observability::logger::LoggerOptions;
 use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}};
+use tracing::Level;
 
 #[tokio::main]
 async fn main() {
-    dys_observability::logger::initialize("testbench");
+    let logger_options = LoggerOptions {
+        application_name: "testbench".to_string(),
+        log_level: Level::TRACE,
+    };
+
+    dys_observability::logger::initialize(logger_options);
 
     let generator = Generator::new();
     let world = generator.generate_world();
