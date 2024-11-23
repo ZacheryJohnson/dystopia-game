@@ -10,6 +10,7 @@ use super::{action::Action, strategies::{pick_up_ball::PickUpBallStrategy, throw
 const MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK: f32 = 0.2_f32;
 const MOVE_TO_BALL_WEIGHT_HARDCODE_HACK: f32 = 0.2_f32;
 
+#[tracing::instrument(fields(combatant_id = combatant.id), skip_all, level = "debug")]
 pub fn actions(combatant: &CombatantObject, game_state: &GameState) -> Vec<Action> {
     let mut actions = vec![];
 

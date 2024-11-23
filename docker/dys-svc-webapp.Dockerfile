@@ -10,7 +10,7 @@ RUN apt update
 RUN apt install -y g++ pkg-config libx11-dev libasound2-dev libudev-dev
 
 # Install nodejs, which includes npm
-RUN apt install -y nodejs
+RUN apt install -y nodejs npm
 
 # Add WASM dependencies
 RUN rustup target add wasm32-unknown-unknown

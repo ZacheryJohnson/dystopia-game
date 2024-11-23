@@ -1918,6 +1918,7 @@ dependencies = [
  "crossbeam",
  "dys-world",
  "ordered-float",
+ "petgraph",
  "rand",
  "rand_pcg",
  "rapier3d",
