@@ -13,7 +13,7 @@ use crate::game_objects::{ball::BallId, combatant::CombatantId};
 /// aim the ball some distance in front of the runner. 
 /// However, the enemy combatant is not affected by or aware of that belief,
 /// and may choose to do any action.
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Belief {
     SelfOnPlate,
     SelfHasBall,

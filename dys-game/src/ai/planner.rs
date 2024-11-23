@@ -1,6 +1,6 @@
 use crate::{ai::goals::goals, game_state::GameState};
 
-use super::{action::Action, actions::actions, agent::Agent, goal::Goal, goals::idle_goal};
+use super::{action::Action, actions::actions, agent::Agent, belief::Belief, goal::Goal, goals::idle_goal};
 
 #[tracing::instrument(
     skip_all,
@@ -11,67 +11,58 @@ use super::{action::Action, actions::actions, agent::Agent, goal::Goal, goals::i
     )
 )]
 pub fn plan(agent: &impl Agent, game_state: &GameState) -> Vec<Action> {
-    // Pick a goal
+    tracing::debug!("Planning for combatant {} on tick {}", agent.combatant().id, game_state.current_tick);
     let all_goals = goals(agent.combatant(), game_state);
-    let goal = get_best_goal(agent, game_state, all_goals);
 
-    // Determine actions to get to goal
-    let mut action_plan: Vec<Action> = vec![];
-    let mut desired_beliefs_remaining = goal.desired_beliefs();
-    
-    tracing::trace!("Picked goal {} as best; need beliefs: {:?}", goal.name(), desired_beliefs_remaining);
+    let actions = actions(agent.combatant(), game_state);
+    for goal in get_best_goal(agent, game_state, all_goals) {
+        tracing::debug!("Considering goal {}", goal.name());
 
-    while let Some(desired_belief) = desired_beliefs_remaining.pop() {
-        let actions = actions(agent.combatant(), game_state);
+        let mut action_plan: Vec<&Action> = vec![];
+        let mut desired_beliefs_remaining = goal.desired_beliefs();
 
-        tracing::trace!("Considering all available actions: {:?}", actions);
+        while let Some(desired_belief) = desired_beliefs_remaining.pop() {
+            let mut potential_actions: Vec<&Action> = actions.iter().filter(|action| {
+                action.can_perform(agent.beliefs()) && action.completion_beliefs().iter().any(|belief| belief.is_a(&desired_belief))
+            }).collect();
 
-        let mut potential_actions: Vec<Action> = actions.into_iter().filter(|action| {
-            action.completion_beliefs().iter().any(|belief| belief.is_a(&desired_belief))
-                && !action.prohibited_beliefs().iter().any(|belief| agent.beliefs().contains(belief))
-        }).collect();
+            let Some(action) = potential_actions.pop() else {
+                tracing::warn!("failed to get potential action for desired belief {:?}", desired_belief);
+                action_plan.clear();
+                break;
+            };
 
-        tracing::trace!("Considering potential actions: {:?}", potential_actions);
+            tracing::debug!("Adding action {} to plan", action.name());
+            action_plan.push(action);
+        }
 
-        let Some(action) = potential_actions.pop() else {
-            tracing::warn!("failed to get potential action for desired belief {:?}", desired_belief);
-            return vec![];
-        };
+        if action_plan.is_empty() {
+            continue;
+        }
 
-        let newly_desired_beliefs = action
-            .prerequisite_beliefs()
+        return action_plan
             .into_iter()
-            .filter(|belief| !agent.beliefs().contains(belief))
-            .map(|belief| belief.to_owned())
-            .collect::<Vec<_>>();
-
-        tracing::trace!("Adding prerequisite beliefs for action {}: {:?}", action.name(), newly_desired_beliefs);
-
-        desired_beliefs_remaining.extend(newly_desired_beliefs);
-
-        tracing::trace!("Adding action {} to plan", action.name());
-        action_plan.push(action);
+            .map(|action| action.to_owned())
+            .collect();
     }
 
-    action_plan
+    vec![]
 }
 
 /// The best goal is the highest priority goal where the agent doesn't already have all of the desired beliefs.
 /// In the event we can't find a good goal from the goals provided, we'll return the Idle goal.
-#[tracing::instrument(fields(combatant_id = agent.combatant().id), skip_all, level = "trace")]
-fn get_best_goal<'a>(agent: &impl Agent, _: &GameState, all_goals: Vec<Goal>) -> Goal {
+#[tracing::instrument(fields(combatant_id = agent.combatant().id), skip_all, level = "debug")]
+fn get_best_goal<'a>(agent: &impl Agent, _: &GameState, all_goals: Vec<Goal>) -> impl Iterator<Item = Goal> {
+    let agent_beliefs = agent.beliefs();
     let mut goals: Vec<_> = all_goals
         .into_iter()
-        .filter(|goal| !goal.desired_beliefs().iter().all(|belief| agent.beliefs().contains(&belief)))
+        .filter(|goal| !goal.desired_beliefs().iter().all(|belief| agent_beliefs.contains(belief)))
         .collect();
 
     // Note: comparing b's priority to a (instead of comparing a's priority to b) as we want the largest priority goals first
     goals.sort_by(|a, b| b.priority().partial_cmp(&a.priority()).unwrap());
 
-    goals
-        .into_iter()
-        .next()
-        .unwrap_or(idle_goal())
+    goals.into_iter()
 }
 
 #[cfg(test)]
@@ -132,9 +123,9 @@ mod tests {
 
         let no_goals = vec![];
 
-        let best_goal = get_best_goal(&agent, &game_state, no_goals);
+        let best_goal = get_best_goal(&agent, &game_state, no_goals).next();
 
-        assert_eq!(String::from("Idle"), best_goal.name());
+        assert!(best_goal.is_none());
     }
 
     #[test]
@@ -153,7 +144,7 @@ mod tests {
         ];
 
         
-        let best_goal = get_best_goal(&agent, &game_state, goals);
+        let best_goal = get_best_goal(&agent, &game_state, goals).next().unwrap();
 
         assert_eq!(expected_goal_name, best_goal.name());
     }
@@ -176,9 +167,9 @@ mod tests {
         ];
 
         
-        let best_goal = get_best_goal(&agent, &game_state, goals);
+        let best_goal = get_best_goal(&agent, &game_state, goals).next();
 
-        assert_eq!(String::from("Idle"), best_goal.name());
+        assert!(best_goal.is_none());
     }
 
     #[test]
@@ -203,7 +194,7 @@ mod tests {
         ];
 
         
-        let best_goal = get_best_goal(&agent, &game_state, goals);
+        let best_goal = get_best_goal(&agent, &game_state, goals).next().unwrap();
 
         assert_eq!(higher_priority_goal_name, best_goal.name());
     }
