@@ -157,7 +157,7 @@ impl Agent for CombatantObject {
         &self.combatant_state.beliefs
     }
 
-    #[tracing::instrument(name = "agent::tick", fields(combatant_id = self.id), skip_all, level = "trace")]
+    #[tracing::instrument(name = "agent::tick", fields(combatant_id = self.id, tick = game_state.current_tick), skip_all, level = "trace")]
     fn tick(&mut self, game_state: &mut GameState) -> Vec<SimulationEvent> {
         let mut events = vec![];
 

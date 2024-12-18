@@ -46,6 +46,8 @@ impl Action {
         let none_prohibited = self.prohibited_beliefs.iter().all(|belief| !owned_beliefs.contains(belief));
         let can_perform_strategy = self.strategy.lock().unwrap().can_perform(owned_beliefs);
 
+        tracing::debug!("[action::can_perform] {}: all_prereqs: {all_prereqs} | none_prohibited: {none_prohibited} | can_perform_strategy: {can_perform_strategy}", self.name);
+
         all_prereqs && none_prohibited && can_perform_strategy
     }
 

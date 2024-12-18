@@ -1,4 +1,4 @@
-use crate::combatant::limb::Limb;
+use crate::{combatant::limb::Limb, stat::stat::Stat};
 
 pub type CombatantId = u64;
 
@@ -12,6 +12,7 @@ pub struct Combatant {
 impl Combatant {
     /// ZJ-TODO: HACK: calculate this from combatant limbs and modifiers
     pub fn move_speed(&self) -> f32 {
+        
         2.0_f32
     }
 }

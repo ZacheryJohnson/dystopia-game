@@ -17,6 +17,8 @@ pub fn actions(combatant: &CombatantObject, game_state: &GameState) -> Vec<Actio
     let (rigid_body_set, collider_set, _) = game_state.physics_sim.sets();
     let combatant_pos = rigid_body_set.get(combatant.rigid_body_handle).unwrap().translation();
 
+    let combatant_move_speed = combatant.combatant.lock().unwrap().move_speed();
+
     for (plate_id, plate_object) in &game_state.plates {
         let plate_location = collider_set.get(plate_object.collider_handle().unwrap()).unwrap().translation();
         actions.push(
@@ -25,13 +27,17 @@ pub fn actions(combatant: &CombatantObject, game_state: &GameState) -> Vec<Actio
                 .strategy(Arc::new(Mutex::new(
                     MoveToLocationStrategy::new((*combatant_pos).into(), (*plate_location).into(), game_state))
                 ))
-                .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (plate_location - combatant_pos).magnitude() / combatant.combatant.lock().unwrap().move_speed())
+                .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (plate_location - combatant_pos).magnitude() / combatant_move_speed)
                 .completion(vec![Belief::SelfOnPlate])
                 .build()
         );
     }
 
     for (ball_id, ball_object) in &game_state.balls {
+        if ball_object.held_by.is_some() {
+            continue;
+        }
+        
         let ball_location = rigid_body_set.get(ball_object.rigid_body_handle().unwrap()).unwrap().translation();
         actions.push(
             ActionBuilder::new()
@@ -39,7 +45,7 @@ pub fn actions(combatant: &CombatantObject, game_state: &GameState) -> Vec<Actio
                 .strategy(Arc::new(Mutex::new(
                     MoveToLocationStrategy::new((*combatant_pos).into(), (*ball_location).into(), game_state))
                 ))
-                .cost(MOVE_TO_BALL_WEIGHT_HARDCODE_HACK * (ball_location - combatant_pos).magnitude() / combatant.combatant.lock().unwrap().move_speed())
+                .cost(MOVE_TO_BALL_WEIGHT_HARDCODE_HACK * (ball_location - combatant_pos).magnitude() / combatant_move_speed) 
                 .prohibited(vec![
                     Belief::SelfHasBall
                 ])
