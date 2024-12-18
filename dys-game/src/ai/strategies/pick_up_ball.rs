@@ -20,7 +20,7 @@ impl Strategy for PickUpBallStrategy {
     }
 
     fn can_perform(&self, owned_beliefs: &[Belief]) -> bool {
-        owned_beliefs.contains(&Belief::BallNotHeld { ball_id: self.ball_id }) && owned_beliefs.contains(&Belief::SelfCanReachBall { ball_id: self.ball_id })
+        !owned_beliefs.contains(&Belief::SelfHasBall) && owned_beliefs.contains(&Belief::SelfCanReachBall { ball_id: self.ball_id })
     }
 
     fn is_complete(&self) -> bool {

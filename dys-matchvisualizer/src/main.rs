@@ -115,7 +115,7 @@ pub fn initialize_with_canvas(
 pub fn load_game_log(
     serialized_game_log: Vec<u8>,
 ) {
-    let game_log: GameLog = postcard::from_bytes(&serialized_game_log).unwrap();
+    let game_log: GameLog = postcard::from_bytes(&serialized_game_log).expect("failed to deserialize game log");
 
     let updated_game_state = UPDATED_GAME_STATE.get().unwrap();
 

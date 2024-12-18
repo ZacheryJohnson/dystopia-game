@@ -15,7 +15,7 @@ RUN apt install -y nodejs npm
 # Add WASM dependencies
 RUN rustup target add wasm32-unknown-unknown
 RUN cargo install wasm-bindgen-cli
-RUN cargo install wasm-opt --locked
+RUN cargo install wasm-opt
 
 WORKDIR /opt/dystopia
 COPY $WORKING_DIR/Cargo.toml /opt/dystopia/Cargo.toml

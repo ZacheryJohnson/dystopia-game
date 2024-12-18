@@ -15,30 +15,40 @@ pub fn plan(agent: &impl Agent, game_state: &GameState) -> Vec<Action> {
     let all_goals = goals(agent.combatant(), game_state);
 
     let actions = actions(agent.combatant(), game_state);
+
     for goal in get_best_goal(agent, game_state, all_goals) {
         tracing::debug!("Considering goal {}", goal.name());
 
-        let mut action_plan: Vec<&Action> = vec![];
+        let mut action_plan: Vec<Action> = vec![];
         let mut desired_beliefs_remaining = goal.desired_beliefs();
+        let mut future_beliefs = vec![];
 
         while let Some(desired_belief) = desired_beliefs_remaining.pop() {
-            let mut potential_actions: Vec<&Action> = actions.iter().filter(|action| {
-                action.can_perform(agent.beliefs()) && action.completion_beliefs().iter().any(|belief| belief.is_a(&desired_belief))
-            }).collect();
-
-            let Some(action) = potential_actions.pop() else {
-                tracing::warn!("failed to get potential action for desired belief {:?}", desired_belief);
+            let mut current_beliefs = agent.beliefs().to_owned();
+            current_beliefs.extend_from_slice(&future_beliefs);
+            let Some(action) = get_action_for_belief(desired_belief, &current_beliefs, &actions) else {
                 action_plan.clear();
                 break;
             };
+            
+            tracing::debug!("Selecting action {}", action.name());
 
-            tracing::debug!("Adding action {} to plan", action.name());
+            future_beliefs.push(desired_belief);
+            for newly_desired_belief in action.prerequisite_beliefs() {
+                if !current_beliefs.contains(newly_desired_belief) {
+                    desired_beliefs_remaining.push(newly_desired_belief.to_owned());
+                    tracing::debug!("Adding new desired belief {:?}", newly_desired_belief);
+                }
+            }
             action_plan.push(action);
         }
 
-        if action_plan.is_empty() {
+        if !desired_beliefs_remaining.is_empty() || action_plan.is_empty() {
+            tracing::debug!("failed to get action plan for goal {}; trying next goal", goal.name());
             continue;
         }
+
+        tracing::debug!("Returning action plan: {:?}", action_plan);
 
         return action_plan
             .into_iter()
@@ -47,6 +57,24 @@ pub fn plan(agent: &impl Agent, game_state: &GameState) -> Vec<Action> {
     }
 
     vec![]
+}
+
+fn get_action_for_belief(desired_belief: Belief, current_beliefs: &[Belief], actions: &[Action]) -> Option<Action> {
+    tracing::debug!("Finding action for desired belief {:?}", desired_belief);
+    let mut potential_actions = actions.iter().filter(|action| {
+        action.completion_beliefs().iter().any(|belief| belief.is_a(&desired_belief))
+    }).collect::<Vec<_>>();
+
+    while let Some(action) = potential_actions.pop() {
+        // if action.prohibited_beliefs().iter().any(|prohibited_belief| current_beliefs.contains(prohibited_belief)) {
+        //     continue;
+        // }
+
+        tracing::debug!("Adding action {} to plan", action.name());
+        return Some(action.to_owned());
+    }
+
+    None
 }
 
 /// The best goal is the highest priority goal where the agent doesn't already have all of the desired beliefs.

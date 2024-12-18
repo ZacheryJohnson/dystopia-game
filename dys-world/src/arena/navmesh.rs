@@ -201,18 +201,10 @@ impl ArenaNavmesh {
         let from = point![from.x, 0.0, from.z];
         let to = point![to.x, 0.0, to.z];
 
-        let start_node = ArenaNavmesh::get_closest_node(&self.graph, from, self.config.unit_resolution);
-        let end_node = ArenaNavmesh::get_closest_node(&self.graph, to, self.config.unit_resolution);
-        
-        let Some(start) = start_node else {
-            return None;
-        };
+        let start_node = ArenaNavmesh::get_closest_node(&self.graph, from, self.config.unit_resolution)?;
+        let end_node = ArenaNavmesh::get_closest_node(&self.graph, to, self.config.unit_resolution)?;
 
-        let Some(end) = end_node else {
-            return None;
-        };
-
-        let node_path = self.get_path_between_nodes(start, end);
+        let node_path = self.get_path_between_nodes(start_node, end_node);
 
         Some(ArenaNavmeshPath::new(node_path))
     }
@@ -262,10 +254,23 @@ impl ArenaNavmesh {
 
     /// This function is **expensive**. Should not be used when constructing the navmesh graph, and only for client requests (like [create_path](ArenaNavmesh::create_path)).
     fn get_closest_node(graph: &UnGraphMap<ArenaNavmeshNode, f32>, point: Point<f32>, unit_resolution: f32) -> Option<ArenaNavmeshNode> {
-        graph
-            .nodes()
-            .filter(|node| (node.as_point() - point).magnitude() <= unit_resolution)
-            .min_by(|first, second| (first.as_point() - point).magnitude().partial_cmp(&(second.as_point() - point).magnitude()).unwrap_or(std::cmp::Ordering::Equal))
+        let scalar = 1.0 / unit_resolution;
+        let adjusted_point = point![
+            ((point.x * scalar).round() / scalar),
+            ((point.y * scalar).round() / scalar),
+            ((point.z * scalar).round() / scalar),
+        ];
+        let potential_node = ArenaNavmeshNode::from_point(adjusted_point);
+        if graph.contains_node(potential_node) {
+            Some(potential_node)
+        } else {
+            None
+        }
+    
+        // graph
+        //     .nodes()
+        //     .filter(|node| (node.as_point() - point).magnitude() <= unit_resolution)
+        //     .min_by(|first, second| (first.as_point() - point).magnitude().partial_cmp(&(second.as_point() - point).magnitude()).unwrap_or(std::cmp::Ordering::Equal))
     }
 }
 
