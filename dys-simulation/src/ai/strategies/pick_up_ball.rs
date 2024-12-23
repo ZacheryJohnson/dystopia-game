@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex};
 use crate::{ai::{agent::Agent, belief::Belief, strategy::Strategy}, game_objects::ball::BallId, game_state::GameState, simulation::simulation_event::SimulationEvent};
 
 pub struct PickUpBallStrategy {
@@ -29,10 +30,17 @@ impl Strategy for PickUpBallStrategy {
 
     fn tick(
         &mut self,
-        agent: &mut dyn Agent,
-        game_state: &mut GameState
+        agent: &dyn Agent,
+        game_state: Arc<Mutex<GameState>>,
     ) -> Option<Vec<SimulationEvent>> {
-        let Some(ball_object) = game_state.balls.get_mut(&self.ball_id) else {
+        let balls = {
+            let game_state = game_state.lock().unwrap();
+            let balls = game_state.balls.clone();
+
+            balls
+        };
+
+        let Some(ball_object) = balls.get(&self.ball_id) else {
             tracing::error!("Failed to find ball object {}", self.ball_id);
             self.is_complete = true;
             return None;
@@ -44,7 +52,8 @@ impl Strategy for PickUpBallStrategy {
             return None;
         }
 
-        ball_object.set_held_by(Some(agent.combatant().id), game_state.current_tick);
+        // ZJ-TODO: move to simulation
+        // ball_object.set_held_by(Some(agent.combatant().id), game_state.current_tick);
 
         Some(vec![
             SimulationEvent::CombatantPickedUpBall { combatant_id: agent.combatant().id, ball_id: self.ball_id }

@@ -34,10 +34,20 @@ pub enum SimulationEvent {
     CombatantPickedUpBall { combatant_id: CombatantId, ball_id: BallId },
 
     /// A ball has been thrown targeting an enemy
-    BallThrownAtEnemy { thrower_id: CombatantId, enemy_id: CombatantId, ball_id: BallId },
+    BallThrownAtEnemy {
+        thrower_id: CombatantId,
+        enemy_id: CombatantId,
+        ball_id: BallId,
+        ball_impulse_vector: Vector3<f32>,
+    },
 
     /// A ball has been thrown targeting a teammate
-    BallThrownAtTeammate { thrower_id: CombatantId, teammate_id: CombatantId, ball_id: BallId },
+    BallThrownAtTeammate {
+        thrower_id: CombatantId,
+        teammate_id: CombatantId,
+        ball_id: BallId,
+        ball_impulse_vector: Vector3<f32>,
+    },
 
     /// A ball has collided with an enemy 
     BallCollisionEnemy { thrower_id: CombatantId, enemy_id: CombatantId, ball_id: BallId },

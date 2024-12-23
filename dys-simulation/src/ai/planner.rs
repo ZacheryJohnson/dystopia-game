@@ -1,20 +1,23 @@
+use std::sync::{Arc, Mutex};
 use crate::{ai::goals::goals, game_state::GameState};
 
-use super::{action::Action, actions::actions, agent::Agent, belief::Belief, goal::Goal, goals::idle_goal};
+use super::{action::Action, actions::actions, agent::Agent, belief::Belief, goal::Goal};
 
 #[tracing::instrument(
     skip_all,
     level = "trace",
     fields(
         combatant_id = agent.combatant().id,
-        tick = game_state.current_tick,
     )
 )]
-pub fn plan(agent: &impl Agent, game_state: &GameState) -> Vec<Action> {
-    tracing::debug!("Planning for combatant {} on tick {}", agent.combatant().id, game_state.current_tick);
-    let all_goals = goals(agent.combatant(), game_state);
+pub fn plan(
+    agent: &impl Agent,
+    game_state: Arc<Mutex<GameState>>,
+) -> Vec<Action> {
+    tracing::debug!("Planning for combatant {}", agent.combatant().id);
+    let all_goals = goals(agent.combatant(), game_state.clone());
 
-    let actions = actions(agent.combatant(), game_state);
+    let actions = actions(agent.combatant(), game_state.clone());
 
     for goal in get_best_goal(agent, game_state, all_goals) {
         tracing::debug!("Considering goal {}", goal.name());
@@ -59,7 +62,7 @@ pub fn plan(agent: &impl Agent, game_state: &GameState) -> Vec<Action> {
     vec![]
 }
 
-fn get_action_for_belief(desired_belief: Belief, current_beliefs: &[Belief], actions: &[Action]) -> Option<Action> {
+fn get_action_for_belief(desired_belief: Belief, _: &[Belief], actions: &[Action]) -> Option<Action> {
     tracing::debug!("Finding action for desired belief {:?}", desired_belief);
     let mut potential_actions = actions.iter().filter(|action| {
         action.completion_beliefs().iter().any(|belief| belief.is_a(&desired_belief))
@@ -80,7 +83,11 @@ fn get_action_for_belief(desired_belief: Belief, current_beliefs: &[Belief], act
 /// The best goal is the highest priority goal where the agent doesn't already have all of the desired beliefs.
 /// In the event we can't find a good goal from the goals provided, we'll return the Idle goal.
 #[tracing::instrument(fields(combatant_id = agent.combatant().id), skip_all, level = "debug")]
-fn get_best_goal<'a>(agent: &impl Agent, _: &GameState, all_goals: Vec<Goal>) -> impl Iterator<Item = Goal> {
+fn get_best_goal<'a>(
+    agent: &impl Agent,
+    _: Arc<Mutex<GameState>>,
+    all_goals: Vec<Goal>,
+) -> impl Iterator<Item = Goal> {
     let agent_beliefs = agent.beliefs();
     let mut goals: Vec<_> = all_goals
         .into_iter()
@@ -107,7 +114,7 @@ mod tests {
         test_utils::TestAgent::new()
     }
 
-    fn make_test_game_state() -> GameState {
+    fn make_test_game_state() -> Arc<Mutex<GameState>> {
         let game = Game {
             schedule_game: ScheduleGame {
                 away_team: Arc::new(Mutex::new(Team {
@@ -127,7 +134,7 @@ mod tests {
         let simulation_config = SimulationConfig::default();
         let arena_navmesh = ArenaNavmesh::new_from(game.schedule_game.arena.clone(), ArenaNavmeshConfig::default());
 
-        GameState {
+        Arc::new(Mutex::new(GameState {
             game,
             seed: [0; 32],
             rng: Pcg64::from_seed([0; 32]),
@@ -141,7 +148,7 @@ mod tests {
             current_tick: 0,
             simulation_config,
             arena_navmesh,
-        }
+        }))
     }
 
     #[test]
@@ -151,7 +158,7 @@ mod tests {
 
         let no_goals = vec![];
 
-        let best_goal = get_best_goal(&agent, &game_state, no_goals).next();
+        let best_goal = get_best_goal(&agent, game_state, no_goals).next();
 
         assert!(best_goal.is_none());
     }
@@ -172,7 +179,7 @@ mod tests {
         ];
 
         
-        let best_goal = get_best_goal(&agent, &game_state, goals).next().unwrap();
+        let best_goal = get_best_goal(&agent, game_state, goals).next().unwrap();
 
         assert_eq!(expected_goal_name, best_goal.name());
     }
@@ -195,7 +202,7 @@ mod tests {
         ];
 
         
-        let best_goal = get_best_goal(&agent, &game_state, goals).next();
+        let best_goal = get_best_goal(&agent, game_state, goals).next();
 
         assert!(best_goal.is_none());
     }
@@ -222,7 +229,7 @@ mod tests {
         ];
 
         
-        let best_goal = get_best_goal(&agent, &game_state, goals).next().unwrap();
+        let best_goal = get_best_goal(&agent, game_state, goals).next().unwrap();
 
         assert_eq!(higher_priority_goal_name, best_goal.name());
     }

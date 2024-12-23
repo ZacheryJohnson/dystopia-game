@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct SimulationConfig {
     ticks_per_second: u32,
     seconds_per_half: u32,

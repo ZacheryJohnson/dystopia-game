@@ -67,7 +67,7 @@ impl Agent for TestAgent {
         &self.beliefs
     }
 
-    fn tick(&mut self, _: &mut GameState) -> Vec<SimulationEvent> {
+    fn tick(&mut self, _: Arc<Mutex<GameState>>) -> Vec<SimulationEvent> {
         vec![]
     }
 }

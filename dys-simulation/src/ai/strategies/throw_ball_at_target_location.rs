@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex};
 use rapier3d::{na::Vector3, prelude::*};
 
 use crate::{ai::{agent::Agent, belief::Belief, strategy::Strategy}, game_objects::{combatant::CombatantId, game_object::GameObject}, game_state::{GameState}, simulation::simulation_event::SimulationEvent};
@@ -31,34 +32,49 @@ impl Strategy for ThrowBallAtTargetStrategy {
 
     fn tick(
         &mut self,
-        agent: &mut dyn Agent,
-        game_state: &mut GameState
+        agent: &dyn Agent,
+        game_state: Arc<Mutex<GameState>>,
     ) -> Option<Vec<SimulationEvent>> {        
         // Agents may believe that they're holding a ball, but not actually holding a ball per the simulation
         // If the authoritative game state says they're not holding a ball, consider this strategy complete
         // ZJ-TODO: delay first?
-        let Some(ball_id) = agent.combatant_mut().combatant_state.holding_ball else {
+        let Some(ball_id) = agent.combatant().combatant_state.holding_ball else {
             self.is_complete = true;
             return None;
         };
 
-        let y_axis_gravity = game_state.physics_sim.gravity_y();
-        let target_object = game_state.combatants.get(&self.target).unwrap();
-        let is_same_team = agent.combatant().team == target_object.team;
+        let (target_pos, ball_pos, is_same_team, y_axis_gravity) = {
+            let game_state = game_state.lock().unwrap();
 
-        let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
-        
-        let target_pos = rigid_body_set.get(target_object.rigid_body_handle).unwrap().translation().to_owned();
+            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
 
-        let ball_object = game_state.balls.get(&ball_id).unwrap();
-        let ball_rb = rigid_body_set.get_mut(ball_object.rigid_body_handle().unwrap()).unwrap();
+            let target_object = game_state.combatants.get(&self.target).unwrap();
+            let target_pos = rigid_body_set
+                .get(target_object.rigid_body_handle)
+                .unwrap()
+                .translation()
+                .to_owned();
+
+            let ball_object = game_state.balls.get(&ball_id).unwrap();
+            let ball_pos = rigid_body_set
+                .get(ball_object.rigid_body_handle().unwrap())
+                .unwrap()
+                .translation()
+                .to_owned();
+
+            let is_same_team = agent.combatant().team == target_object.team;
+            let y_axis_gravity = game_state.physics_sim.gravity_y();
+
+            (target_pos, ball_pos, is_same_team, y_axis_gravity)
+        };
+
 
         let throw_speed_units_per_sec_hack = 30.0_f32;
         let accuracy_hack = 1.0_f32;
 
-        let ball_impulse = get_throw_vector_towards_target(
-            &target_pos, 
-            ball_rb.translation(),
+        let ball_impulse_vector = get_throw_vector_towards_target(
+            &target_pos,
+            &ball_pos,
             throw_speed_units_per_sec_hack,
             accuracy_hack,
             y_axis_gravity
@@ -66,14 +82,15 @@ impl Strategy for ThrowBallAtTargetStrategy {
 
         // ZJ-TODO: wait for some delay to simulate a "windup" for a throw - should we allow movement in a direction (eg crow hop)?
 
-        ball_rb.apply_impulse(ball_impulse, true);
-        agent.combatant_mut().combatant_state.holding_ball = None;
+        // ZJ-TODO: move these to simulation processing
+        // ball_rb.apply_impulse(ball_impulse, true);
+        // agent.combatant_mut().combatant_state.holding_ball = None;
 
         Some(vec![
             if is_same_team {
-                SimulationEvent::BallThrownAtTeammate { thrower_id: agent.combatant().id, teammate_id: self.target, ball_id }                
+                SimulationEvent::BallThrownAtTeammate { thrower_id: agent.combatant().id, teammate_id: self.target, ball_id, ball_impulse_vector }
             } else {
-                SimulationEvent::BallThrownAtEnemy { thrower_id: agent.combatant().id, enemy_id: self.target, ball_id }
+                SimulationEvent::BallThrownAtEnemy { thrower_id: agent.combatant().id, enemy_id: self.target, ball_id, ball_impulse_vector }
             }
         ])
     }
