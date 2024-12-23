@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 use rapier3d::{na::vector, prelude::*};
 
 use crate::{game_objects::{ball::{BallObject, BallState}, combatant::CombatantObject, game_object::GameObject, game_object_type::GameObjectType}, game_state::GameState, game_tick::GameTickNumber};
-
+use crate::simulation::simulation_stage::SimulationStage;
 use super::{config::SimulationConfig, simulation_event::SimulationEvent};
 
 const CHARGE_FORCE_MODIFIER: f32 = 250.0;
 
-pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> Vec<SimulationEvent> {
+pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationStage {
+    let start_time = Instant::now();
     let mut events = vec![];
 
     let balls = {
@@ -17,11 +19,14 @@ pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> Vec<Simulatio
     };
 
     for (_, ball_object) in balls {
-        let (explosion_simulation_events, _affected_colliders) = explode(ball_object, game_state.clone());
+        let (explosion_simulation_events, _affected_colliders) = explode(&ball_object, game_state.clone());
         events.extend(explosion_simulation_events);
 
+        if let Some(event) = try_move_if_held(&ball_object, game_state.clone()) {
+            events.push(event);
+        }
+
         // ZJ-TODO: move to simulation
-        // try_move_if_held(ball_object, &game_state.combatants, rigid_body_set);
         // let explosion_force_simulation_events = apply_explosion_forces(game_state.current_tick, affected_colliders, ball_object, &game_state.active_colliders, &mut game_state.combatants, rigid_body_set);
         // events.extend(explosion_force_simulation_events);
         // decrease_charge(ball_object, &game_state.simulation_config);
@@ -36,33 +41,45 @@ pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> Vec<Simulatio
         // }
     }
 
-    events
+    SimulationStage {
+        pending_events: events,
+        execution_duration: start_time.elapsed(),
+    }
 }
 
 fn try_move_if_held(
-    ball: &mut BallObject,
-    combatants: &HashMap<u64, CombatantObject>,
-    rigid_body_set: &mut RigidBodySet
-) {
+    ball: &BallObject,
+    game_state: Arc<Mutex<GameState>>,
+) -> Option<SimulationEvent> {
     let BallState::Held { holder_id } = ball.state else {
-        return;
+        return None;
     };
 
-    let holding_combatant_object = combatants.get(&holder_id).expect("failed to finding holder combatant object");
-
+    // ZJ-TODO
     // Don't love setting the ball's position to exactly the combatant's position but it works for now
     // Would love to actually figure out parenting one rigid body to another (joints?)
 
     let combatant_pos = {
-        let combatant_rb = rigid_body_set.get(holding_combatant_object.rigid_body_handle().unwrap()).unwrap();
-        combatant_rb.translation().to_owned()
+        let game_state = game_state.lock().unwrap();
+        let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+
+        let holding_combatant_object = game_state
+            .combatants
+            .get(&holder_id)
+            .expect("failed to finding holder combatant object");
+
+        rigid_body_set
+            .get(holding_combatant_object.rigid_body_handle().unwrap())
+            .unwrap()
+            .translation()
+            .to_owned()
     };
-    let ball_rb = rigid_body_set.get_mut(ball.rigid_body_handle().unwrap()).unwrap();
-    ball_rb.set_translation(combatant_pos, true);
+
+    Some(SimulationEvent::BallPositionUpdate { ball_id: ball.id, position: combatant_pos })
 }
 
 fn explode(
-    ball: BallObject,
+    ball: &BallObject,
     game_state: Arc<Mutex<GameState>>,
 ) -> (Vec<SimulationEvent>, Vec<ColliderHandle>) {
     // Only handle balls in the Explode state

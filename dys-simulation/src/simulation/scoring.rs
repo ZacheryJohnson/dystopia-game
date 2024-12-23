@@ -1,8 +1,9 @@
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 use rapier3d::{geometry::ColliderHandle, pipeline::QueryFilter};
 
 use crate::{game_objects::{combatant::TeamAlignment, game_object_type::GameObjectType}, game_state::GameState};
-
+use crate::simulation::simulation_stage::SimulationStage;
 use super::simulation_event::SimulationEvent;
 
 const PLATE_POINTS_PER_TICK: u8 = 1; // ZJ-TODO: move this to config
@@ -10,7 +11,9 @@ const OWNED_PLATE_MULTIPLIER: u8 = 2; // ZJ-TODO: move this to config
 
 pub fn simulate_scoring(
     game_state: Arc<Mutex<GameState>>,
-) -> Vec<SimulationEvent> {
+) -> SimulationStage {
+    let start_time = Instant::now();
+
     let active_colliders = {
         let game_state = game_state.lock().unwrap();
         game_state.active_colliders.clone()
@@ -81,5 +84,8 @@ pub fn simulate_scoring(
         }
     }
 
-    simulation_events
+    SimulationStage {
+        execution_duration: start_time.elapsed(),
+        pending_events: simulation_events
+    }
 }
