@@ -11,21 +11,49 @@ const MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK: f32 = 0.2_f32;
 const MOVE_TO_BALL_WEIGHT_HARDCODE_HACK: f32 = 0.2_f32;
 
 #[tracing::instrument(fields(combatant_id = combatant.id), skip_all, level = "debug")]
-pub fn actions(combatant: &CombatantObject, game_state: &GameState) -> Vec<Action> {
+pub fn actions(
+    combatant: &CombatantObject,
+    game_state: Arc<Mutex<GameState>>,
+) -> Vec<Action> {
     let mut actions = vec![];
 
-    let (rigid_body_set, collider_set, _) = game_state.physics_sim.sets();
-    let combatant_pos = rigid_body_set.get(combatant.rigid_body_handle).unwrap().translation();
+    let combatant_pos = {
+        let game_state = game_state.lock().unwrap();
+        let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+        rigid_body_set
+            .get(combatant.rigid_body_handle)
+            .unwrap()
+            .translation()
+            .to_owned()
+    };
 
     let combatant_move_speed = combatant.combatant.lock().unwrap().move_speed();
 
-    for (plate_id, plate_object) in &game_state.plates {
-        let plate_location = collider_set.get(plate_object.collider_handle().unwrap()).unwrap().translation();
+    let (plates, balls, combatants) = {
+        let game_state = game_state.lock().unwrap();
+        (game_state.plates.clone(), game_state.balls.clone(), game_state.combatants.clone())
+    };
+
+    for (plate_id, plate_object) in plates {
+        let plate_location = {
+            let game_state = game_state.lock().unwrap();
+            let (_, collider_set, _) = game_state.physics_sim.sets();
+            collider_set
+                .get(plate_object.collider_handle().unwrap())
+                .unwrap()
+                .translation()
+                .to_owned()
+        };
+
         actions.push(
             ActionBuilder::new()
                 .name(format!("Move to Plate {plate_id}"))
                 .strategy(Arc::new(Mutex::new(
-                    MoveToLocationStrategy::new((*combatant_pos).into(), (*plate_location).into(), game_state))
+                    MoveToLocationStrategy::new(
+                        combatant_pos.into(),
+                        plate_location.into(),
+                        game_state.clone())
+                    )
                 ))
                 .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (plate_location - combatant_pos).magnitude() / combatant_move_speed)
                 .completion(vec![Belief::SelfOnPlate])
@@ -33,24 +61,37 @@ pub fn actions(combatant: &CombatantObject, game_state: &GameState) -> Vec<Actio
         );
     }
 
-    for (ball_id, ball_object) in &game_state.balls {
+    for (ball_id, ball_object) in balls {
         if ball_object.held_by.is_some() {
             continue;
         }
-        
-        let ball_location = rigid_body_set.get(ball_object.rigid_body_handle().unwrap()).unwrap().translation();
+
+        let ball_location = {
+            let game_state = game_state.lock().unwrap();
+            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+            rigid_body_set
+                .get(ball_object.rigid_body_handle().unwrap())
+                .unwrap()
+                .translation()
+                .to_owned()
+        };
+
         actions.push(
             ActionBuilder::new()
                 .name(format!("Move to Ball {ball_id}"))
                 .strategy(Arc::new(Mutex::new(
-                    MoveToLocationStrategy::new((*combatant_pos).into(), (*ball_location).into(), game_state))
+                    MoveToLocationStrategy::new(
+                        combatant_pos.into(),
+                        ball_location.into(),
+                        game_state.clone())
+                    )
                 ))
                 .cost(MOVE_TO_BALL_WEIGHT_HARDCODE_HACK * (ball_location - combatant_pos).magnitude() / combatant_move_speed) 
                 .prohibited(vec![
                     Belief::SelfHasBall
                 ])
                 .completion(vec![
-                    Belief::SelfCanReachBall { ball_id: *ball_id }
+                    Belief::SelfCanReachBall { ball_id }
                 ])
                 .build()
         );
@@ -62,7 +103,7 @@ pub fn actions(combatant: &CombatantObject, game_state: &GameState) -> Vec<Actio
                     PickUpBallStrategy::new(ball_id.to_owned())
                 )))
                 .prerequisites(vec![
-                    Belief::SelfCanReachBall { ball_id: *ball_id }
+                    Belief::SelfCanReachBall { ball_id }
                 ])
                 .completion(vec![
                     Belief::SelfHasBall
@@ -71,9 +112,9 @@ pub fn actions(combatant: &CombatantObject, game_state: &GameState) -> Vec<Actio
         );
     }
 
-    for (combatant_id, _) in &game_state.combatants {
+    for (combatant_id, _) in combatants {
         // Don't try to throw a ball at ourselves
-        if *combatant_id == combatant.id {
+        if combatant_id == combatant.id {
             continue;
         }
 
@@ -81,7 +122,7 @@ pub fn actions(combatant: &CombatantObject, game_state: &GameState) -> Vec<Actio
             ActionBuilder::new()
                 .name(format!("Throw Ball at/to Combatant {}", combatant_id))
                 .strategy(Arc::new(Mutex::new(
-                    ThrowBallAtTargetStrategy::new(*combatant_id)
+                    ThrowBallAtTargetStrategy::new(combatant_id)
                 )))
                 .cost(10.0_f32 /* ZJ-TODO */)
                 .prerequisites(vec![Belief::SelfHasBall])

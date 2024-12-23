@@ -4,6 +4,7 @@ use super::game_object::GameObject;
 
 pub type PlateId = u8;
 
+#[derive(Clone)]
 pub struct PlateObject {
     id: PlateId,
     collider_handle: ColliderHandle,

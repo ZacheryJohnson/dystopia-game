@@ -58,8 +58,8 @@ impl Action {
     #[tracing::instrument(name = "action::tick", fields(combatant_id = agent.combatant().id), skip_all, level = "trace")]
     pub fn tick(
         &mut self,
-        agent: &mut impl Agent,
-        game_state: &mut GameState,
+        agent: &impl Agent,
+        game_state: Arc<Mutex<GameState>>,
     ) -> Option<Vec<SimulationEvent>> {
         let mut strategy = self.strategy.lock().unwrap();
         if !strategy.can_perform(agent.beliefs()) {

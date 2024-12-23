@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex};
 use crate::{ai::{belief::Belief, goal::GoalBuilder}, game_objects::combatant::CombatantObject, game_state::GameState};
 
 use super::goal::Goal;
@@ -8,7 +9,10 @@ pub fn idle_goal() -> Goal {
         .build()
 }
 
-pub fn goals(_combatant_object: &CombatantObject, _game_state: &GameState) -> Vec<Goal> {
+pub fn goals(
+    _combatant_object: &CombatantObject,
+    _game_state: Arc<Mutex<GameState>>,
+) -> Vec<Goal> {
     vec![
         GoalBuilder::new()
             .name("Score Points")

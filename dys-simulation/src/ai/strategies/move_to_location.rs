@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex};
 use dys_world::arena::navmesh::{ArenaNavmeshNode, ArenaNavmeshPath};
 use rapier3d::na::Point3;
 
@@ -11,11 +12,19 @@ pub struct MoveToLocationStrategy {
 }
 
 impl MoveToLocationStrategy {
-    pub fn new(start_location: Point3<f32>, target_location: Point3<f32>, game_state: &GameState) -> MoveToLocationStrategy {
-        let mut path = game_state
-            .arena_navmesh
-            .create_path(start_location, target_location)
-            .unwrap_or(ArenaNavmeshPath::new(vec![]));
+    pub fn new(
+        start_location: Point3<f32>,
+        target_location: Point3<f32>,
+        game_state: Arc<Mutex<GameState>>,
+    ) -> MoveToLocationStrategy {
+        let mut path = {
+            let game_state = game_state.lock().unwrap();
+            game_state
+                .arena_navmesh
+                .create_path(start_location, target_location)
+                .unwrap_or(ArenaNavmeshPath::new(vec![]))
+        };
+
         let next_node = path.next();
 
         MoveToLocationStrategy {
@@ -43,24 +52,33 @@ impl Strategy for MoveToLocationStrategy {
     #[tracing::instrument(name = "move_to_location::tick", fields(combatant_id = agent.combatant().id), skip_all, level = "trace")]
     fn tick(
         &mut self,
-        agent: &mut dyn Agent,
-        game_state: &mut GameState,
+        agent: &dyn Agent,
+        game_state: Arc<Mutex<GameState>>,
     ) -> Option<Vec<SimulationEvent>> {
         let mut events = vec![];
 
-        let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
-        let combatant_rb = rigid_body_set.get_mut(agent.combatant().rigid_body_handle).unwrap();
-        let combatant_position = combatant_rb.translation();
+        let (combatant_pos, unit_resolution) = {
+            let game_state = game_state.lock().unwrap();
+
+            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+            let combatant_pos = rigid_body_set
+                .get(agent.combatant().rigid_body_handle)
+                .unwrap()
+                .translation()
+                .to_owned();
+
+            let unit_resolution = game_state.arena_navmesh.config().unit_resolution;
+
+            (combatant_pos, unit_resolution)
+        };
 
         // ZJ-TODO: HACK: y coordinate is wonky
         //                ignore whatever we see initially and just maintain the combatant's y-pos
-        self.target_location.y = combatant_position.y;
+        self.target_location.y = combatant_pos.y;
 
         let mut total_distance_can_travel_this_tick = agent.combatant().combatant.lock().unwrap().move_speed();
 
-        let mut new_combatant_position = combatant_position.to_owned();
-
-        let unit_resolution = game_state.arena_navmesh.config().unit_resolution;
+        let mut new_combatant_position = combatant_pos.to_owned();
 
         while total_distance_can_travel_this_tick >= unit_resolution {
             if self.next_node.is_none() {
@@ -88,8 +106,9 @@ impl Strategy for MoveToLocationStrategy {
         if is_at_target {
             self.is_complete = true;
         }
-    
-        combatant_rb.set_translation(new_combatant_position, true);
+
+        // ZJ-TODO: do this in simulation
+        // combatant_rb.set_translation(new_combatant_position, true);
         //combatant_rb.set_next_kinematic_translation(new_combatant_position);
 
         events.push(SimulationEvent::CombatantPositionUpdate { 

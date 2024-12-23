@@ -1,7 +1,14 @@
+use std::sync::{Arc, Mutex};
 use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, feature::ArenaFeature, plate::ArenaPlate}, schedule::schedule_game::ScheduleGame};
 use rapier3d::prelude::*;
 
-use crate::{game_log::GameLog, game_objects::game_object::GameObject, game_state::GameState, game_tick::{GameTick, TickPerformance}, simulation::simulation_event::SimulationEvent};
+use crate::{
+    game_log::GameLog,
+    game_objects::game_object::GameObject,
+    game_state::GameState,
+    game_tick::{GameTick, TickPerformance},
+    simulation::simulate_tick,
+    simulation::simulation_event::SimulationEvent};
 
 #[derive(Clone)]
 pub struct Game {
@@ -9,7 +16,7 @@ pub struct Game {
 }
 
 impl Game {
-    fn simulate_internal(&self, mut game_state: GameState) -> GameLog {
+    fn simulate_internal(&self, game_state: GameState) -> GameLog {
         let mut ticks = vec![];
 
         // Add a "tick 0" for initial state
@@ -77,8 +84,9 @@ impl Game {
             ticks.push(tick_zero);
         }
 
+        let game_state = Arc::new(Mutex::new(game_state));
         loop {
-            let new_tick = game_state.tick();
+            let new_tick = simulate_tick(game_state.clone());
             let is_end_of_game = new_tick.is_end_of_game();
 
             ticks.push(new_tick);

@@ -1,4 +1,4 @@
-use crate::{combatant::limb::Limb, stat::stat::Stat};
+use crate::combatant::limb::Limb;
 
 pub type CombatantId = u64;
 

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-
+use std::sync::{Arc, Mutex};
 use rapier3d::{na::vector, prelude::*};
 
 use crate::{game_objects::{ball::{BallObject, BallState}, combatant::CombatantObject, game_object::GameObject, game_object_type::GameObjectType}, game_state::GameState, game_tick::GameTickNumber};
@@ -8,32 +8,32 @@ use super::{config::SimulationConfig, simulation_event::SimulationEvent};
 
 const CHARGE_FORCE_MODIFIER: f32 = 250.0;
 
-pub(crate) fn simulate_balls(game_state: &mut GameState) -> Vec<SimulationEvent> {
+pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> Vec<SimulationEvent> {
     let mut events = vec![];
 
-    let (query_pipeline, rigid_body_set, collider_set) = game_state.physics_sim.query_pipeline_and_sets();
-    for (ball_id, ball_object) in &mut game_state.balls {
-        {
-            try_move_if_held(ball_object, &game_state.combatants, rigid_body_set);
-        }
-        { 
-            let (explosion_simulation_events, affected_colliders) = explode(ball_object, query_pipeline, rigid_body_set, collider_set);
-            events.extend(explosion_simulation_events);
+    let balls = {
+        let game_state = game_state.lock().unwrap();
+        game_state.balls.clone()
+    };
 
-            let explosion_force_simulation_events = apply_explosion_forces(game_state.current_tick, affected_colliders, ball_object, &game_state.active_colliders, &mut game_state.combatants, rigid_body_set);
-            events.extend(explosion_force_simulation_events);
-            decrease_charge(ball_object, &game_state.simulation_config);
-        }
-        {
-            let ball_rb_handle = ball_object.rigid_body_handle().expect("ball should have a valid rigidbody handle");
-            let ball_rb: &mut RigidBody = rigid_body_set.get_mut(ball_rb_handle).expect("ball rigid bodies should be registered with main set");
-    
-            try_freeze_slow_moving_ball(game_state.current_tick, ball_object, ball_rb);
-    
-            if ball_object.is_dirty() {
-                events.push(SimulationEvent::BallPositionUpdate { ball_id: *ball_id, position: *ball_rb.translation() });
-            }
-        }
+    for (_, ball_object) in balls {
+        let (explosion_simulation_events, _affected_colliders) = explode(ball_object, game_state.clone());
+        events.extend(explosion_simulation_events);
+
+        // ZJ-TODO: move to simulation
+        // try_move_if_held(ball_object, &game_state.combatants, rigid_body_set);
+        // let explosion_force_simulation_events = apply_explosion_forces(game_state.current_tick, affected_colliders, ball_object, &game_state.active_colliders, &mut game_state.combatants, rigid_body_set);
+        // events.extend(explosion_force_simulation_events);
+        // decrease_charge(ball_object, &game_state.simulation_config);
+
+        // let ball_rb_handle = ball_object.rigid_body_handle().expect("ball should have a valid rigidbody handle");
+        // let ball_rb: &mut RigidBody = rigid_body_set.get_mut(ball_rb_handle).expect("ball rigid bodies should be registered with main set");
+        //
+        // try_freeze_slow_moving_ball(game_state.current_tick, ball_object, ball_rb);
+        //
+        // if ball_object.is_dirty() {
+        //     events.push(SimulationEvent::BallPositionUpdate { ball_id: *ball_id, position: *ball_rb.translation() });
+        // }
     }
 
     events
@@ -62,35 +62,49 @@ fn try_move_if_held(
 }
 
 fn explode(
-    ball: &mut BallObject,
-    query_pipeline: &QueryPipeline,
-    rigid_body_set: &mut RigidBodySet,
-    collider_set: &ColliderSet,
+    ball: BallObject,
+    game_state: Arc<Mutex<GameState>>,
 ) -> (Vec<SimulationEvent>, Vec<ColliderHandle>) {
     // Only handle balls in the Explode state
     let BallState::Explode = ball.state else {
         return (vec![], vec![]);
     };
 
-    let ball_pos = rigid_body_set.get(ball.rigid_body_handle().unwrap()).unwrap().translation();
+    let ball_pos = {
+        let game_state = game_state.lock().unwrap();
+        let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+
+        rigid_body_set
+            .get(ball.rigid_body_handle().unwrap())
+            .unwrap()
+            .translation()
+            .to_owned()
+    };
     
     const EXPLOSION_CYLINDER_HEIGHT: f32 = 30.0;
     let explosion_radius = ball.charge * 1.0; // ZJ-TODO: figure out explosion radius as compared to charge
     let explosion_shape = Cylinder::new(EXPLOSION_CYLINDER_HEIGHT, explosion_radius);
-    let explosion_pos = Isometry::new(ball_pos.to_owned(), vector![0.0, 0.0, 0.0]);
+    let explosion_pos = Isometry::new(ball_pos, vector![0.0, 0.0, 0.0]);
     let query_filter = QueryFilter::only_dynamic()
         .exclude_sensors();
 
     // ZJ-TODO: use InteractionGroups to get only combatants and ignore everything else
     let mut affected_colliders = vec![];
-    query_pipeline.intersections_with_shape(rigid_body_set, collider_set, &explosion_pos, &explosion_shape, query_filter, |handle| {
-        affected_colliders.push(handle);
-        true // return true to continue iterating over collisions
-    });
 
-    let ball_rb = rigid_body_set.get_mut(ball.rigid_body_handle().unwrap()).unwrap();
-    ball_rb.set_linvel(vector![0.0, 0.0, 0.0], true);
-    ball_rb.set_angvel(vector![0.0, 0.0, 0.0], true);
+    {
+        let mut game_state = game_state.lock().unwrap();
+        let (query_pipeline, rigid_body_set, collider_set) = game_state.physics_sim.query_pipeline_and_sets();
+
+        query_pipeline.intersections_with_shape(rigid_body_set, collider_set, &explosion_pos, &explosion_shape, query_filter, |handle| {
+            affected_colliders.push(handle);
+            true // return true to continue iterating over collisions
+        });
+    }
+
+    // ZJ-TODO: move to simulation
+    // let ball_rb = rigid_body_set.get_mut(ball.rigid_body_handle().unwrap()).unwrap();
+    // ball_rb.set_linvel(vector![0.0, 0.0, 0.0], true);
+    // ball_rb.set_angvel(vector![0.0, 0.0, 0.0], true);
 
     (vec![SimulationEvent::BallExplosion { ball_id: ball.id, charge: ball.charge }], affected_colliders)
 }

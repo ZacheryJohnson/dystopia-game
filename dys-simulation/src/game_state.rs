@@ -5,7 +5,7 @@ use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
 use rapier3d::prelude::*;
 
-use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType, plate::PlateObject}, game_tick::{GameTick, GameTickNumber}, physics_sim::PhysicsSim, simulation::{config::SimulationConfig, simulate_tick}};
+use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType, plate::PlateObject}, game_tick::GameTickNumber, physics_sim::PhysicsSim, simulation::config::SimulationConfig};
 
 pub type SeedT = [u8; 32];
 pub type CombatantsMapT = HashMap<CombatantId, CombatantObject>;
@@ -146,9 +146,5 @@ impl GameState {
             simulation_config,
             arena_navmesh
         }
-    }
-
-    pub fn tick(&mut self) -> GameTick {
-        simulate_tick(self)
     }
 }

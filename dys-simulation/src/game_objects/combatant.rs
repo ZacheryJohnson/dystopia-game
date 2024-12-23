@@ -74,7 +74,7 @@ impl CombatantObject {
 
     pub fn apply_explosion_force(
         &mut self,
-        current_tick: GameTickNumber,
+        _: GameTickNumber,
         force_magnitude: f32,
         force_direction: Vector3<f32>,
         rigid_body_set: &mut RigidBodySet)
@@ -133,7 +133,7 @@ impl GameObject for CombatantObject {
         Some(self.collider_handle)
     }
     
-    fn change_state(&mut self, current_tick: GameTickNumber, new_state: Self::GameStateT) -> (Self::GameStateT, GameTickNumber) {
+    fn change_state(&mut self, _: GameTickNumber, _: Self::GameStateT) -> (Self::GameStateT, GameTickNumber) {
         // ZJ-TODO: remove
         ((), 0)
     }
@@ -157,13 +157,16 @@ impl Agent for CombatantObject {
         &self.combatant_state.beliefs
     }
 
-    #[tracing::instrument(name = "agent::tick", fields(combatant_id = self.id, tick = game_state.current_tick), skip_all, level = "trace")]
-    fn tick(&mut self, game_state: &mut GameState) -> Vec<SimulationEvent> {
+    #[tracing::instrument(name = "agent::tick", fields(combatant_id = self.id), skip_all, level = "trace")]
+    fn tick(
+        &mut self,
+        game_state: Arc<Mutex<GameState>>,
+    ) -> Vec<SimulationEvent> {
         let mut events = vec![];
 
         if self.combatant_state.current_action.is_none() {
             if self.combatant_state.plan.is_empty() {
-                self.combatant_state.plan = planner::plan(self, game_state);
+                self.combatant_state.plan = planner::plan(self, game_state.clone());
             }
 
             let Some(next_action) = self.combatant_state.plan.pop() else {
