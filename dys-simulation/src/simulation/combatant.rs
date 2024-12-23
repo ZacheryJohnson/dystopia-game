@@ -1,11 +1,13 @@
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 use crate::{ai::agent::Agent, game_state::GameState};
-
-use super::simulation_event::SimulationEvent;
+use crate::simulation::simulation_stage::SimulationStage;
 
 pub(crate) fn simulate_combatants(
     game_state: Arc<Mutex<GameState>>
-) -> Vec<SimulationEvent> {
+) -> SimulationStage {
+    let start_time = Instant::now();
+
     let mut events = vec![];
 
     let combatants = {
@@ -18,5 +20,8 @@ pub(crate) fn simulate_combatants(
         events.append(&mut combatant_object.tick(game_state.clone()));
     }
 
-    events
+    SimulationStage {
+        pending_events: events,
+        execution_duration: start_time.elapsed(),
+    }
 }

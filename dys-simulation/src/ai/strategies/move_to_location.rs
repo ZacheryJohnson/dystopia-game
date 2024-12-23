@@ -92,7 +92,7 @@ impl Strategy for MoveToLocationStrategy {
 
             let next_node = self.next_node.unwrap();
     
-            let lerp_distance = (total_distance_can_travel_this_tick - unit_resolution).clamp(0.0, unit_resolution);
+            let lerp_distance = total_distance_can_travel_this_tick.clamp(0.0, unit_resolution);
             new_combatant_position = new_combatant_position.lerp(&next_node.as_vector(), lerp_distance);
             total_distance_can_travel_this_tick = (total_distance_can_travel_this_tick - unit_resolution).max(0.0);
 
@@ -106,10 +106,6 @@ impl Strategy for MoveToLocationStrategy {
         if is_at_target {
             self.is_complete = true;
         }
-
-        // ZJ-TODO: do this in simulation
-        // combatant_rb.set_translation(new_combatant_position, true);
-        //combatant_rb.set_next_kinematic_translation(new_combatant_position);
 
         events.push(SimulationEvent::CombatantPositionUpdate { 
             combatant_id: agent.combatant().id,
