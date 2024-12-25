@@ -38,7 +38,11 @@ impl Strategy for ThrowBallAtTargetStrategy {
         // Agents may believe that they're holding a ball, but not actually holding a ball per the simulation
         // If the authoritative game state says they're not holding a ball, consider this strategy complete
         // ZJ-TODO: delay first?
-        let Some(ball_id) = agent.combatant().combatant_state.holding_ball else {
+        let maybe_held_ball = {
+            let combatant_state = agent.combatant().combatant_state.lock().unwrap();
+            combatant_state.holding_ball
+        };
+        let Some(ball_id) = maybe_held_ball else {
             self.is_complete = true;
             return None;
         };

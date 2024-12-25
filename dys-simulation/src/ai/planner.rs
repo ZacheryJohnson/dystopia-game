@@ -8,13 +8,14 @@ use super::{action::Action, actions::actions, agent::Agent, belief::Belief, goal
     level = "trace",
     fields(
         combatant_id = agent.combatant().id,
+        tick = game_state.lock().unwrap().current_tick
     )
 )]
 pub fn plan(
     agent: &impl Agent,
     game_state: Arc<Mutex<GameState>>,
 ) -> Vec<Action> {
-    tracing::debug!("Planning for combatant {}", agent.combatant().id);
+    tracing::debug!("Planning for combatant {} with beliefs {:?}", agent.combatant().id, agent.beliefs());
     let all_goals = goals(agent.combatant(), game_state.clone());
 
     let actions = actions(agent.combatant(), game_state.clone());

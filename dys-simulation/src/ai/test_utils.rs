@@ -40,7 +40,7 @@ impl TestAgent {
                         limbs: vec![],
                     })
                 )),
-                combatant_state: settings.combatant_state_override.unwrap_or_default(),
+                combatant_state: Arc::new(Mutex::new(settings.combatant_state_override.unwrap_or_default())),
                 team: settings.team_override.unwrap_or(TeamAlignment::Home),
                 rigid_body_handle: RigidBodyHandle::invalid(),
                 collider_handle: ColliderHandle::invalid(),
@@ -55,7 +55,7 @@ impl TestAgent {
 }
 
 impl Agent for TestAgent {
-    fn combatant(&self) -> &crate::game_objects::combatant::CombatantObject {
+    fn combatant(&self) -> &CombatantObject {
         &self.combatant
     }
 
@@ -63,8 +63,8 @@ impl Agent for TestAgent {
         &mut self.combatant
     }
     
-    fn beliefs(&self) -> &Vec<super::belief::Belief> {
-        &self.beliefs
+    fn beliefs(&self) -> Vec<Belief> {
+        self.beliefs.clone()
     }
 
     fn tick(&mut self, _: Arc<Mutex<GameState>>) -> Vec<SimulationEvent> {

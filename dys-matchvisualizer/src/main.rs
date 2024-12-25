@@ -396,7 +396,7 @@ fn display_game_log_perf(
 
     // Bevy default font doesn't display unicode (or at least 'μ')
     // Just replace with 'u'
-    text.sections[0].value = game_log.perf_string().replace("μ", "u");
+    text.sections[0].value = game_log.perf_string().replace("μ", "u") + format!(" (tick {})", game_state.current_tick).as_str();
 }
 
 

@@ -21,6 +21,8 @@ impl Strategy for PickUpBallStrategy {
     }
 
     fn can_perform(&self, owned_beliefs: &[Belief]) -> bool {
+        // ZJ-TODO: out earlier if we know the ball has already been picked up by someone else
+        //          stretch goal - if we believe we have no chance of getting to the ball first, abort early?
         !owned_beliefs.contains(&Belief::SelfHasBall) && owned_beliefs.contains(&Belief::SelfCanReachBall { ball_id: self.ball_id })
     }
 

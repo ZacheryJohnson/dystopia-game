@@ -62,7 +62,7 @@ impl Action {
         game_state: Arc<Mutex<GameState>>,
     ) -> Option<Vec<SimulationEvent>> {
         let mut strategy = self.strategy.lock().unwrap();
-        if !strategy.can_perform(agent.beliefs()) {
+        if !strategy.can_perform(&agent.beliefs()) {
             tracing::debug!("Cannot perform action {}", self.name());
             return None;
         }

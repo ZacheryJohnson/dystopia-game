@@ -8,7 +8,7 @@ pub trait Agent {
 
     fn combatant_mut(&mut self) -> &mut CombatantObject;
 
-    fn beliefs(&self) -> &Vec<Belief>;
+    fn beliefs(&self) -> Vec<Belief>;
 
     fn tick(&mut self, game_state: Arc<Mutex<GameState>>) -> Vec<SimulationEvent>;
 }

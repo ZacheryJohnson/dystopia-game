@@ -46,6 +46,10 @@ impl Strategy for MoveToLocationStrategy {
     }
 
     fn is_complete(&self) -> bool {
+        if self.is_complete {
+            tracing::warn!("yep!");
+        }
+
         self.is_complete
     }
 
@@ -57,7 +61,7 @@ impl Strategy for MoveToLocationStrategy {
     ) -> Option<Vec<SimulationEvent>> {
         let mut events = vec![];
 
-        let (combatant_pos, unit_resolution) = {
+        let (mut new_combatant_position, unit_resolution) = {
             let game_state = game_state.lock().unwrap();
 
             let (rigid_body_set, _, _) = game_state.physics_sim.sets();
@@ -74,11 +78,9 @@ impl Strategy for MoveToLocationStrategy {
 
         // ZJ-TODO: HACK: y coordinate is wonky
         //                ignore whatever we see initially and just maintain the combatant's y-pos
-        self.target_location.y = combatant_pos.y;
+        self.target_location.y = new_combatant_position.y;
 
         let mut total_distance_can_travel_this_tick = agent.combatant().combatant.lock().unwrap().move_speed();
-
-        let mut new_combatant_position = combatant_pos.to_owned();
 
         while total_distance_can_travel_this_tick >= unit_resolution {
             if self.next_node.is_none() {
@@ -102,6 +104,9 @@ impl Strategy for MoveToLocationStrategy {
             }
         }
 
+        // ZJ-TODO: HACK: y coordinate is wonky
+        //                ignore whatever we see initially and just maintain the combatant's y-pos
+        new_combatant_position.y = self.target_location.y;
         let is_at_target = (self.target_location - new_combatant_position).coords.magnitude() <= unit_resolution;
         if is_at_target {
             self.is_complete = true;
