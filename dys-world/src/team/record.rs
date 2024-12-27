@@ -1,6 +1,6 @@
 use crate::{combatant::record::CombatantRecord, history::recordable::{RecordType, Recordable}};
 
-use super::definition::TeamDefinition;
+use super::instance::TeamInstance;
 
 const RECORD_PREFIX: &str = "TEAM";
 
@@ -15,7 +15,7 @@ impl RecordType for TeamRecord {
     }
 }
 
-impl Recordable<TeamRecord> for TeamDefinition {
+impl Recordable<TeamRecord> for TeamInstance {
     fn to_record(&self) -> TeamRecord {
         todo!()
     }

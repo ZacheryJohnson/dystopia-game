@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, combatant_start::ArenaCombatantStart, feature::ArenaFeature, navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, plate::{ArenaPlate, PlateId}}, combatant::definition::CombatantId};
+use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, combatant_start::ArenaCombatantStart, feature::ArenaFeature, navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, plate::{ArenaPlate, PlateId}}, combatant::instance::CombatantInstanceId};
 use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
 use rapier3d::prelude::*;
@@ -8,7 +8,7 @@ use rapier3d::prelude::*;
 use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType, plate::PlateObject}, game_tick::GameTickNumber, physics_sim::PhysicsSim, simulation::config::SimulationConfig};
 
 pub type SeedT = [u8; 32];
-pub type CombatantsMapT = HashMap<CombatantId, CombatantObject>;
+pub type CombatantsMapT = HashMap<CombatantInstanceId, CombatantObject>;
 pub type BallsMapT = HashMap<BallId, BallObject>;
 pub type PlatesMapT = HashMap<PlateId, PlateObject>;
 pub type CollidersMapT = HashMap<ColliderHandle, GameObjectType>;

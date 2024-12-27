@@ -1,3 +1,3 @@
-pub mod definition;
+pub mod instance;
 pub mod limb;
 pub mod record;

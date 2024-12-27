@@ -106,7 +106,7 @@ fn get_best_goal<'a>(
 mod tests {
     use std::{collections::HashMap, sync::{Arc, Mutex}};
 
-    use dys_world::{arena::{navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, Arena}, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}, team::definition::TeamDefinition};
+    use dys_world::{arena::{navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, Arena}, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}, team::instance::TeamInstance};
     use rand::SeedableRng;
     use rand_pcg::Pcg64;
 
@@ -119,12 +119,12 @@ mod tests {
     fn make_test_game_state() -> Arc<Mutex<GameState>> {
         let game = Game {
             schedule_game: ScheduleGame {
-                away_team: Arc::new(Mutex::new(TeamDefinition {
+                away_team: Arc::new(Mutex::new(TeamInstance {
                     id: 1,
                     name: String::from("TestAwayTeam"),
                     combatants: vec![],
                 })),
-                home_team: Arc::new(Mutex::new(TeamDefinition {
+                home_team: Arc::new(Mutex::new(TeamInstance {
                     id: 2,
                     name: String::from("TestHomeTeam"),
                     combatants: vec![],

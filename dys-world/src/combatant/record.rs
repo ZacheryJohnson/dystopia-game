@@ -1,6 +1,6 @@
 use crate::history::recordable::{RecordType, Recordable};
 
-use super::{definition::CombatantDefinition, limb::Limb};
+use super::{instance::CombatantInstance, limb::Limb};
 
 const RECORD_PREFIX: &str = "COMB";
 
@@ -16,7 +16,7 @@ impl RecordType for CombatantRecord {
     }
 }
 
-impl Recordable<CombatantRecord> for CombatantDefinition {
+impl Recordable<CombatantRecord> for CombatantInstance {
     fn to_record(&self) -> CombatantRecord {
         CombatantRecord {
             id: self.id,

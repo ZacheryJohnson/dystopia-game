@@ -1,4 +1,4 @@
-use dys_world::combatant::definition::CombatantId;
+use dys_world::combatant::instance::CombatantInstanceId;
 use rapier3d::{dynamics::{CoefficientCombineRule, RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 
 use crate::game_tick::GameTickNumber;
@@ -15,15 +15,15 @@ const BALL_MASS: f32 = 2.0;
 pub enum BallState {
     Idle,
     Held { 
-        holder_id: CombatantId
+        holder_id: CombatantInstanceId
     },
     RollingInDirection {
         direction: Vector3<f32>,
     },
     ThrownAtTarget {
         direction: Vector3<f32>,
-        thrower_id: CombatantId,
-        target_id: CombatantId,
+        thrower_id: CombatantInstanceId,
+        target_id: CombatantInstanceId,
     },
     Explode,
 }
@@ -37,7 +37,7 @@ pub struct BallObject {
     pub state_tick_stamp: GameTickNumber,
     pub charge: f32,
     pub is_dirty: bool,
-    pub held_by: Option<CombatantId>,
+    pub held_by: Option<CombatantInstanceId>,
 }
 
 impl BallObject {
@@ -68,7 +68,7 @@ impl BallObject {
         }
     }
 
-    pub fn set_held_by(&mut self, combatant_id: Option<CombatantId>, current_tick: GameTickNumber) {
+    pub fn set_held_by(&mut self, combatant_id: Option<CombatantInstanceId>, current_tick: GameTickNumber) {
         self.held_by = combatant_id;
 
         if let Some(id) = combatant_id {

@@ -1,9 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use crate::{combatant::definition::CombatantDefinition, team::definition::TeamDefinition};
+use crate::{combatant::instance::CombatantInstance, team::instance::TeamInstance};
 
 #[derive(Clone)]
 pub struct World {
-    pub combatants: Vec<Arc<Mutex<CombatantDefinition>>>,
-    pub teams: Vec<Arc<Mutex<TeamDefinition>>>,
+    pub combatants: Vec<Arc<Mutex<CombatantInstance>>>,
+    pub teams: Vec<Arc<Mutex<TeamInstance>>>,
 }

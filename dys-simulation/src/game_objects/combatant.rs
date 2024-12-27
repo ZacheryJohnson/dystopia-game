@@ -1,6 +1,6 @@
 use std::{fmt::Debug, sync::{Arc, Mutex}};
 
-use dys_world::{arena::plate::PlateId, combatant::definition::CombatantDefinition};
+use dys_world::{arena::plate::PlateId, combatant::instance::CombatantInstance};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 
 use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
@@ -22,7 +22,7 @@ pub enum TeamAlignment {
 #[derive(Clone)]
 pub struct CombatantObject {
     pub id: CombatantId,
-    pub combatant: Arc<Mutex<CombatantDefinition>>,
+    pub combatant: Arc<Mutex<CombatantInstance>>,
     pub combatant_state: Arc<Mutex<CombatantState>>,
     pub team: TeamAlignment,
     pub rigid_body_handle: RigidBodyHandle,
@@ -41,7 +41,7 @@ pub struct CombatantState {
 }
 
 impl CombatantObject {
-    pub fn new(id: CombatantId, combatant: Arc<Mutex<CombatantDefinition>>, position: Vector3<f32>, team: TeamAlignment, rigid_body_set: &mut RigidBodySet, collider_set: &mut ColliderSet) -> CombatantObject {
+    pub fn new(id: CombatantId, combatant: Arc<Mutex<CombatantInstance>>, position: Vector3<f32>, team: TeamAlignment, rigid_body_set: &mut RigidBodySet, collider_set: &mut ColliderSet) -> CombatantObject {
         let rigid_body = RigidBodyBuilder::dynamic() // RigidBodyBuilder::kinematic_position_based()
             .translation(position)
             .build();

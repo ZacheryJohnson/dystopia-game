@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use dys_world::combatant::definition::CombatantDefinition;
+use dys_world::combatant::instance::CombatantInstance;
 use rapier3d::prelude::{ColliderHandle, RigidBodyHandle};
 
 use crate::{game_objects::combatant::{CombatantId, CombatantObject, CombatantState, TeamAlignment}, game_state::GameState, simulation::simulation_event::SimulationEvent};
@@ -19,7 +19,7 @@ pub struct TestAgentSettings {
     combatant_object_override: Option<CombatantObject>,
 
     combatant_object_id_override: Option<CombatantId>,
-    combatant_override: Option<CombatantDefinition>,
+    combatant_override: Option<CombatantInstance>,
     combatant_state_override: Option<CombatantState>,
     team_override: Option<TeamAlignment>,
 }
@@ -34,7 +34,7 @@ impl TestAgent {
             combatant: CombatantObject {
                 id: settings.combatant_object_id_override.unwrap_or(1),
                 combatant: Arc::new(Mutex::new(
-                    settings.combatant_override.unwrap_or(CombatantDefinition {
+                    settings.combatant_override.unwrap_or(CombatantInstance {
                         id: 1,
                         name: String::from("TestCombatant"),
                         limbs: vec![],

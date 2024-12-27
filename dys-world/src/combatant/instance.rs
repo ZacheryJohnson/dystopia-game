@@ -1,15 +1,15 @@
 use crate::combatant::limb::Limb;
 
-pub type CombatantId = u64;
+pub type CombatantInstanceId = u64;
 
 #[derive(Debug)]
-pub struct CombatantDefinition {
-    pub id: CombatantId,
+pub struct CombatantInstance {
+    pub id: CombatantInstanceId,
     pub name: String,
     pub limbs: Vec<Limb>
 }
 
-impl CombatantDefinition {
+impl CombatantInstance {
     /// ZJ-TODO: HACK: calculate this from combatant limbs and modifiers
     pub fn move_speed(&self) -> f32 {
         1.0_f32
