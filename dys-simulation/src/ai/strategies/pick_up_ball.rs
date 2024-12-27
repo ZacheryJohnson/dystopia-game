@@ -54,9 +54,6 @@ impl Strategy for PickUpBallStrategy {
             return None;
         }
 
-        // ZJ-TODO: move to simulation
-        // ball_object.set_held_by(Some(agent.combatant().id), game_state.current_tick);
-
         Some(vec![
             SimulationEvent::CombatantPickedUpBall { combatant_id: agent.combatant().id, ball_id: self.ball_id }
         ])

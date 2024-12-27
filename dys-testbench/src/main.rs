@@ -8,7 +8,7 @@ use tracing::Level;
 async fn main() {
     let logger_options = LoggerOptions {
         application_name: "testbench".to_string(),
-        log_level: Level::TRACE,
+        log_level: Level::INFO,
     };
 
     dys_observability::logger::initialize(logger_options);
@@ -38,9 +38,9 @@ async fn main() {
     let parsed_game_log: GameLog = postcard::from_bytes(&parsed_game_log_contents).expect("failed to serialize game log artifact into a game log");
     tracing::info!("{}", parsed_game_log.perf_string());
     for tick in parsed_game_log.ticks() {
-        tracing::info!("Tick {}: {}", tick.tick_number, tick.tick_performance().perf_string());
+        tracing::debug!("Tick {}: {}", tick.tick_number, tick.tick_performance().perf_string());
         for evt in &tick.simulation_events {
-            tracing::info!("\t{:?}", evt);
+            tracing::debug!("\t{:?}", evt);
         }
     }
 

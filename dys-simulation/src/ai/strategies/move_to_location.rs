@@ -22,7 +22,7 @@ impl MoveToLocationStrategy {
             game_state
                 .arena_navmesh
                 .create_path(start_location, target_location)
-                .unwrap_or(ArenaNavmeshPath::new(vec![]))
+                .unwrap_or(ArenaNavmeshPath::empty())
         };
 
         let next_node = path.next();
@@ -46,10 +46,6 @@ impl Strategy for MoveToLocationStrategy {
     }
 
     fn is_complete(&self) -> bool {
-        if self.is_complete {
-            tracing::warn!("yep!");
-        }
-
         self.is_complete
     }
 
@@ -83,16 +79,9 @@ impl Strategy for MoveToLocationStrategy {
         let mut total_distance_can_travel_this_tick = agent.combatant().combatant.lock().unwrap().move_speed();
 
         while total_distance_can_travel_this_tick >= unit_resolution {
-            if self.next_node.is_none() {
-                let next_node = self.path.next();
-                if next_node.is_none() {
-                    break;
-                }
-                
-                self.next_node = next_node;
-            }
-
-            let next_node = self.next_node.unwrap();
+            let Some(next_node) = self.next_node else {
+                break;
+            };
     
             let lerp_distance = total_distance_can_travel_this_tick.clamp(0.0, unit_resolution);
             new_combatant_position = new_combatant_position.lerp(&next_node.as_vector(), lerp_distance);
@@ -100,7 +89,11 @@ impl Strategy for MoveToLocationStrategy {
 
             let distance_from_node = (next_node.as_vector() - new_combatant_position).magnitude();
             if distance_from_node == 0.0 {
-                self.next_node = None;
+                if let Some(next_node) = self.path.next() {
+                    self.next_node = Some(next_node);
+                } else {
+                    break;
+                }
             }
         }
 

@@ -117,6 +117,7 @@ impl SimulationEvent {
             }
             SimulationEvent::CombatantPickedUpBall { combatant_id, ball_id } => {
                 let mut game_state = game_state.lock().unwrap();
+
                 let mut combatant_object = game_state
                     .combatants
                     .get_mut(&combatant_id)

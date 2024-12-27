@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::{Arc, Mutex};
 
@@ -69,6 +70,10 @@ impl ArenaNavmeshPath {
     pub fn new(mut path: Vec<ArenaNavmeshNode>) -> ArenaNavmeshPath {
         path.reverse();
         ArenaNavmeshPath { path }
+    }
+
+    pub fn empty() -> ArenaNavmeshPath {
+        ArenaNavmeshPath { path: vec![] }
     }
 
     pub fn next(&mut self) -> Option<ArenaNavmeshNode> {
@@ -196,6 +201,7 @@ impl ArenaNavmesh {
     }
 
     /// Attempts to create a path from one point to another point. Returns an empty vector if a path cannot be made.
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn create_path(&self, from: Point<f32>, to: Point<f32>) -> Option<ArenaNavmeshPath> {
         // ZJ-TODO: HACK: grounding the coordinates to 0.0 is sad and bad
         let from = point![from.x, 0.0, from.z];
@@ -237,7 +243,7 @@ impl ArenaNavmesh {
             &self.graph, 
             from, 
             |node| node.as_point() == to.as_point(), 
-            |edge| *edge.weight(), 
+            |edge| *edge.weight(),
             |node| {
                 let euclidean_vector = to.as_point() - node.as_point();
                 let scaled_suboptimal_vector = suboptimal_bias_vector * euclidean_vector.magnitude();
@@ -253,6 +259,7 @@ impl ArenaNavmesh {
     }
 
     /// This function is **expensive**. Should not be used when constructing the navmesh graph, and only for client requests (like [create_path](ArenaNavmesh::create_path)).
+    #[tracing::instrument(level = "trace", skip_all)]
     fn get_closest_node(graph: &UnGraphMap<ArenaNavmeshNode, f32>, point: Point<f32>, unit_resolution: f32) -> Option<ArenaNavmeshNode> {
         let scalar = 1.0 / unit_resolution;
         let adjusted_point = point![
@@ -261,6 +268,7 @@ impl ArenaNavmesh {
             ((point.z * scalar).round() / scalar),
         ];
         let potential_node = ArenaNavmeshNode::from_point(adjusted_point);
+
         if graph.contains_node(potential_node) {
             Some(potential_node)
         } else {

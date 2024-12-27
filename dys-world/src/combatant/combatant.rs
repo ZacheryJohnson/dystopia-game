@@ -12,7 +12,6 @@ pub struct Combatant {
 impl Combatant {
     /// ZJ-TODO: HACK: calculate this from combatant limbs and modifiers
     pub fn move_speed(&self) -> f32 {
-        
-        2.0_f32
+        1.0_f32
     }
 }
