@@ -1,7 +1,7 @@
 # --------------------------------------------
 #   Build
 # --------------------------------------------
-FROM rust:1.79-bookworm AS builder
+FROM rust:1.83-bookworm AS builder
 
 ARG WORKING_DIR="."
 
@@ -19,7 +19,7 @@ RUN cargo install wasm-opt
 
 WORKDIR /opt/dystopia
 COPY $WORKING_DIR/Cargo.toml /opt/dystopia/Cargo.toml
-COPY $WORKING_DIR/dys-game/ /opt/dystopia/dys-game/
+COPY $WORKING_DIR/dys-simulation/ /opt/dystopia/dys-simulation/
 COPY $WORKING_DIR/dys-world/ /opt/dystopia/dys-world/
 
 # Building the match visualizer is the longest part of this process

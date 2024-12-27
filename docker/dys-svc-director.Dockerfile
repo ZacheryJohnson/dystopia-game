@@ -1,7 +1,7 @@
 # --------------------------------------------
 #   Build
 # --------------------------------------------
-FROM rust:1.79-bookworm AS builder
+FROM rust:1.83-bookworm AS builder
 
 ARG WORKING_DIR="."
 
@@ -10,10 +10,10 @@ RUN apt update
 RUN apt install -y g++ pkg-config libx11-dev libasound2-dev libudev-dev
 
 COPY $WORKING_DIR/Cargo.toml /opt/dystopia/Cargo.toml
-COPY $WORKING_DIR/dys-svc-director/ /opt/dystopia/dys-svc-director/
-COPY $WORKING_DIR/dys-game/ /opt/dystopia/dys-game/
+COPY $WORKING_DIR/dys-simulation/ /opt/dystopia/dys-simulation/
 COPY $WORKING_DIR/dys-observability/ /opt/dystopia/dys-observability/
 COPY $WORKING_DIR/dys-world/ /opt/dystopia/dys-world/
+COPY $WORKING_DIR/dys-svc-director/ /opt/dystopia/dys-svc-director/
 
 WORKDIR /opt/dystopia/dys-svc-director
 RUN cargo build --release -p dys-svc-director
