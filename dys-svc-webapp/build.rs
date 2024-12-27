@@ -1,9 +1,9 @@
 use std::{ffi::OsString, str::FromStr};
 
-const MATCH_VISUALIZER_WASM_DIR_LOCAL_PATH: &'static str = "../.wasm_out";
-const FRONTEND_LOCAL_DIR_NAME: &'static str = "frontend";
-const FRONTEND_ARTIFACT_PUBLIC_DIR_NAME: &'static str = "public";
-const FRONTEND_ARTIFACT_INTERNAL_DIR_NAME: &'static str = "src/assets";
+const MATCH_VISUALIZER_WASM_DIR_LOCAL_PATH: &str = "../.wasm_out";
+const FRONTEND_LOCAL_DIR_NAME: &str = "frontend";
+const FRONTEND_ARTIFACT_PUBLIC_DIR_NAME: &str = "public";
+const FRONTEND_ARTIFACT_INTERNAL_DIR_NAME: &str = "src/assets";
 
 fn build_and_copy_wasm(project_dir_path: &String) {
     let match_visualizer_wasm_path = std::path::Path::new(&project_dir_path).join(MATCH_VISUALIZER_WASM_DIR_LOCAL_PATH);
@@ -49,7 +49,7 @@ fn exec_build_script_cmd(project_dir_path: &String) {
     
     #[cfg(target_os="linux")]
     {
-        const BUILD_SCRIPT_CMD_SH_LOCAL_PATH: &'static str = "build_scripts/build_webapp_frontend.sh";
+        const BUILD_SCRIPT_CMD_SH_LOCAL_PATH: &str = "build_scripts/build_webapp_frontend.sh";
         let _ = std::process::Command::new("sh")
             .arg(BUILD_SCRIPT_CMD_SH_LOCAL_PATH)
             .current_dir(project_dir_path)

@@ -1,2 +1,2 @@
-pub mod team;
+pub mod definition;
 pub mod record;

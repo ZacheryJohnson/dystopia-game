@@ -5,7 +5,7 @@ use dys_observability::{logger::LoggerOptions, middleware::{make_span, map_trace
 use tower::ServiceBuilder;
 use tower_http::{services::{ServeDir, ServeFile}, trace::TraceLayer};
 
-const DEFAULT_DIST_PATH: &'static str = "dys-svc-webapp/frontend/dist";
+const DEFAULT_DIST_PATH: &str = "dys-svc-webapp/frontend/dist";
 
 async fn static_cache_control(request: Request, next: Next) -> Response {
     let mut response = next.run(request).await;

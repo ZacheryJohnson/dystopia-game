@@ -25,7 +25,7 @@ impl MoveToLocationStrategy {
                 .unwrap_or(ArenaNavmeshPath::empty())
         };
 
-        let next_node = path.next();
+        let next_node = path.next_node();
 
         MoveToLocationStrategy {
             is_complete: false,
@@ -89,7 +89,7 @@ impl Strategy for MoveToLocationStrategy {
 
             let distance_from_node = (next_node.as_vector() - new_combatant_position).magnitude();
             if distance_from_node == 0.0 {
-                if let Some(next_node) = self.path.next() {
+                if let Some(next_node) = self.path.next_node() {
                     self.next_node = Some(next_node);
                 } else {
                     break;

@@ -7,13 +7,13 @@ pub enum StatType {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Stat {
+pub struct StatDefinition {
     pub stat_type: StatType,
     pub value: f32,
 }
 
-impl From<Stat> for (StatType, f32) {
-    fn from(val: Stat) -> Self {
+impl From<StatDefinition> for (StatType, f32) {
+    fn from(val: StatDefinition) -> Self {
         (val.stat_type, val.value)
     }
 }

@@ -1,9 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use dys_world::combatant::combatant::Combatant;
+use dys_world::combatant::definition::CombatantDefinition;
 use dys_world::combatant::limb::{Limb, LimbModifier, LimbModifierType, LimbType, ModifierAcquisitionMethod};
-use dys_world::stat::stat::{Stat, StatType};
-use dys_world::team::team::Team;
+use dys_world::stat::definition::{StatDefinition, StatType};
+use dys_world::team::definition::TeamDefinition;
 use dys_world::world::World;
 use rand::rngs::ThreadRng;
 use rand::seq::SliceRandom;
@@ -58,20 +58,20 @@ impl Generator {
         vec![
             Limb {
                 limb_type: LimbType::Torso, 
-                modifiers: vec![ LimbModifier { modifier_type: LimbModifierType::Regular, acquisition: ModifierAcquisitionMethod::Inherent, stats: vec![Stat { stat_type: StatType::Strength, value: 10.0 }] }], 
+                modifiers: vec![ LimbModifier { modifier_type: LimbModifierType::Regular, acquisition: ModifierAcquisitionMethod::Inherent, stats: vec![StatDefinition { stat_type: StatType::Strength, value: 10.0 }] }],
                 child_limbs: vec![
                     Limb { 
                         limb_type: LimbType::Head, 
-                        modifiers: vec![ LimbModifier { modifier_type: LimbModifierType::Regular, acquisition: ModifierAcquisitionMethod::Inherent, stats: vec![Stat { stat_type: StatType::Cognition, value: 30.0 }] }], 
+                        modifiers: vec![ LimbModifier { modifier_type: LimbModifierType::Regular, acquisition: ModifierAcquisitionMethod::Inherent, stats: vec![StatDefinition { stat_type: StatType::Cognition, value: 30.0 }] }],
                         child_limbs: vec![
                             Limb {
                                 limb_type: LimbType::Eye,
-                                modifiers: vec![ LimbModifier { modifier_type: LimbModifierType::Regular, acquisition: ModifierAcquisitionMethod::Inherent, stats: vec![Stat { stat_type: StatType::Reaction, value: 10.0 }] }],
+                                modifiers: vec![ LimbModifier { modifier_type: LimbModifierType::Regular, acquisition: ModifierAcquisitionMethod::Inherent, stats: vec![StatDefinition { stat_type: StatType::Reaction, value: 10.0 }] }],
                                 child_limbs: vec![]
                             },
                             Limb {
                                 limb_type: LimbType::Eye,
-                                modifiers: vec![ LimbModifier { modifier_type: LimbModifierType::Regular, acquisition: ModifierAcquisitionMethod::Inherent, stats: vec![Stat { stat_type: StatType::Reaction, value: 10.0 }] }],
+                                modifiers: vec![ LimbModifier { modifier_type: LimbModifierType::Regular, acquisition: ModifierAcquisitionMethod::Inherent, stats: vec![StatDefinition { stat_type: StatType::Reaction, value: 10.0 }] }],
                                 child_limbs: vec![]
                             },
                             Limb {
@@ -249,7 +249,7 @@ impl Generator {
         ]
     } 
 
-    fn generate_combatant(&self, id: u64, rng: &mut ThreadRng) -> Combatant {
+    fn generate_combatant(&self, id: u64, rng: &mut ThreadRng) -> CombatantDefinition {
         let combatant_given_name = self.given_names.choose(rng).unwrap().to_owned();
         let combatant_surname = self.surnames.choose(rng).unwrap().to_owned();
 
@@ -261,14 +261,14 @@ impl Generator {
     
         let combatant_limbs = self.default_limbs();
     
-        Combatant {
+        CombatantDefinition {
             id,
             name: combatant_name,
             limbs: combatant_limbs,
         }
     }
     
-    pub fn generate_combatants(&self, count: u64) -> Vec<Arc<Mutex<Combatant>>> {
+    pub fn generate_combatants(&self, count: u64) -> Vec<Arc<Mutex<CombatantDefinition>>> {
         let mut combatants = vec![];
     
         let mut thread_rng = rand::thread_rng();
@@ -292,7 +292,7 @@ impl Generator {
             .clone()
             .chunks(players_per_team as usize)
             .enumerate()
-            .map(|(id, combatants)| Team { 
+            .map(|(id, combatants)| TeamDefinition {
                 id: id as u64,
                 name: self.team_names[id].clone(),
                 combatants: combatants.to_vec(),

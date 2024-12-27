@@ -69,16 +69,17 @@ fn get_action_for_belief(desired_belief: Belief, _: &[Belief], actions: &[Action
         action.completion_beliefs().iter().any(|belief| belief.is_a(&desired_belief))
     }).collect::<Vec<_>>();
 
-    while let Some(action) = potential_actions.pop() {
-        // if action.prohibited_beliefs().iter().any(|prohibited_belief| current_beliefs.contains(prohibited_belief)) {
-        //     continue;
-        // }
+    potential_actions.pop().map(|action_ref| action_ref.to_owned())
 
-        tracing::debug!("Adding action {} to plan", action.name());
-        return Some(action.to_owned());
-    }
-
-    None
+    // ZJ-TODO: reinstate the below so prohibited actions matter
+    // while let Some(action) = potential_actions.pop() {
+    //     // if action.prohibited_beliefs().iter().any(|prohibited_belief| current_beliefs.contains(prohibited_belief)) {
+    //     //     continue;
+    //     // }
+    //
+    //     tracing::debug!("Adding action {} to plan", action.name());
+    //     return Some(action.to_owned());
+    // }
 }
 
 /// The best goal is the highest priority goal where the agent doesn't already have all of the desired beliefs.
@@ -105,7 +106,7 @@ fn get_best_goal<'a>(
 mod tests {
     use std::{collections::HashMap, sync::{Arc, Mutex}};
 
-    use dys_world::{arena::{navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, Arena}, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}, team::team::Team};
+    use dys_world::{arena::{navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, Arena}, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}, team::definition::TeamDefinition};
     use rand::SeedableRng;
     use rand_pcg::Pcg64;
 
@@ -118,12 +119,12 @@ mod tests {
     fn make_test_game_state() -> Arc<Mutex<GameState>> {
         let game = Game {
             schedule_game: ScheduleGame {
-                away_team: Arc::new(Mutex::new(Team {
+                away_team: Arc::new(Mutex::new(TeamDefinition {
                     id: 1,
                     name: String::from("TestAwayTeam"),
                     combatants: vec![],
                 })),
-                home_team: Arc::new(Mutex::new(Team {
+                home_team: Arc::new(Mutex::new(TeamDefinition {
                     id: 2,
                     name: String::from("TestHomeTeam"),
                     combatants: vec![],

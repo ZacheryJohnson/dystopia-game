@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use nalgebra::Quaternion;
 use rapier3d::{na::vector, prelude::*};
 
@@ -106,8 +107,12 @@ impl Arena {
         }
     }
 
-    pub fn all_features(&self) -> &Vec<Box<dyn ArenaFeature>> {
-        &self.all_features
+    pub fn all_features(&self) -> Vec<&dyn ArenaFeature> {
+        self
+            .all_features
+            .iter()
+            .map(|feature| feature.deref())
+            .collect()
     }
 
     pub fn features<T: ArenaFeature + 'static>(&self) -> Vec<&T> {

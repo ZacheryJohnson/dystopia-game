@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::game_tick::{GameTick, TickPerformance};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GameLog {
     ticks: Vec<GameTick>,
     performance: TickPerformance,
@@ -27,14 +27,5 @@ impl GameLog {
 
     pub fn perf_string(&self) -> String {
         self.performance.perf_string()
-    }
-}
-
-impl Default for GameLog {
-    fn default() -> Self {
-        Self { 
-            ticks: vec![],
-            performance: TickPerformance::default()
-        }
     }
 }

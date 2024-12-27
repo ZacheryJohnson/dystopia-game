@@ -22,8 +22,10 @@ pub struct PhysicsSim {
 
 impl PhysicsSim {
     pub fn new(ticks_per_second: u32) -> PhysicsSim {
-        let mut integration_params = IntegrationParameters::default();
-        integration_params.dt = 1.0 / (ticks_per_second as f32);
+        let integration_params = IntegrationParameters {
+            dt: 1.0 / (ticks_per_second as f32),
+            ..Default::default()
+        };
 
         let (collision_send, collision_recv) = crossbeam::channel::unbounded();
         let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();

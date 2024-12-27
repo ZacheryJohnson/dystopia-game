@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, combatant_start::ArenaCombatantStart, feature::ArenaFeature, navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, plate::{ArenaPlate, PlateId}}, combatant::combatant::CombatantId};
+use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, combatant_start::ArenaCombatantStart, feature::ArenaFeature, navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, plate::{ArenaPlate, PlateId}}, combatant::definition::CombatantId};
 use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
 use rapier3d::prelude::*;
@@ -29,7 +29,7 @@ pub struct GameState {
     pub arena_navmesh: ArenaNavmesh,
 }
 
-fn get_game_object_type_from_feature(feature: &Box<dyn ArenaFeature>) -> GameObjectType {
+fn get_game_object_type_from_feature(feature: &dyn ArenaFeature) -> GameObjectType {
     if feature.as_any().downcast_ref::<ArenaBarrier>().is_some() {
         return GameObjectType::Barrier;
     }
@@ -71,9 +71,8 @@ impl GameState {
                     if let Some(collider) = feature.build_collider() {
                         let collider_handle = collider_set.insert_with_parent(collider, rigid_body_handle, rigid_body_set);
                         let game_object_type = get_game_object_type_from_feature(feature);
-                        match game_object_type {
-                            GameObjectType::Plate(plate_id) => { plates.insert(plate_id, PlateObject::new(plate_id, collider_handle)); },
-                            _ => {},
+                        if let GameObjectType::Plate(plate_id) = game_object_type {
+                            plates.insert(plate_id, PlateObject::new(plate_id, collider_handle));
                         };
 
                         active_colliders.insert(collider_handle, game_object_type);

@@ -94,6 +94,8 @@ async fn run_simulation(world_state: WorldState) {
         game_world.teams.clone()
     };
     teams.shuffle(&mut thread_rng());
+
+    assert_eq!(teams.len() % 2, 0);
     while !teams.is_empty() {
         let home_team = teams.pop().expect("failed to pop home team from shuffled teams list");
         let away_team = teams.pop().expect("failed to pop home team from shuffled teams list");

@@ -37,9 +37,9 @@ impl Strategy for PickUpBallStrategy {
     ) -> Option<Vec<SimulationEvent>> {
         let balls = {
             let game_state = game_state.lock().unwrap();
-            let balls = game_state.balls.clone();
-
-            balls
+            game_state
+                .balls
+                .clone()
         };
 
         let Some(ball_object) = balls.get(&self.ball_id) else {

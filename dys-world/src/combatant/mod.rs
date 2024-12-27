@@ -1,3 +1,3 @@
+pub mod definition;
 pub mod limb;
-pub mod combatant;
 pub mod record;

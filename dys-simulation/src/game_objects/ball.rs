@@ -1,4 +1,4 @@
-use dys_world::combatant::combatant::CombatantId;
+use dys_world::combatant::definition::CombatantId;
 use rapier3d::{dynamics::{CoefficientCombineRule, RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 
 use crate::game_tick::GameTickNumber;

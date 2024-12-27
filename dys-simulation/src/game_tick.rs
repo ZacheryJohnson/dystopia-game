@@ -25,7 +25,7 @@ impl GameTick {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct TickPerformance {
     pub physics_duration: Duration,
     pub balls_duration: Duration,
@@ -58,18 +58,6 @@ impl TickPerformance {
             self.balls_duration.as_micros(),
             self.combatant_duration.as_micros(),
             self.scoring_duration.as_micros())
-    }
-}
-
-impl Default for TickPerformance {
-    fn default() -> Self {
-        Self { 
-            physics_duration: Default::default(),
-            balls_duration: Default::default(),
-            combatant_duration: Default::default(),
-            scoring_duration: Default::default(),
-            tick_duration: Default::default()
-        }
     }
 }
 

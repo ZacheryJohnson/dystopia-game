@@ -99,7 +99,7 @@ impl SimulationEvent {
             }
             SimulationEvent::CombatantOnPlate { combatant_id, plate_id } => {
                 let mut game_state = game_state.lock().unwrap();
-                let mut combatant_object = game_state
+                let combatant_object = game_state
                     .combatants
                     .get_mut(&combatant_id)
                     .unwrap();
@@ -108,7 +108,7 @@ impl SimulationEvent {
             }
             SimulationEvent::CombatantOffPlate { combatant_id, plate_id: _ } => {
                 let mut game_state = game_state.lock().unwrap();
-                let mut combatant_object = game_state
+                let combatant_object = game_state
                     .combatants
                     .get_mut(&combatant_id)
                     .unwrap();
@@ -118,7 +118,7 @@ impl SimulationEvent {
             SimulationEvent::CombatantPickedUpBall { combatant_id, ball_id } => {
                 let mut game_state = game_state.lock().unwrap();
 
-                let mut combatant_object = game_state
+                let combatant_object = game_state
                     .combatants
                     .get_mut(&combatant_id)
                     .unwrap();
@@ -127,26 +127,26 @@ impl SimulationEvent {
             }
             SimulationEvent::BallThrownAtEnemy { thrower_id, enemy_id: _, ball_id: _, ball_impulse_vector: _ } => {
                 let mut game_state = game_state.lock().unwrap();
-                let mut combatant_object = game_state
+                let combatant_object = game_state
                     .combatants
                     .get_mut(&thrower_id)
                     .unwrap();
 
                 combatant_object.drop_ball();
             }
-            SimulationEvent::BallThrownAtTeammate { thrower_id, teammate_id: _, ball_id: _, ball_impulse_vector: _ } => {
+            SimulationEvent::BallThrownAtTeammate { thrower_id, .. } => {
                 let mut game_state = game_state.lock().unwrap();
-                let mut combatant_object = game_state
+                let combatant_object = game_state
                     .combatants
                     .get_mut(&thrower_id)
                     .unwrap();
 
                 combatant_object.drop_ball();
             }
-            SimulationEvent::BallCollisionEnemy { thrower_id, enemy_id, ball_id } => {
+            SimulationEvent::BallCollisionEnemy { .. } => {
                 // ZJ-TODO: explosion logic
             }
-            SimulationEvent::BallCollisionArena { thrower_id, original_target_id, ball_id } => {}
+            SimulationEvent::BallCollisionArena { .. } => {}
             SimulationEvent::BallExplosion { .. } => {}
             SimulationEvent::BallExplosionForceApplied { .. } => {}
             SimulationEvent::PointsScoredByCombatant { .. } => {}

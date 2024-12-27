@@ -2,14 +2,14 @@ use crate::game_objects::game_object::GameObject;
 
 pub struct Sensor<'sim, GameObjectT: GameObject> {
     current_triggers: Vec<&'sim GameObjectT>,
-    on_trigger_start_callback: Box<dyn Fn(&'sim GameObjectT) -> ()>,
-    on_trigger_stop_callback: Box<dyn Fn(&'sim GameObjectT) -> ()>,
+    on_trigger_start_callback: Box<dyn Fn(&'sim GameObjectT)>,
+    on_trigger_stop_callback: Box<dyn Fn(&'sim GameObjectT)>,
 }
 
 impl<'sim, GameObjectT: GameObject> Sensor<'sim, GameObjectT> {
     pub fn new(
-        on_trigger_start: impl Fn(&'sim GameObjectT) -> () + 'static,
-        on_trigger_stop: impl Fn(&'sim GameObjectT) -> () + 'static,
+        on_trigger_start: impl Fn(&'sim GameObjectT) + 'static,
+        on_trigger_stop: impl Fn(&'sim GameObjectT) + 'static,
     ) -> Sensor<'sim, GameObjectT> {
         Sensor { 
             current_triggers: vec![], 

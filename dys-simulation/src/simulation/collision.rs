@@ -40,12 +40,9 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
 
                 let ball_obj = balls.get(ball_id).expect("Received invalid ball ID");
 
-                match ball_obj.state {
-                    BallState::ThrownAtTarget { direction: _direction, thrower_id, target_id } => {
-                        // ZJ-TODO: do this in simulation: Ball aiming for a target hit the arena - mark it as rolling now
-                        new_simulation_events.push(SimulationEvent::BallCollisionArena { thrower_id, original_target_id: target_id, ball_id: *ball_id });
-                    },
-                    _ => ()
+                if let BallState::ThrownAtTarget { direction: _direction, thrower_id, target_id } = ball_obj.state {
+                    // ZJ-TODO: do this in simulation: Ball aiming for a target hit the arena - mark it as rolling now
+                    new_simulation_events.push(SimulationEvent::BallCollisionArena { thrower_id, original_target_id: target_id, ball_id: *ball_id });
                 }
             },
             (GameObjectType::Plate(plate_id), GameObjectType::Combatant(combatant_id)) | (GameObjectType::Combatant(combatant_id), GameObjectType::Plate(plate_id)) => {
@@ -70,12 +67,9 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
 
                 let ball_obj = balls.get(ball_id).expect("Received invalid ball ID");
 
-                match ball_obj.state {
-                    BallState::ThrownAtTarget { direction: _, thrower_id, target_id: _ } => {
-                        // ZJ-TODO: check team of hit combatant, and only explode if enemy
-                        new_simulation_events.push(SimulationEvent::BallCollisionEnemy { thrower_id, enemy_id: *combatant_id, ball_id: *ball_id });
-                    },
-                    _ => ()
+                if let BallState::ThrownAtTarget { direction: _, thrower_id, target_id: _ } = ball_obj.state {
+                    // ZJ-TODO: check team of hit combatant, and only explode if enemy
+                    new_simulation_events.push(SimulationEvent::BallCollisionEnemy { thrower_id, enemy_id: *combatant_id, ball_id: *ball_id });
                 }
             }
         }

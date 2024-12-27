@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::stat::stat::{Stat, StatType};
+use crate::stat::definition::{StatDefinition, StatType};
 use crate::stat::stat_display::StatDisplay;
 use crate::stat::stat_source::StatSource;
 
@@ -39,7 +39,7 @@ pub enum ModifierAcquisitionMethod {
 pub struct LimbModifier {
     pub modifier_type: LimbModifierType,
     pub acquisition: ModifierAcquisitionMethod,
-    pub stats: Vec<Stat>,
+    pub stats: Vec<StatDefinition>,
 }
 
 impl StatDisplay for LimbModifier {
@@ -49,7 +49,7 @@ impl StatDisplay for LimbModifier {
 }
 
 impl StatSource for LimbModifier {
-    fn stats(&self) -> Vec<Stat> {
+    fn stats(&self) -> Vec<StatDefinition> {
         self.stats.clone()
     }
 }
@@ -62,17 +62,17 @@ pub struct Limb {
 }
 
 impl StatSource for Limb {
-    fn stats(&self) -> Vec<Stat> {
+    fn stats(&self) -> Vec<StatDefinition> {
         // ZJ-TODO: refactor good god
 
         let mut stat_map: HashMap<StatType, f32> = HashMap::new();
 
-        let self_stats: Vec<Stat> = self.modifiers
+        let self_stats: Vec<StatDefinition> = self.modifiers
             .iter()
             .map(|modifier| modifier.stats())
             .fold(vec![], |mut acc, mut stats| { acc.append(&mut stats); acc } );
 
-        let child_stats: Vec<Stat> = self.child_limbs
+        let child_stats: Vec<StatDefinition> = self.child_limbs
             .iter()
             .map(|limb| limb.stats())
             .fold(vec![], |mut acc, mut stats| { acc.append(&mut stats); acc } );
@@ -101,14 +101,14 @@ impl StatSource for Limb {
 
         stat_map
             .iter()
-            .map(|(stat_type, stat_value)| Stat { stat_type: stat_type.to_owned(), value: *stat_value } )
+            .map(|(stat_type, stat_value)| StatDefinition { stat_type: stat_type.to_owned(), value: *stat_value } )
             .collect()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::stat::stat::StatType;
+    use crate::stat::definition::StatType;
     use super::*;
 
     #[test]
@@ -119,7 +119,7 @@ mod tests {
                 LimbModifier {
                     modifier_type: LimbModifierType::Regular,
                     acquisition: ModifierAcquisitionMethod::Inherent,
-                    stats: vec![Stat {
+                    stats: vec![StatDefinition {
                         stat_type: StatType::Cognition,
                         value: 2.0,
                     }],
@@ -132,7 +132,7 @@ mod tests {
                         LimbModifier {
                             modifier_type: LimbModifierType::Regular,
                             acquisition: ModifierAcquisitionMethod::Inherent,
-                            stats: vec![Stat {
+                            stats: vec![StatDefinition {
                                 stat_type: StatType::Cognition,
                                 value: 1.0
                             }],
@@ -143,7 +143,7 @@ mod tests {
             ],
         };
 
-        let expected = vec![Stat {
+        let expected = vec![StatDefinition {
             stat_type: StatType::Cognition,
             value: 3.0,
         }];

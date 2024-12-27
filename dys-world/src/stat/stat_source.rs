@@ -1,5 +1,5 @@
-use crate::stat::stat::Stat;
+use crate::stat::definition::StatDefinition;
 
 pub trait StatSource {
-    fn stats(&self) -> Vec<Stat>;
+    fn stats(&self) -> Vec<StatDefinition>;
 }

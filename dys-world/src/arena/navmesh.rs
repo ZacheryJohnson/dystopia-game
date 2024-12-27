@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::{Arc, Mutex};
 
@@ -76,12 +75,16 @@ impl ArenaNavmeshPath {
         ArenaNavmeshPath { path: vec![] }
     }
 
-    pub fn next(&mut self) -> Option<ArenaNavmeshNode> {
+    pub fn next_node(&mut self) -> Option<ArenaNavmeshNode> {
         self.path.pop()
     }
 
     pub fn len(&self) -> usize {
         self.path.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.path.is_empty()
     }
 }
 
@@ -93,8 +96,8 @@ pub struct ArenaNavmesh {
 impl ArenaNavmesh {
     pub fn new_from(arena: Arc<Mutex<Arena>>, config: ArenaNavmeshConfig) -> ArenaNavmesh {
         let arena = arena.lock().unwrap();
-        let pathable_arena_features = arena
-            .all_features()
+        let arena_features = arena.all_features();
+        let pathable_arena_features = arena_features
             .iter()
             .filter(|filter| filter.pathing_type() == NavmeshPathingType::Generate);
 
@@ -142,7 +145,7 @@ impl ArenaNavmesh {
                             // If any of our unpathable geometry is in the way, skip the potential node instead
                             let mut is_unpathable = false;
                             for (unpathable_shape, unpathable_isometry) in &unpathable_arena_shapes {
-                                if unpathable_shape.contains_point(&unpathable_isometry, &curr_point) {
+                                if unpathable_shape.contains_point(unpathable_isometry, &curr_point) {
                                     is_unpathable = true;
                                     break;
                                 }
