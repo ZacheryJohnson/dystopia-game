@@ -120,14 +120,16 @@ impl ArenaNavmesh {
             let aabb = shape.compute_aabb(&shape_isometry);
             let vertices = aabb.vertices();
 
-            let comparator_fn = |first: &&Point3<f32>, second: &&Point3<f32>| first.x.partial_cmp(&second.x).unwrap_or(std::cmp::Ordering::Equal);
+            let x_comparator_fn = |first: &&Point3<f32>, second: &&Point3<f32>| first.x.partial_cmp(&second.x).unwrap_or(std::cmp::Ordering::Equal);
+            let y_comparator_fn = |first: &&Point3<f32>, second: &&Point3<f32>| first.y.partial_cmp(&second.y).unwrap_or(std::cmp::Ordering::Equal);
+            let z_comparator_fn = |first: &&Point3<f32>, second: &&Point3<f32>| first.z.partial_cmp(&second.z).unwrap_or(std::cmp::Ordering::Equal);
 
-            let min_x = vertices.iter().min_by(comparator_fn).expect("failed to get min_x").x;
-            let max_x = vertices.iter().max_by(comparator_fn).expect("failed to get max_x").x;
-            let min_y = vertices.iter().min_by(comparator_fn).expect("failed to get min_y").y;
-            let max_y = vertices.iter().max_by(comparator_fn).expect("failed to get max_y").y;
-            let min_z = vertices.iter().min_by(comparator_fn).expect("failed to get min_z").z;
-            let max_z = vertices.iter().max_by(comparator_fn).expect("failed to get max_z").z;
+            let min_x = vertices.iter().min_by(x_comparator_fn).expect("failed to get min_x").x;
+            let max_x = vertices.iter().max_by(x_comparator_fn).expect("failed to get max_x").x;
+            let min_y = vertices.iter().min_by(y_comparator_fn).expect("failed to get min_y").y;
+            let max_y = vertices.iter().max_by(y_comparator_fn).expect("failed to get max_y").y;
+            let min_z = vertices.iter().min_by(z_comparator_fn).expect("failed to get min_z").z;
+            let max_z = vertices.iter().max_by(z_comparator_fn).expect("failed to get max_z").z;
 
             let mut curr_z = min_z;
             while curr_z <= max_z {
