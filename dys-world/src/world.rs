@@ -1,9 +1,19 @@
 use std::sync::{Arc, Mutex};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde::de::{DeserializeSeed, SeqAccess, Visitor};
+use crate::{
+    combatant::instance::CombatantInstance,
+    serde::{deserialize_combatants, deserialize_teams, serialize_combatants, serialize_teams},
+    team::instance::TeamInstance,
+};
 
-use crate::{combatant::instance::CombatantInstance, team::instance::TeamInstance};
-
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct World {
+    #[serde(deserialize_with = "deserialize_combatants")]
+    #[serde(serialize_with = "serialize_combatants")]
     pub combatants: Vec<Arc<Mutex<CombatantInstance>>>,
+
+    #[serde(deserialize_with = "deserialize_teams")]
+    #[serde(serialize_with = "serialize_teams")]
     pub teams: Vec<Arc<Mutex<TeamInstance>>>,
 }

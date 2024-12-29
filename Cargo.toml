@@ -42,7 +42,7 @@ rand = "0.8.5"
 rand_pcg = "0.3.1"
 rapier3d = { version = "0.22.0", features = ["serde-serialize"] }
 reqwest = "0.12.5"
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = { version = "1.0.120" }
 tokio = { version = "1.40", features = ["full"] }
 tonic = "0.11"

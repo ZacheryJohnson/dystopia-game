@@ -13,6 +13,7 @@ ordered-float.workspace = true
 petgraph.workspace = true
 rand.workspace = true
 rapier3d.workspace = true
+serde.workspace = true
 tracing.workspace = true
 
 [lib]

@@ -2,7 +2,8 @@ use std::sync::{Arc, Mutex};
 
 use dys_world::combatant::instance::CombatantInstance;
 use dys_world::combatant::limb::{Limb, LimbModifier, LimbModifierType, LimbType, ModifierAcquisitionMethod};
-use dys_world::stat::instance::{StatInstance, StatType};
+use dys_world::attribute::instance::AttributeInstance;
+use dys_world::attribute::attribute_type::AttributeType;
 use dys_world::team::instance::TeamInstance;
 use dys_world::world::World;
 use rand::rngs::ThreadRng;
@@ -54,69 +55,99 @@ impl Generator {
         }
     }
 
-    fn default_limbs(&self) -> Vec<Limb> {
+    fn generate_limbs(&self, _: &mut ThreadRng) -> Vec<Limb> {
+        // ZJ-TODO: add slight variance in limbs
         vec![
             Limb {
                 limb_type: LimbType::Torso, 
-                modifiers: vec![ LimbModifier { modifier_type: LimbModifierType::Regular, acquisition: ModifierAcquisitionMethod::Inherent, stats: vec![StatInstance { stat_type: StatType::Strength, value: 10.0 }] }],
+                modifiers: vec![ LimbModifier::default_with_attributes(&[
+                    AttributeInstance::new(AttributeType::Strength, 10.0),
+                    AttributeInstance::new(AttributeType::Constitution, 20.0),
+                ])],
                 child_limbs: vec![
                     Limb { 
                         limb_type: LimbType::Head, 
-                        modifiers: vec![ LimbModifier { modifier_type: LimbModifierType::Regular, acquisition: ModifierAcquisitionMethod::Inherent, stats: vec![StatInstance { stat_type: StatType::Cognition, value: 30.0 }] }],
+                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                            AttributeInstance::new(AttributeType::Cognition, 30.0)
+                        ])],
                         child_limbs: vec![
                             Limb {
                                 limb_type: LimbType::Eye,
-                                modifiers: vec![ LimbModifier { modifier_type: LimbModifierType::Regular, acquisition: ModifierAcquisitionMethod::Inherent, stats: vec![StatInstance { stat_type: StatType::Reaction, value: 10.0 }] }],
+                                modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                    AttributeInstance::new(AttributeType::Cognition, 10.0)
+                                ])],
                                 child_limbs: vec![]
                             },
                             Limb {
                                 limb_type: LimbType::Eye,
-                                modifiers: vec![ LimbModifier { modifier_type: LimbModifierType::Regular, acquisition: ModifierAcquisitionMethod::Inherent, stats: vec![StatInstance { stat_type: StatType::Reaction, value: 10.0 }] }],
+                                modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                    AttributeInstance::new(AttributeType::Cognition, 10.0)
+                                ])],
                                 child_limbs: vec![]
                             },
                             Limb {
                                 limb_type: LimbType::Nose,
-                                modifiers: vec![ /* no modifiers? what useful things do noses provide in sports? */ ],
+                                modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                    AttributeInstance::new(AttributeType::Presence, 10.0)
+                                ])],
                                 child_limbs: vec![]
                             },
                             Limb {
                                 limb_type: LimbType::Mouth,
-                                modifiers: vec![ /* teamwork? communication? */ ],
+                                modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                    AttributeInstance::new(AttributeType::Communication, 10.0)
+                                ])],
                                 child_limbs: vec![]
                             },
                         ]
                     },
                     Limb {
                         limb_type: LimbType::Arm,
-                        modifiers: vec![/* TODO */],
+                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                            AttributeInstance::new(AttributeType::Coordination, 5.0),
+                            AttributeInstance::new(AttributeType::Dexterity, 10.0),
+                            AttributeInstance::new(AttributeType::Stability, 5.0),
+                        ])],
                         child_limbs: vec![
                             Limb {
                                 limb_type: LimbType::Hand,
-                                modifiers: vec![/* TODO */],
+                                modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                    AttributeInstance::new(AttributeType::Communication, 5.0)
+                                ])],
                                 child_limbs: vec![
                                     Limb {
                                         limb_type: LimbType::Finger,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Communication, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Finger,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Communication, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Finger,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Communication, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Finger,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Communication, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Finger,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Communication, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                 ]
@@ -125,35 +156,51 @@ impl Generator {
                     },
                     Limb {
                         limb_type: LimbType::Arm,
-                        modifiers: vec![/* TODO */],
+                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                            AttributeInstance::new(AttributeType::Coordination, 5.0),
+                            AttributeInstance::new(AttributeType::Dexterity, 10.0),
+                            AttributeInstance::new(AttributeType::Stability, 5.0),
+                        ])],
                         child_limbs: vec![
                             Limb {
                                 limb_type: LimbType::Hand,
-                                modifiers: vec![/* TODO */],
+                                modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                    AttributeInstance::new(AttributeType::Communication, 5.0)
+                                ])],
                                 child_limbs: vec![
                                     Limb {
                                         limb_type: LimbType::Finger,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Communication, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Finger,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Communication, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Finger,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Communication, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Finger,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Communication, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Finger,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Communication, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                 ]
@@ -162,40 +209,60 @@ impl Generator {
                     },
                     Limb {
                         limb_type: LimbType::Leg,
-                        modifiers: vec![/* TODO */],
+                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                            AttributeInstance::new(AttributeType::Coordination, 10.0),
+                            AttributeInstance::new(AttributeType::Dexterity, 2.0),
+                            AttributeInstance::new(AttributeType::Stability, 5.0),
+                            AttributeInstance::new(AttributeType::Strength, 2.0),
+                        ])],
                         child_limbs: vec![
                             Limb {
                                 limb_type: LimbType::Knee,
-                                modifiers: vec![/* TODO */],
+                                modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                    AttributeInstance::new(AttributeType::Dexterity, 8.0)
+                                ])],
                                 child_limbs: vec![]
                             },
                             Limb {
                                 limb_type: LimbType::Foot,
-                                modifiers: vec![/* TODO */],
+                                modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                    AttributeInstance::new(AttributeType::Dexterity, 5.0),
+                                    AttributeInstance::new(AttributeType::Stability, 5.0),
+                                ])],
                                 child_limbs: vec![
                                     Limb {
                                         limb_type: LimbType::Toe,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Stability, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Toe,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Stability, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Toe,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Stability, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Toe,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Stability, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Toe,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Stability, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                 ]
@@ -204,40 +271,60 @@ impl Generator {
                     },
                     Limb {
                         limb_type: LimbType::Leg,
-                        modifiers: vec![/* TODO */],
+                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                            AttributeInstance::new(AttributeType::Coordination, 10.0),
+                            AttributeInstance::new(AttributeType::Dexterity, 2.0),
+                            AttributeInstance::new(AttributeType::Stability, 5.0),
+                            AttributeInstance::new(AttributeType::Strength, 2.0),
+                        ])],
                         child_limbs: vec![
                             Limb {
                                 limb_type: LimbType::Knee,
-                                modifiers: vec![/* TODO */],
+                                modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                    AttributeInstance::new(AttributeType::Dexterity, 8.0)
+                                ])],
                                 child_limbs: vec![]
                             },
                             Limb {
                                 limb_type: LimbType::Foot,
-                                modifiers: vec![/* TODO */],
+                                modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                    AttributeInstance::new(AttributeType::Dexterity, 5.0),
+                                    AttributeInstance::new(AttributeType::Stability, 5.0),
+                                ])],
                                 child_limbs: vec![
                                     Limb {
                                         limb_type: LimbType::Toe,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Stability, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Toe,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Stability, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Toe,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Stability, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Toe,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Stability, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                     Limb {
                                         limb_type: LimbType::Toe,
-                                        modifiers: vec![/* TODO */],
+                                        modifiers: vec![ LimbModifier::default_with_attributes(&[
+                                            AttributeInstance::new(AttributeType::Stability, 1.0)
+                                        ])],
                                         child_limbs: vec![]
                                     },
                                 ]
@@ -256,10 +343,8 @@ impl Generator {
         // ZJ-TODO: add small chance for hyphenated surnames
 
         let combatant_name = format!("{combatant_given_name} {combatant_surname}");
-
-        // ZJ-TODO: add slight variance in limbs
     
-        let combatant_limbs = self.default_limbs();
+        let combatant_limbs = self.generate_limbs(rng);
     
         CombatantInstance {
             id,

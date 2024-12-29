@@ -1,8 +1,9 @@
+use serde::{Deserialize, Serialize};
 use crate::combatant::limb::Limb;
 
 pub type CombatantInstanceId = u64;
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CombatantInstance {
     pub id: CombatantInstanceId,
     pub name: String,
