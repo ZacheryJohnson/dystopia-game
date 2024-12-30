@@ -9,6 +9,7 @@ echo "Building project with cargo..."
 cargo build -p $RUST_PROJECT_NAME --release --target wasm32-unknown-unknown || exit 1
 
 echo "Binding wasm..."
+mkdir $OUT_DIR
 wasm-bindgen --target web \
     --out-dir $OUT_DIR \
     --out-name $BIN_NAME \
@@ -24,5 +25,7 @@ rm $OUT_DIR/${BIN_NAME}_bg.wasm.d.ts
 cp $OUT_DIR/matchvisualizer_opt.wasm ./$WEBAPP_PUBLIC_DIR_PATH/matchvisualizer_opt.wasm
 cp $OUT_DIR/matchvisualizer.d.ts ./$WEBAPP_INTERNAL_DIR_PATH/matchvisualizer.d.ts
 cp $OUT_DIR/matchvisualizer.js ./$WEBAPP_INTERNAL_DIR_PATH/matchvisualizer.js
+
+rm -rf $OUT_DIR
 
 echo "Done!"

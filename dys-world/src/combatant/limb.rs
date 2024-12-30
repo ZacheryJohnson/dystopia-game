@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
-use crate::attribute::instance::AttributeInstance;
+use crate::attribute::instance::{AttributeInstance, AttributeValueT};
 use crate::attribute::attribute_display::AttributeDisplay;
 use crate::attribute::attribute_source::AttributeSource;
 use crate::attribute::attribute_type::AttributeType;
@@ -45,7 +45,7 @@ pub enum ModifierAcquisitionMethod {
 pub struct LimbModifier {
     pub modifier_type: LimbModifierType,
     pub acquisition: ModifierAcquisitionMethod,
-    pub stats: Vec<AttributeInstance>,
+    pub attributes: Vec<AttributeInstance>,
 }
 
 impl LimbModifier {
@@ -53,20 +53,32 @@ impl LimbModifier {
         LimbModifier {
             modifier_type: LimbModifierType::Regular,
             acquisition: ModifierAcquisitionMethod::Inherent,
-            stats: attributes.to_vec(),
+            attributes: attributes.to_vec(),
         }
     }
 }
 
 impl AttributeDisplay for LimbModifier {
     fn should_display(&self) -> bool {
-        !self.stats.is_empty()
+        !self.attributes.is_empty()
     }
 }
 
 impl AttributeSource for LimbModifier {
-    fn stats(&self) -> Vec<AttributeInstance> {
-        self.stats.clone()
+    fn source_name(&self) -> String {
+        format!("{:?} ({:?})", self.modifier_type, self.acquisition)
+    }
+
+    fn attribute_total(&self, attribute_type: &AttributeType) -> Option<AttributeValueT> {
+        self
+            .attributes
+            .iter()
+            .find(|instance| instance.attribute_type() == attribute_type)
+            .map(|instance| instance.value())
+    }
+
+    fn attributes(&self) -> Vec<AttributeInstance> {
+        self.attributes.clone()
     }
 }
 
@@ -78,41 +90,49 @@ pub struct Limb {
 }
 
 impl AttributeSource for Limb {
-    fn stats(&self) -> Vec<AttributeInstance> {
-        // ZJ-TODO: refactor good god
+    fn source_name(&self) -> String {
+        format!("{:?}", self.limb_type)
+    }
 
-        let mut stat_map: HashMap<AttributeType, f32> = HashMap::new();
-
-        let self_stats: Vec<AttributeInstance> = self.modifiers
+    fn attribute_total(&self, attribute_type: &AttributeType) -> Option<AttributeValueT> {
+        let self_attribute_value = self
+            .modifiers
             .iter()
-            .map(|modifier| modifier.stats())
-            .fold(vec![], |mut acc, mut stats| { acc.append(&mut stats); acc } );
+            .filter_map(|modifier| modifier.attribute_total(attribute_type))
+            .fold(None, |acc, modifier| Some(acc.unwrap_or(AttributeValueT::default()) + modifier));
 
-        let child_stats: Vec<AttributeInstance> = self.child_limbs
+        let child_attribute_value = self
+            .child_limbs
             .iter()
-            .map(|limb| limb.stats())
-            .fold(vec![], |mut acc, mut stats| { acc.append(&mut stats); acc } );
+            .filter_map(|child_limb| child_limb.attribute_total(&attribute_type))
+            .fold(None, |acc, modifier| Some(acc.unwrap_or(AttributeValueT::default()) + modifier));
 
-        for self_stat in &self_stats {
-            match stat_map.get_mut(&self_stat.attribute_type()) {
-                None => {
-                    stat_map.insert(self_stat.attribute_type().clone(), self_stat.value());
-                }
-                Some(existing_value) => {
-                    *existing_value += self_stat.value();
-                }
-            }
+        match (self_attribute_value, child_attribute_value) {
+            (Some(self_attribute_value), Some(child_attribute_value)) => Some(self_attribute_value + child_attribute_value),
+            (Some(self_attribute_value), None) => Some(self_attribute_value),
+            (None, Some(child_attribute_value)) => Some(child_attribute_value),
+            (None, None) => None
         }
+    }
+    
+    fn attributes(&self) -> Vec<AttributeInstance> {
+        let mut stat_map: HashMap<AttributeType, AttributeValueT> = HashMap::new();
 
-        for child_stat in &child_stats {
-            match stat_map.get_mut(&child_stat.attribute_type()) {
-                None => {
-                    stat_map.insert(child_stat.attribute_type().clone(), child_stat.value());
-                }
-                Some(existing_value) => {
-                    *existing_value += child_stat.value();
-                }
-            }
+        let self_attributes: Vec<AttributeInstance> = self.modifiers
+            .iter()
+            .map(|modifier| modifier.attributes())
+            .fold(vec![], |mut acc, mut stats| { acc.append(&mut stats); acc } );
+
+        let child_attributes: Vec<AttributeInstance> = self.child_limbs
+            .iter()
+            .map(|limb| limb.attributes())
+            .fold(vec![], |mut acc, mut stats| { acc.append(&mut stats); acc } );
+
+        for attribute in self_attributes.iter().chain(child_attributes.iter()) {
+            stat_map
+                .entry(attribute.attribute_type().to_owned())
+                .and_modify(|existing_attribute_value| *existing_attribute_value += attribute.value())
+                .or_insert(attribute.value());
         }
 
         stat_map
@@ -128,14 +148,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test() {
+    fn get_all_attributes() {
         let head = Limb {
             limb_type: LimbType::Head,
             modifiers: vec![
                 LimbModifier {
                     modifier_type: LimbModifierType::Regular,
                     acquisition: ModifierAcquisitionMethod::Inherent,
-                    stats: vec![AttributeInstance::new(AttributeType::Cognition, 2.0)],
+                    attributes: vec![AttributeInstance::new(AttributeType::Cognition, 2.0)],
                 }
             ],
             child_limbs: vec![
@@ -145,7 +165,7 @@ mod tests {
                         LimbModifier {
                             modifier_type: LimbModifierType::Regular,
                             acquisition: ModifierAcquisitionMethod::Inherent,
-                            stats: vec![AttributeInstance::new(AttributeType::Cognition, 1.0)],
+                            attributes: vec![AttributeInstance::new(AttributeType::Cognition, 1.0)],
                         }
                     ],
                     child_limbs: vec![]
@@ -155,8 +175,71 @@ mod tests {
 
         let expected = vec![AttributeInstance::new(AttributeType::Cognition, 3.0)];
 
-        let actual = head.stats();
+        let actual = head.attributes();
 
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn get_specific_attribute_exists() {
+        let head = Limb {
+            limb_type: LimbType::Head,
+            modifiers: vec![
+                LimbModifier {
+                    modifier_type: LimbModifierType::Regular,
+                    acquisition: ModifierAcquisitionMethod::Inherent,
+                    attributes: vec![AttributeInstance::new(AttributeType::Cognition, 2.0)],
+                }
+            ],
+            child_limbs: vec![
+                Limb {
+                    limb_type: LimbType::Eye,
+                    modifiers: vec![
+                        LimbModifier {
+                            modifier_type: LimbModifierType::Regular,
+                            acquisition: ModifierAcquisitionMethod::Inherent,
+                            attributes: vec![AttributeInstance::new(AttributeType::Cognition, 1.0)],
+                        }
+                    ],
+                    child_limbs: vec![]
+                },
+            ],
+        };
+
+        let expected_instance = AttributeInstance::new(AttributeType::Cognition, 3.0);
+
+        let actual_value = head.attribute_total(&AttributeType::Cognition);
+        assert!(actual_value.is_some());
+        assert_eq!(expected_instance.value(), actual_value.unwrap());
+    }
+
+    #[test]
+    fn get_specific_attribute_not_exists() {
+        let head = Limb {
+            limb_type: LimbType::Head,
+            modifiers: vec![
+                LimbModifier {
+                    modifier_type: LimbModifierType::Regular,
+                    acquisition: ModifierAcquisitionMethod::Inherent,
+                    attributes: vec![AttributeInstance::new(AttributeType::Cognition, 2.0)],
+                }
+            ],
+            child_limbs: vec![
+                Limb {
+                    limb_type: LimbType::Eye,
+                    modifiers: vec![
+                        LimbModifier {
+                            modifier_type: LimbModifierType::Regular,
+                            acquisition: ModifierAcquisitionMethod::Inherent,
+                            attributes: vec![AttributeInstance::new(AttributeType::Cognition, 1.0)],
+                        }
+                    ],
+                    child_limbs: vec![]
+                },
+            ],
+        };
+
+        let actual_value = head.attribute_total(&AttributeType::Strength);
+        assert!(actual_value.is_none());
     }
 }

@@ -76,9 +76,10 @@ impl Strategy for MoveToLocationStrategy {
         //                ignore whatever we see initially and just maintain the combatant's y-pos
         self.target_location.y = new_combatant_position.y;
 
+        // ZJ-TODO: this is broken somehow - even with different move speeds, combatants are still moving uniform distances
         let mut total_distance_can_travel_this_tick = agent.combatant().combatant.lock().unwrap().move_speed();
 
-        while total_distance_can_travel_this_tick >= unit_resolution {
+        while total_distance_can_travel_this_tick > 0.0 {
             let Some(next_node) = self.next_node else {
                 break;
             };

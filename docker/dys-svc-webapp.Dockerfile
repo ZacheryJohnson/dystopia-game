@@ -21,14 +21,11 @@ WORKDIR /opt/dystopia
 COPY $WORKING_DIR/Cargo.toml /opt/dystopia/Cargo.toml
 COPY $WORKING_DIR/dys-simulation/ /opt/dystopia/dys-simulation/
 COPY $WORKING_DIR/dys-world/ /opt/dystopia/dys-world/
-
-# Building the match visualizer is the longest part of this process
-# Ensure it's as high up in the stage as possible to prevent subsequent changes from invaliding this if cached 
 COPY $WORKING_DIR/dys-matchvisualizer/ /opt/dystopia/dys-matchvisualizer/
-RUN dys-matchvisualizer/build_scripts/matchvisualizer-wasm.sh
-
 COPY $WORKING_DIR/dys-observability/ /opt/dystopia/dys-observability/
 COPY $WORKING_DIR/dys-svc-webapp/ /opt/dystopia/dys-svc-webapp/
+
+RUN dys-matchvisualizer/build_scripts/matchvisualizer-wasm.sh
 RUN dys-svc-webapp/build_scripts/build_webapp_frontend.sh dys-svc-webapp
 
 WORKDIR /opt/dystopia/dys-svc-webapp

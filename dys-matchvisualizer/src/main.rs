@@ -81,6 +81,8 @@ struct BarrierVisualizer;
 pub fn initialize_with_canvas(
     canvas_id: String
 ) {
+    info!("Initializing with canvas {}", canvas_id);
+
     let canvas: Option<String> = if canvas_id.is_empty() { None } else { Some(canvas_id) };
 
     App::new()
@@ -323,13 +325,18 @@ fn update(
         return;
     }
 
+    // ZJ-TODO: the below lerps are incorrect
+    //          should increase over time since the last tick update
+
     // Visual updates can occur ever frame
     for (combatant_vis, mut combatant_transform) in combatants_query.iter_mut() {
-        combatant_transform.translation = combatant_transform.translation.lerp(combatant_vis.desired_location, timer.delta_seconds() * 5.0)
+        // combatant_transform.translation = combatant_transform.translation.lerp(combatant_vis.desired_location, timer.delta_seconds() * 5.0)
+        combatant_transform.translation = combatant_vis.desired_location;
     }
 
     for (ball_vis, mut ball_transform) in balls_query.iter_mut() {
-        ball_transform.translation = ball_transform.translation.lerp(ball_vis.desired_location, timer.delta_seconds() * 5.0)
+        // ball_transform.translation = ball_transform.translation.lerp(ball_vis.desired_location, timer.delta_seconds() * 5.0)
+        ball_transform.translation = ball_vis.desired_location;
     }
 
     // Only update the simulation every second, otherwise would be too fast

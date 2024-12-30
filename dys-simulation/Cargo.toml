@@ -15,6 +15,7 @@ crossbeam.workspace = true
 ordered-float.workspace = true
 petgraph.workspace = true
 rand.workspace = true
+rand_distr.workspace = true
 rand_pcg.workspace = true
 rapier3d.workspace = true
 serde.workspace = true
