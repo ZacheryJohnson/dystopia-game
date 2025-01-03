@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-dys-game = { path = "../dys-simulation" }
+dys-simulation = { path = "../dys-simulation" }
 dys-observability = { path = "../dys-observability" }
 dys-world = { path = "../dys-world" }
 

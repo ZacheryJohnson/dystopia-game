@@ -1,8 +1,9 @@
 use std::mem;
 
+use crate::game_objects::{ball::BallId, combatant::CombatantId};
+use dys_ai_macros::Abstractable;
 use dys_world::arena::plate::PlateId;
 use ordered_float::OrderedFloat;
-use crate::game_objects::{ball::BallId, combatant::CombatantId};
 
 /// Beliefs are an agent's understanding of the world.
 /// These aren't necessarily true statements about actual game state,
@@ -13,7 +14,7 @@ use crate::game_objects::{ball::BallId, combatant::CombatantId};
 /// aim the ball some distance in front of the runner. 
 /// However, the enemy combatant is not affected by or aware of that belief,
 /// and may choose to do any action.
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Abstractable)]
 pub enum Belief {
     SelfOnPlate,
     SelfHasBall,
@@ -47,5 +48,18 @@ mod tests {
         let belief_different_type = Belief::SelfOnPlate;
         
         assert!(!belief_different_type.is_a(&belief_original));
+    }
+}
+
+#[cfg(test)]
+mod abstract_tests {
+    use crate::ai::belief::{AbstractBelief, Belief};
+
+    #[test]
+    fn test_abstract() {
+        let abstract_belief = AbstractBelief::NearestPlate();
+        let real_belief = abstract_belief.to_belief();
+
+        assert!(abstract_belief.satisfied_by(real_belief));
     }
 }

@@ -1,5 +1,5 @@
 [package]
-name = "dys-game"
+name = "dys-simulation"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,6 +10,8 @@ criterion.workspace = true
 
 [dependencies]
 dys-world = { path = "../dys-world" }
+
+dys-ai-macros = { path = "../dys-ai-macros" }
 
 crossbeam.workspace = true
 ordered-float.workspace = true

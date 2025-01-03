@@ -4,9 +4,9 @@ use std::time::Duration;
 use axum::http::HeaderValue;
 use axum::response::{IntoResponse, Response};
 use axum::{extract::State, routing::get, Router};
-use dys_game::game::Game;
 use dys_observability::logger::LoggerOptions;
 use dys_observability::middleware::{make_span, map_trace_context, record_trace_id};
+use dys_simulation::game::Game;
 use dys_world::arena::Arena;
 use dys_world::schedule::calendar::{Date, Month};
 use dys_world::schedule::schedule_game::ScheduleGame;
@@ -45,7 +45,7 @@ async fn main() {
 
     tracing::info!("Starting server...");
 
-    let game_world = Arc::new(Mutex::new(dys_game::generator::Generator::new().generate_world()));
+    let game_world = Arc::new(Mutex::new(dys_simulation::generator::Generator::new().generate_world()));
     
     let world_state = WorldState {
         game_world: game_world.clone(),
