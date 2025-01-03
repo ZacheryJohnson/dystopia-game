@@ -1922,20 +1922,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f25c0e292a7ca6d6498557ff1df68f32c99850012b6ea401cf8daf771f22ff53"
 
 [[package]]
-name = "dys-game"
+name = "dys-ai-macros"
 version = "0.1.0"
 dependencies = [
- "criterion",
- "crossbeam",
- "dys-world",
- "ordered-float",
- "petgraph",
- "rand",
- "rand_distr",
- "rand_pcg",
- "rapier3d",
- "serde",
- "tracing",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.88",
 ]
 
 [[package]]
@@ -1943,7 +1935,7 @@ name = "dys-matchvisualizer"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "dys-game",
+ "dys-simulation",
  "once_cell",
  "postcard",
  "serde",
@@ -1967,12 +1959,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "dys-simulation"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "crossbeam",
+ "dys-ai-macros",
+ "dys-world",
+ "ordered-float",
+ "petgraph",
+ "rand",
+ "rand_distr",
+ "rand_pcg",
+ "rapier3d",
+ "serde",
+ "tracing",
+]
+
+[[package]]
 name = "dys-svc-director"
 version = "0.1.0"
 dependencies = [
  "axum",
- "dys-game",
  "dys-observability",
+ "dys-simulation",
  "dys-world",
  "postcard",
  "rand",
@@ -2003,8 +2013,8 @@ dependencies = [
 name = "dys-testbench"
 version = "0.1.0"
 dependencies = [
- "dys-game",
  "dys-observability",
+ "dys-simulation",
  "dys-world",
  "postcard",
  "serde",

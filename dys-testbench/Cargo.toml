@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dys-game = { path = "../dys-simulation" }
+dys-simulation = { path = "../dys-simulation" }
 dys-observability = { path = "../dys-observability" }
 dys-world = { path = "../dys-world" }
 

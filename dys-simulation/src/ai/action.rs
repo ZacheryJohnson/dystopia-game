@@ -5,7 +5,7 @@ use crate::game_state::GameState;
 use crate::simulation::simulation_event::SimulationEvent;
 
 use super::agent::Agent;
-use super::belief::Belief;
+use super::belief::{AbstractBelief, Belief};
 use super::strategies::noop::NoopStrategy;
 use super::strategy::Strategy;
 
@@ -49,6 +49,11 @@ impl Action {
         tracing::debug!("[action::can_perform] {}: all_prereqs: {all_prereqs} | none_prohibited: {none_prohibited} | can_perform_strategy: {can_perform_strategy}", self.name);
 
         all_prereqs && none_prohibited && can_perform_strategy
+    }
+
+    // ZJ-TODO: hook this up in planner
+    pub fn can_satisfy(&self, abstract_belief: AbstractBelief) -> bool {
+        self.completion_beliefs.iter().any(|belief| abstract_belief.satisfied_by(*belief))
     }
 
     pub fn is_complete(&self) -> bool {
