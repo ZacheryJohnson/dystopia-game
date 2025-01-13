@@ -1,12 +1,12 @@
 use std::sync::{Arc, Mutex};
 use crate::{game_objects::combatant::CombatantObject, game_state::GameState, simulation::simulation_event::SimulationEvent};
 
-use super::belief::Belief;
+use super::belief::BeliefSet;
 
 pub trait Agent {
     fn combatant(&self) -> &CombatantObject;
 
-    fn beliefs(&self) -> Vec<Belief>;
+    fn beliefs(&self) -> BeliefSet;
 
     fn tick(&mut self, game_state: Arc<Mutex<GameState>>) -> Vec<SimulationEvent>;
 }

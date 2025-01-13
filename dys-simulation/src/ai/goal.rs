@@ -1,4 +1,4 @@
-use super::belief::Belief;
+use super::belief::{BeliefSatisfiabilityTest, BeliefTest};
 
 /// Goals are a set of beliefs about the world.
 pub struct Goal {
@@ -13,7 +13,7 @@ pub struct Goal {
     /// 
     /// As an example, a combatant might have a "ScorePoints" goal.
     /// This would require the combatant to have a "StandingOnPlate" belief.
-    desired_beliefs: Vec<Belief>,
+    desired_beliefs: Vec<BeliefTest>,
 }
 
 impl Goal {
@@ -25,7 +25,7 @@ impl Goal {
         self.priority
     }
 
-    pub fn desired_beliefs(&self) -> Vec<Belief> {
+    pub fn desired_beliefs(&self) -> Vec<BeliefTest> {
         self.desired_beliefs.clone()
     }
 }
@@ -59,8 +59,19 @@ impl GoalBuilder {
         self
     }
 
-    pub(super) fn desired_beliefs(mut self, desired_beliefs: Vec<Belief>) -> GoalBuilder {
-        self.goal.desired_beliefs = desired_beliefs;
+    pub(super) fn desired_belief(mut self, desired_belief: impl BeliefSatisfiabilityTest + 'static) -> GoalBuilder {
+        self.goal.desired_beliefs = vec![desired_belief.into()];
+        self
+    }
+
+    pub(super) fn desired_beliefs(
+        mut self,
+        desired_beliefs: impl IntoIterator<Item = (impl BeliefSatisfiabilityTest + 'static)>,
+    ) -> GoalBuilder {
+        self.goal.desired_beliefs = desired_beliefs
+            .into_iter()
+            .map(|belief_test| belief_test.into())
+            .collect();
         self
     }
 }

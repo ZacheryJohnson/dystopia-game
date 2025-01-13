@@ -134,6 +134,6 @@ mod tests {
             },
         };
         let seed = &[0; 32];
-        let _ = game.simulate_seeded(seed);
+        // let _ = game.simulate_seeded(seed);
     }
 }

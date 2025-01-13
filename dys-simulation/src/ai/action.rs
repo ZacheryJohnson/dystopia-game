@@ -1,11 +1,10 @@
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
-
 use crate::game_state::GameState;
 use crate::simulation::simulation_event::SimulationEvent;
 
 use super::agent::Agent;
-use super::belief::{AbstractBelief, Belief};
+use super::belief::{Belief, BeliefSatisfiabilityTest, BeliefSet, BeliefTest};
 use super::strategies::noop::NoopStrategy;
 use super::strategy::Strategy;
 
@@ -22,13 +21,13 @@ pub struct Action {
 
     strategy: StrategyT,
 
-    /// Beliefs required for the action to be taken
-    prerequisite_beliefs: Vec<Belief>,
+    /// Belief tests required for the action to be taken
+    prerequisite_beliefs: Vec<BeliefTest>,
 
-    /// Beliefs that prevent the action from being taken
-    prohibited_beliefs: Vec<Belief>,
+    /// Belief tests that prevent the action from being taken
+    prohibited_beliefs: Vec<BeliefTest>,
 
-    /// Beliefs applied once the action completes successfully
+    /// Concrete beliefs applied once the action completes successfully
     completion_beliefs: Vec<Belief>,
 }
 
@@ -41,19 +40,26 @@ impl Action {
         self.cost
     }
 
-    pub fn can_perform(&self, owned_beliefs: &[Belief]) -> bool {
-        let all_prereqs = self.prerequisite_beliefs.iter().all(|belief| owned_beliefs.contains(belief));
-        let none_prohibited = self.prohibited_beliefs.iter().all(|belief| !owned_beliefs.contains(belief));
-        let can_perform_strategy = self.strategy.lock().unwrap().can_perform(owned_beliefs);
+    pub fn can_perform(&self, owned_beliefs: &BeliefSet) -> bool {
+        let all_prereqs = self
+            .prerequisite_beliefs
+            .iter()
+            .all(|belief| owned_beliefs.can_satisfy(belief.to_owned())); // ZJ-TODO: allow passing a reference instead of cloning
+
+        let none_prohibited = self
+            .prohibited_beliefs
+            .iter()
+            .all(|belief| !owned_beliefs.can_satisfy(belief.to_owned())); // ZJ-TODO: allow passing a reference instead of cloning
+
+        let can_perform_strategy = self
+            .strategy
+            .lock()
+            .unwrap()
+            .can_perform(owned_beliefs);
 
         tracing::debug!("[action::can_perform] {}: all_prereqs: {all_prereqs} | none_prohibited: {none_prohibited} | can_perform_strategy: {can_perform_strategy}", self.name);
 
         all_prereqs && none_prohibited && can_perform_strategy
-    }
-
-    // ZJ-TODO: hook this up in planner
-    pub fn can_satisfy(&self, abstract_belief: AbstractBelief) -> bool {
-        self.completion_beliefs.iter().any(|belief| abstract_belief.satisfied_by(*belief))
     }
 
     pub fn is_complete(&self) -> bool {
@@ -79,11 +85,11 @@ impl Action {
         &self.completion_beliefs
     }
 
-    pub fn prohibited_beliefs(&self) -> &Vec<Belief> {
+    pub fn prohibited_beliefs(&self) -> &Vec<BeliefTest> {
         &self.prohibited_beliefs
     }
 
-    pub fn prerequisite_beliefs(&self) -> &Vec<Belief> {
+    pub fn prerequisite_beliefs(&self) -> &Vec<BeliefTest> {
         &self.prerequisite_beliefs
     }
 }
@@ -143,13 +149,25 @@ impl ActionBuilder {
         self
     }
 
-    pub fn prerequisites(mut self, beliefs: Vec<Belief>) -> ActionBuilder {
-        self.action.prerequisite_beliefs = beliefs;
+    pub fn prerequisites(
+        mut self,
+        beliefs: impl IntoIterator<Item = (impl BeliefSatisfiabilityTest + 'static)>,
+    ) -> ActionBuilder {
+        self.action.prerequisite_beliefs = beliefs
+            .into_iter()
+            .map(|test| BeliefTest::new(test))
+            .collect();
         self
     }
 
-    pub fn prohibited(mut self, beliefs: Vec<Belief>) -> ActionBuilder {
-        self.action.prohibited_beliefs = beliefs;
+    pub fn prohibited(
+        mut self,
+        beliefs: impl IntoIterator<Item = (impl BeliefSatisfiabilityTest + 'static)>,
+    ) -> ActionBuilder {
+        self.action.prohibited_beliefs = beliefs
+            .into_iter()
+            .map(|test| BeliefTest::new(test))
+            .collect();
         self
     }
 
@@ -162,72 +180,156 @@ impl ActionBuilder {
 #[cfg(test)]
 mod tests {
     mod fn_can_perform {
+        use dys_satisfiable::SatisfiableField;
         use crate::ai::action::ActionBuilder;
-        use crate::ai::belief::Belief;
+        use crate::ai::belief::{Belief, BeliefSet, SatisfiableBelief};
     
         #[test]
         fn no_prereqs_no_prohibited_no_beliefs_allowed() {
             let action = ActionBuilder::empty();
-            let result = action.can_perform(&[]);
+            let result = action.can_perform(&BeliefSet::empty());
             assert!(result);
         }
     
         #[test]
         fn no_prereqs_no_prohibited_some_beliefs_allowed() {
             let action = ActionBuilder::empty();
-            let result = action.can_perform(&[Belief::SelfHasBall, Belief::SelfOnPlate]);
+            let result = action.can_perform(&BeliefSet::from(&[
+                Belief::HeldBall { ball_id: 1, combatant_id: 1 },
+                Belief::OnPlate { plate_id: 1, combatant_id: 1 },
+            ]));
             assert!(result);
         }
     
         #[test]
         fn no_prereqs_some_prohibited_no_beliefs_allowed() {
-            let action = ActionBuilder::empty();
-            let result = action.can_perform(&[]);
+            let action = ActionBuilder::new()
+                .prohibited(vec![
+                    SatisfiableBelief::OnPlate()
+                ])
+                .build();
+            let result = action.can_perform(&BeliefSet::empty());
             assert!(result);
         }
-    
+
+        #[test]
+        fn no_prereqs_some_prohibited_different_belief_types_allowed() {
+            let action = ActionBuilder::new()
+                .prohibited(vec![
+                    SatisfiableBelief::HeldBall()
+                ])
+                .build();
+
+            let belief_set = BeliefSet::from(&[
+                Belief::OnPlate { plate_id: 1, combatant_id: 1 },
+            ]);
+
+            let result = action.can_perform(&belief_set);
+            assert!(result);
+        }
+
         #[test]
         fn no_prereqs_some_prohibited_some_beliefs_none_matching_allowed() {
+            let prohibited_id = 1;
+            let combatant_id = 2;
+
             let action = ActionBuilder::new()
-                .prohibited(vec![Belief::SelfHasBall])
+                .prohibited(vec![
+                    SatisfiableBelief::HeldBall()
+                        .combatant_id(SatisfiableField::Exactly(prohibited_id))
+                ])
                 .build();
-            let result = action.can_perform(&[Belief::SelfOnPlate]);
+
+            let belief_set = BeliefSet::from(&[
+                Belief::HeldBall { ball_id: 1, combatant_id },
+            ]);
+
+            let result = action.can_perform(&belief_set);
             assert!(result);
         }
     
         #[test]
-        fn no_prereqs_some_prohibited_some_beliefs_some_matching_disallowed() {
+        fn no_prereqs_some_prohibited_belief_matches_disallowed() {
+            let prohibited_id = 1;
+
             let action = ActionBuilder::new()
-                .prohibited(vec![Belief::SelfHasBall])
+                .prohibited(vec![
+                    SatisfiableBelief::HeldBall()
+                        .combatant_id(SatisfiableField::Exactly(prohibited_id))
+                ])
                 .build();
-            let result = action.can_perform(&[Belief::SelfHasBall]);
+
+            let belief_set = BeliefSet::from(&[
+                Belief::HeldBall { ball_id: 1, combatant_id: prohibited_id },
+            ]);
+
+            let result = action.can_perform(&belief_set);
             assert!(!result);
         }
     
         #[test]
         fn some_prereqs_no_prohibited_no_beliefs_disallowed() {
             let action = ActionBuilder::new()
-                .prerequisites(vec![Belief::SelfHasBall])
+                .prerequisites(vec![
+                    SatisfiableBelief::HeldBall()
+                        .combatant_id(SatisfiableField::Exactly(1))
+                ])
                 .build();
-            let result = action.can_perform(&[]);
+            let result = action.can_perform(&BeliefSet::empty());
             assert!(!result);
         }
-    
+
         #[test]
-        fn some_prereqs_no_prohibited_some_beliefs_none_matching_disallowed() {
+        fn some_prereqs_no_prohibited_different_types_disallowed() {
             let action = ActionBuilder::new()
-                .prerequisites(vec![Belief::SelfHasBall])
+                .prerequisites(vec![
+                    SatisfiableBelief::HeldBall()
+                        .combatant_id(SatisfiableField::Exactly(1))
+                ])
                 .build();
-            let result = action.can_perform(&[Belief::SelfOnPlate]);
+
+            let belief_set = BeliefSet::from(&[
+                Belief::OnPlate { plate_id: 1, combatant_id: 1 },
+            ]);
+
+            let result = action.can_perform(&belief_set);
+            assert!(!result);
+        }
+
+        #[test]
+        fn prereqs_mismatching_disallowed() {
+            let prereq_id = 1;
+            let combatant_id = 2;
+            let action = ActionBuilder::new()
+                .prerequisites(vec![
+                    SatisfiableBelief::HeldBall()
+                        .combatant_id(SatisfiableField::Exactly(prereq_id))
+                ])
+                .build();
+
+            let belief_set = BeliefSet::from(&[
+                Belief::OnPlate { plate_id: 1, combatant_id },
+            ]);
+
+            let result = action.can_perform(&belief_set);
             assert!(!result);
         }
     
         #[test]
         fn some_prereqs_no_prohibited_some_beliefs_some_matching_allowed() {
+            let combatant_id = 1;
             let action = ActionBuilder::new()
-                .prerequisites(vec![Belief::SelfHasBall])
+                .prerequisites(vec![
+                    SatisfiableBelief::OnPlate()
+                        .combatant_id(SatisfiableField::Exactly(combatant_id))
+                ])
                 .build();
-            let result = action.can_perform(&[Belief::SelfHasBall]);
+
+            let belief_set = BeliefSet::from(&[
+                Belief::OnPlate { plate_id: 1, combatant_id },
+            ]);
+
+            let result = action.can_perform(&belief_set);
             assert!(result);
         }
     }

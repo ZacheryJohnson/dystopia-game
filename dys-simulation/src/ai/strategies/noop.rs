@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
-use crate::{ai::{agent::Agent, belief::Belief, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
+use crate::{ai::{agent::Agent, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
+use crate::ai::belief::BeliefSet;
 
 pub(in crate::ai) struct NoopStrategy;
 
@@ -8,7 +9,7 @@ impl Strategy for NoopStrategy {
         String::from("Noop")
     }
 
-    fn can_perform(&self, _: &[Belief]) -> bool {
+    fn can_perform(&self, _: &BeliefSet) -> bool {
         true
     }
 

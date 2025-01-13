@@ -1,16 +1,19 @@
 use std::sync::{Arc, Mutex};
 use rapier3d::{na::Vector3, prelude::*};
-
-use crate::{ai::{agent::Agent, belief::Belief, strategy::Strategy}, game_objects::{combatant::CombatantId, game_object::GameObject}, game_state::{GameState}, simulation::simulation_event::SimulationEvent};
+use dys_satisfiable::SatisfiableField;
+use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::{combatant::CombatantId, game_object::GameObject}, game_state::{GameState}, simulation::simulation_event::SimulationEvent};
+use crate::ai::belief::{BeliefSet, SatisfiableBelief};
 
 pub struct ThrowBallAtTargetStrategy {
+    self_id: CombatantId,
     target: CombatantId,
     is_complete: bool,
 }
 
 impl ThrowBallAtTargetStrategy {
-    pub fn new(target_combatant: CombatantId) -> ThrowBallAtTargetStrategy {
+    pub fn new(self_combatant_id: CombatantId, target_combatant: CombatantId) -> ThrowBallAtTargetStrategy {
         ThrowBallAtTargetStrategy {
+            self_id: self_combatant_id,
             target: target_combatant,
             is_complete: false,
         }
@@ -22,8 +25,11 @@ impl Strategy for ThrowBallAtTargetStrategy {
         String::from("Throw Ball at Target")
     }
 
-    fn can_perform(&self, owned_beliefs: &[Belief]) -> bool {
-        owned_beliefs.contains(&Belief::SelfHasBall)
+    fn can_perform(&self, owned_beliefs: &BeliefSet) -> bool {
+        owned_beliefs.can_satisfy(
+            SatisfiableBelief::HeldBall()
+                .combatant_id(SatisfiableField::Exactly(self.self_id))
+        )
     }
 
     fn is_complete(&self) -> bool {
