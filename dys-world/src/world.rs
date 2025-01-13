@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex};
-use serde::{Deserialize, Deserializer, Serialize};
-use serde::de::{DeserializeSeed, SeqAccess, Visitor};
+use serde::{Deserialize, Serialize};
 use crate::{
     combatant::instance::CombatantInstance,
     serde::{deserialize_combatants, deserialize_teams, serialize_combatants, serialize_teams},

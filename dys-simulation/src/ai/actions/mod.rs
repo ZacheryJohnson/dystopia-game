@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
-
+use dys_satisfiable::SatisfiableField;
 use crate::{ai::{action::ActionBuilder, belief::Belief, strategies::move_to_location::MoveToLocationStrategy}, game_objects::{combatant::CombatantObject, game_object::GameObject}, game_state::GameState};
-
+use crate::ai::belief::SatisfiableBelief;
 use super::{action::Action, strategies::{pick_up_ball::PickUpBallStrategy, throw_ball_at_target_location::ThrowBallAtTargetStrategy}};
 
 /// ZJ-TODO: HACK: this value should be passed in through simulation settings.
@@ -56,7 +56,7 @@ pub fn actions(
                     )
                 ))
                 .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (plate_location - combatant_pos).magnitude() / combatant_move_speed)
-                .completion(vec![Belief::SelfOnPlate])
+                .completion(vec![Belief::OnPlate { combatant_id: combatant.id, plate_id }])
                 .build()
         );
     }
@@ -88,10 +88,11 @@ pub fn actions(
                 ))
                 .cost(MOVE_TO_BALL_WEIGHT_HARDCODE_HACK * (ball_location - combatant_pos).magnitude() / combatant_move_speed) 
                 .prohibited(vec![
-                    Belief::SelfHasBall
+                    SatisfiableBelief::HeldBall()
+                        .combatant_id(SatisfiableField::Exactly(combatant.id))
                 ])
                 .completion(vec![
-                    Belief::SelfCanReachBall { ball_id }
+                    Belief::InBallPickupRange { ball_id, combatant_id: combatant.id },
                 ])
                 .build()
         );
@@ -100,32 +101,37 @@ pub fn actions(
             ActionBuilder::new()
                 .name(format!("Pick Up Ball {ball_id}"))
                 .strategy(Arc::new(Mutex::new(
-                    PickUpBallStrategy::new(ball_id.to_owned())
+                    PickUpBallStrategy::new(combatant.id, combatant_pos, ball_id)
                 )))
                 .prerequisites(vec![
-                    Belief::SelfCanReachBall { ball_id }
+                    SatisfiableBelief::InBallPickupRange()
+                        .combatant_id(SatisfiableField::Exactly(combatant.id))
+                        .ball_id(SatisfiableField::Exactly(ball_id))
                 ])
                 .completion(vec![
-                    Belief::SelfHasBall
+                    Belief::HeldBall { ball_id, combatant_id: combatant.id },
                 ])
                 .build()
         );
     }
 
-    for (combatant_id, _) in combatants {
+    for (target_combatant_id, _) in combatants {
         // Don't try to throw a ball at ourselves
-        if combatant_id == combatant.id {
+        if target_combatant_id == combatant.id {
             continue;
         }
 
         actions.push(
             ActionBuilder::new()
-                .name(format!("Throw Ball at/to Combatant {}", combatant_id))
+                .name(format!("Throw Ball at/to Combatant {}", target_combatant_id))
                 .strategy(Arc::new(Mutex::new(
-                    ThrowBallAtTargetStrategy::new(combatant_id)
+                    ThrowBallAtTargetStrategy::new(combatant.id, target_combatant_id)
                 )))
                 .cost(10.0_f32 /* ZJ-TODO */)
-                .prerequisites(vec![Belief::SelfHasBall])
+                .prerequisites(vec![
+                    SatisfiableBelief::HeldBall()
+                        .combatant_id(SatisfiableField::Exactly(combatant.id))
+                ])
                 .build()
         );
     }

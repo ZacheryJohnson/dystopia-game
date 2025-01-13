@@ -2,7 +2,8 @@ use std::sync::{Arc, Mutex};
 use dys_world::arena::navmesh::{ArenaNavmeshNode, ArenaNavmeshPath};
 use rapier3d::na::Point3;
 
-use crate::{ai::{agent::Agent, belief::Belief, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
+use crate::{ai::{agent::Agent, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
+use crate::ai::belief::BeliefSet;
 
 pub struct MoveToLocationStrategy {
     is_complete: bool,
@@ -41,7 +42,7 @@ impl Strategy for MoveToLocationStrategy {
         String::from("Move to Location")
     }
 
-    fn can_perform(&self, _: &[Belief]) -> bool {
+    fn can_perform(&self, _: &BeliefSet) -> bool {
         self.next_node.is_some()
     }
 

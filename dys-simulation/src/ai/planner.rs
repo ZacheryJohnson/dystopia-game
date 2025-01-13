@@ -1,7 +1,8 @@
 use std::sync::{Arc, Mutex};
+use dys_satisfiable::SatisfiabilityTest;
 use crate::{ai::goals::goals, game_state::GameState};
-
-use super::{action::Action, actions::actions, agent::Agent, belief::Belief, goal::Goal};
+use crate::ai::belief::{BeliefSet, BeliefTest};
+use super::{action::Action, actions::actions, agent::Agent, goal::Goal};
 
 #[tracing::instrument(
     skip_all,
@@ -25,27 +26,24 @@ pub fn plan(
 
         let mut action_plan: Vec<Action> = vec![];
         let mut desired_beliefs_remaining = goal.desired_beliefs();
-        let mut future_beliefs = vec![];
 
-        while let Some(desired_belief) = desired_beliefs_remaining.pop() {
-            let mut current_beliefs = agent.beliefs().to_owned();
-            current_beliefs.extend_from_slice(&future_beliefs);
-            let Some(action) = get_action_for_belief(desired_belief, &current_beliefs, &actions) else {
-                action_plan.clear();
-                break;
-            };
-            
-            tracing::debug!("Selecting action {}", action.name());
+        // ZJ-TODO: refactor...
 
-            future_beliefs.push(desired_belief);
-            for newly_desired_belief in action.prerequisite_beliefs() {
-                if !current_beliefs.contains(newly_desired_belief) {
-                    desired_beliefs_remaining.push(newly_desired_belief.to_owned());
-                    tracing::debug!("Adding new desired belief {:?}", newly_desired_belief);
-                }
-            }
-            action_plan.push(action);
-        }
+        // while let Some(desired_belief) = desired_beliefs_remaining.pop() {
+        //     let Some(action) = get_action_for_belief(desired_belief, &agent.beliefs(), &actions) else {
+        //         action_plan.clear();
+        //         break;
+        //     };
+        //
+        //     tracing::debug!("Selecting action {}", action.name());
+        //     for newly_desired_belief in action.prerequisite_beliefs() {
+        //         if !agent.beliefs().can_satisfy(newly_desired_belief) {
+        //             desired_beliefs_remaining.push(newly_desired_belief.to_owned());
+        //             tracing::debug!("Adding new desired belief {:?}", newly_desired_belief);
+        //         }
+        //     }
+        //     action_plan.push(action);
+        // }
 
         if !desired_beliefs_remaining.is_empty() || action_plan.is_empty() {
             tracing::debug!("failed to get action plan for goal {}; trying next goal", goal.name());
@@ -63,10 +61,14 @@ pub fn plan(
     vec![]
 }
 
-fn get_action_for_belief(desired_belief: Belief, _: &[Belief], actions: &[Action]) -> Option<Action> {
+fn get_action_for_belief(
+    desired_belief: BeliefTest,
+    _: &BeliefSet,
+    actions: &[Action]
+) -> Option<Action> {
     tracing::debug!("Finding action for desired belief {:?}", desired_belief);
     let mut potential_actions = actions.iter().filter(|action| {
-        action.completion_beliefs().iter().any(|belief| belief.is_a(&desired_belief))
+        action.completion_beliefs().iter().any(|belief| desired_belief.satisfied_by(belief.to_owned()))
     }).collect::<Vec<_>>();
 
     potential_actions.pop().map(|action_ref| action_ref.to_owned())
@@ -93,7 +95,7 @@ fn get_best_goal<'a>(
     let agent_beliefs = agent.beliefs();
     let mut goals: Vec<_> = all_goals
         .into_iter()
-        .filter(|goal| !goal.desired_beliefs().iter().all(|belief| agent_beliefs.contains(belief)))
+        .filter(|goal| !goal.desired_beliefs().iter().all(|belief| agent_beliefs.can_satisfy(belief.to_owned())))
         .collect();
 
     // Note: comparing b's priority to a (instead of comparing a's priority to b) as we want the largest priority goals first
@@ -109,8 +111,10 @@ mod tests {
     use dys_world::{arena::{navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, Arena}, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}, team::instance::TeamInstance};
     use rand::SeedableRng;
     use rand_pcg::Pcg64;
-
+    use dys_satisfiable::SatisfiableField;
     use crate::{ai::{belief::Belief, goal::GoalBuilder, planner::get_best_goal, test_utils::{self, TestAgent}}, game::Game, game_state::GameState, physics_sim::PhysicsSim, simulation::config::SimulationConfig};
+    use crate::ai::agent::Agent;
+    use crate::ai::belief::SatisfiableBelief;
 
     fn make_test_agent() -> TestAgent {
         test_utils::TestAgent::new()
@@ -176,7 +180,7 @@ mod tests {
             GoalBuilder::new()
                 .name(expected_goal_name)
                 .priority(1)
-                .desired_beliefs(vec![Belief::SelfOnPlate])
+                .desired_beliefs(vec![SatisfiableBelief::OnPlate()])
                 .build()
         ];
 
@@ -193,13 +197,18 @@ mod tests {
 
         let expected_goal_name = "TestGoalSelfOnPlate";
 
-        agent.set_beliefs(vec![Belief::SelfOnPlate]);
+        agent.set_beliefs(vec![
+            Belief::OnPlate { combatant_id: agent.combatant().id, plate_id: 1 }
+        ]);
 
         let goals = vec![
             GoalBuilder::new()
                 .name(expected_goal_name)
                 .priority(1)
-                .desired_beliefs(vec![Belief::SelfOnPlate])
+                .desired_beliefs(vec![
+                    SatisfiableBelief::OnPlate()
+                        .combatant_id(SatisfiableField::Exactly(agent.combatant().id))
+                ])
                 .build()
         ];
 
@@ -221,12 +230,18 @@ mod tests {
             GoalBuilder::new()
                 .name(lower_priority_goal_name)
                 .priority(1)
-                .desired_beliefs(vec![Belief::SelfOnPlate])
+                .desired_beliefs(vec![
+                    SatisfiableBelief::OnPlate()
+                        .combatant_id(SatisfiableField::Exactly(agent.combatant().id))
+                ])
                 .build(),
             GoalBuilder::new()
                 .name(higher_priority_goal_name)
                 .priority(2)
-                .desired_beliefs(vec![Belief::SelfHasBall])
+                .desired_beliefs(vec![
+                    SatisfiableBelief::HeldBall()
+                        .combatant_id(SatisfiableField::Exactly(agent.combatant().id))
+                ])
                 .build(),            
         ];
 

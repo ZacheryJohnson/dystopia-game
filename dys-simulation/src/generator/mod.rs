@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use rand::distributions::Distribution;
 use dys_world::combatant::instance::CombatantInstance;
-use dys_world::combatant::limb::{Limb, LimbModifier, LimbModifierType, LimbType, ModifierAcquisitionMethod};
+use dys_world::combatant::limb::{Limb, LimbModifier, LimbType};
 use dys_world::attribute::instance::AttributeInstance;
 use dys_world::attribute::attribute_type::AttributeType;
 use dys_world::team::instance::TeamInstance;

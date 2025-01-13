@@ -4,7 +4,7 @@ use dys_world::combatant::instance::CombatantInstance;
 use rapier3d::prelude::{ColliderHandle, RigidBodyHandle};
 
 use crate::{game_objects::combatant::{CombatantId, CombatantObject, CombatantState, TeamAlignment}, game_state::GameState, simulation::simulation_event::SimulationEvent};
-
+use crate::ai::belief::BeliefSet;
 use super::{agent::Agent, belief::Belief};
 
 
@@ -59,8 +59,8 @@ impl Agent for TestAgent {
         &self.combatant
     }
     
-    fn beliefs(&self) -> Vec<Belief> {
-        self.beliefs.clone()
+    fn beliefs(&self) -> BeliefSet {
+        BeliefSet::from(&self.beliefs)
     }
 
     fn tick(&mut self, _: Arc<Mutex<GameState>>) -> Vec<SimulationEvent> {

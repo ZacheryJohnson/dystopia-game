@@ -4,7 +4,7 @@ use dys_world::{arena::plate::PlateId, combatant::instance::CombatantInstance};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 
 use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
-
+use crate::ai::belief::BeliefSet;
 use super::{ball::BallId, game_object::GameObject};
 
 pub type CombatantId = u64;
@@ -33,7 +33,7 @@ pub struct CombatantObject {
 pub struct CombatantState {
     current_action: Option<Action>,
     plan: Vec<Action>,
-    beliefs: Vec<Belief>,
+    beliefs: BeliefSet,
 
     pub on_plate: Option<PlateId>,
     pub holding_ball: Option<BallId>,
@@ -63,7 +63,7 @@ impl CombatantObject {
                 holding_ball: None,
                 current_action: None,
                 plan: vec![],
-                beliefs: vec![],
+                beliefs: BeliefSet::empty(),
                 stunned_by_explosion: false,
             })),
             team,
@@ -96,14 +96,21 @@ impl CombatantObject {
         {
             let mut combatant_state = self.combatant_state.lock().unwrap();
             combatant_state.on_plate = Some(plate_id);
+            combatant_state.beliefs.add_belief(Belief::OnPlate { combatant_id: self.id, plate_id });
         }
     }
 
     pub fn set_off_plate(&mut self) {
         {
             let mut combatant_state = self.combatant_state.lock().unwrap();
+            let Some(old_plate_id) = combatant_state.on_plate else {
+                return;
+            };
+
             combatant_state.on_plate = None;
-            combatant_state.beliefs.retain(|belief| !belief.is_a(&Belief::SelfOnPlate));
+            combatant_state.beliefs.remove_belief(
+                Belief::OnPlate { combatant_id: self.id, plate_id: old_plate_id }
+            );
         }
     }
 
@@ -169,13 +176,9 @@ impl Agent for CombatantObject {
         self
     }
 
-    fn beliefs(&self) -> Vec<Belief> {
-        let beliefs = {
-            let combatant_state = self.combatant_state.lock().unwrap();
-            combatant_state.beliefs.clone()
-        };
-
-        beliefs
+    fn beliefs(&self) -> BeliefSet {
+        let combatant_state = self.combatant_state.lock().unwrap();
+        combatant_state.beliefs.to_owned()
     }
 
     #[tracing::instrument(
@@ -241,7 +244,7 @@ impl Agent for CombatantObject {
             tracing::debug!("Action {} complete - rewarding completion beliefs", action.name());
 
             let mut combatant_state = self.combatant_state.lock().unwrap();
-            combatant_state.beliefs.append(&mut action.completion_beliefs().to_owned());
+            combatant_state.beliefs.add_beliefs(&mut action.completion_beliefs().to_owned());
         }
 
         events
