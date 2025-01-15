@@ -48,6 +48,12 @@ pub fn satisfiable_impl(input: TokenStream) -> TokenStream {
             });
         }
 
+        let has_fields_ident = if variant.fields.is_empty() {
+            quote! {}
+        } else {
+            quote! {{..}}
+        };
+
         builder_structs.push(quote! {
             #[derive(Clone, Debug, Default)]
             pub struct #builder_struct_name {
@@ -61,6 +67,10 @@ pub fn satisfiable_impl(input: TokenStream) -> TokenStream {
             impl SatisfiabilityTest for #builder_struct_name {
                 type ConcreteT = #concrete_ident;
                 fn satisfied_by(&self, concrete: #concrete_ident) -> bool {
+                    if !matches!(concrete, #concrete_ident::#variant_ident #has_fields_ident) {
+                        return false;
+                    }
+
                     let #concrete_ident::#variant_ident { #(#builder_struct_field_names),* } = concrete else {
                         return false;
                     };

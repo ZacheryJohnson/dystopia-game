@@ -2,9 +2,14 @@ use std::sync::{Arc, Mutex};
 use dys_world::arena::plate::PlateId;
 use rapier3d::na::{Quaternion, Vector3};
 use serde::{Deserialize, Serialize};
-
+use crate::ai::belief::Belief;
 use crate::game_objects::{ball::BallId, combatant::CombatantId};
 use crate::game_state::GameState;
+
+pub struct PendingSimulationTick {
+    simulation_event: SimulationEvent,
+    beliefs_upon_confirmation: Vec<Belief>,
+}
 
 /// SimulationEvents are any notable action that happens during a simulation.
 /// These events will be collected to form a recap of the game.

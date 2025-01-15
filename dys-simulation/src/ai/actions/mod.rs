@@ -48,15 +48,13 @@ pub fn actions(
         actions.push(
             ActionBuilder::new()
                 .name(format!("Move to Plate {plate_id}"))
-                .strategy(Arc::new(Mutex::new(
-                    MoveToLocationStrategy::new(
-                        combatant_pos.into(),
-                        plate_location.into(),
-                        game_state.clone())
-                    )
-                ))
+                .strategy(MoveToLocationStrategy::new(
+                    combatant_pos.into(),
+                    plate_location.into(),
+                    game_state.clone())
+                )
                 .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (plate_location - combatant_pos).magnitude() / combatant_move_speed)
-                .completion(vec![Belief::OnPlate { combatant_id: combatant.id, plate_id }])
+                .promised(vec![Belief::OnPlate { combatant_id: combatant.id, plate_id }])
                 .build()
         );
     }
@@ -79,13 +77,11 @@ pub fn actions(
         actions.push(
             ActionBuilder::new()
                 .name(format!("Move to Ball {ball_id}"))
-                .strategy(Arc::new(Mutex::new(
-                    MoveToLocationStrategy::new(
-                        combatant_pos.into(),
-                        ball_location.into(),
-                        game_state.clone())
-                    )
-                ))
+                .strategy(MoveToLocationStrategy::new(
+                    combatant_pos.into(),
+                    ball_location.into(),
+                    game_state.clone())
+                )
                 .cost(MOVE_TO_BALL_WEIGHT_HARDCODE_HACK * (ball_location - combatant_pos).magnitude() / combatant_move_speed) 
                 .prohibited(vec![
                     SatisfiableBelief::HeldBall()
@@ -100,9 +96,7 @@ pub fn actions(
         actions.push(
             ActionBuilder::new()
                 .name(format!("Pick Up Ball {ball_id}"))
-                .strategy(Arc::new(Mutex::new(
-                    PickUpBallStrategy::new(combatant.id, combatant_pos, ball_id)
-                )))
+                .strategy(PickUpBallStrategy::new(combatant.id, combatant_pos, ball_id))
                 .prerequisites(vec![
                     SatisfiableBelief::InBallPickupRange()
                         .combatant_id(SatisfiableField::Exactly(combatant.id))
@@ -124,9 +118,7 @@ pub fn actions(
         actions.push(
             ActionBuilder::new()
                 .name(format!("Throw Ball at/to Combatant {}", target_combatant_id))
-                .strategy(Arc::new(Mutex::new(
-                    ThrowBallAtTargetStrategy::new(combatant.id, target_combatant_id)
-                )))
+                .strategy(ThrowBallAtTargetStrategy::new(combatant.id, target_combatant_id))
                 .cost(10.0_f32 /* ZJ-TODO */)
                 .prerequisites(vec![
                     SatisfiableBelief::HeldBall()

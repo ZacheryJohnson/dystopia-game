@@ -89,6 +89,10 @@ impl Game {
             let new_tick = simulate_tick(game_state.clone());
             let is_end_of_game = new_tick.is_end_of_game();
 
+            if new_tick.tick_number % 100 == 0 {
+                tracing::info!("Simulation tick {}...", new_tick.tick_number);
+            }
+
             ticks.push(new_tick);
 
             if is_end_of_game {
@@ -134,6 +138,6 @@ mod tests {
             },
         };
         let seed = &[0; 32];
-        // let _ = game.simulate_seeded(seed);
+        let _ = game.simulate_seeded(seed);
     }
 }

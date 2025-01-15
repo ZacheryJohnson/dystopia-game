@@ -66,6 +66,7 @@ struct VisualizationObject;
 struct CombatantVisualizer {
     pub id: CombatantId,
     pub desired_location: Vec3,
+    pub last_position: Vec3,
 }
 
 #[derive(Component)]
@@ -299,7 +300,7 @@ fn setup_after_reload_game_log(
                 };
                 commands.spawn((
                     VisualizationObject,
-                    CombatantVisualizer { id: *combatant_id, desired_location: translation },
+                    CombatantVisualizer { id: *combatant_id, desired_location: translation, last_position: translation },
                     MaterialMesh2dBundle {
                         mesh: Mesh2dHandle(meshes.add(Capsule2d::new(1.0, 2.0))), // ZJ-TODO: read radius
                         material: materials.add(Color::linear_rgb(0.0, 1.0, 0.0)),
@@ -328,21 +329,27 @@ fn update(
     // ZJ-TODO: the below lerps are incorrect
     //          should increase over time since the last tick update
 
+    // Only update the simulation every second, otherwise would be too fast
+    // ZJ-TODO: allow this to be configurable
+    const TICKS_PER_SECOND: u64 = 10;
+    const TIME_BETWEEN_TICKS_MILLIS: u64 = 1000 / TICKS_PER_SECOND;
+    const TIME_BETWEEN_TICKS: Duration = Duration::from_millis(TIME_BETWEEN_TICKS_MILLIS);
+    let time_since_last_update = Instant::now() - game_state.last_update_time;
+    let lerp_progress = (time_since_last_update.as_millis() as u64 % 1000) as f32 / 100.0;
+
     // Visual updates can occur ever frame
     for (combatant_vis, mut combatant_transform) in combatants_query.iter_mut() {
-        // combatant_transform.translation = combatant_transform.translation.lerp(combatant_vis.desired_location, timer.delta_seconds() * 5.0)
-        combatant_transform.translation = combatant_vis.desired_location;
+        combatant_transform.translation = combatant_vis.last_position.lerp(
+            combatant_vis.desired_location,
+            lerp_progress)
     }
 
     for (ball_vis, mut ball_transform) in balls_query.iter_mut() {
-        // ball_transform.translation = ball_transform.translation.lerp(ball_vis.desired_location, timer.delta_seconds() * 5.0)
-        ball_transform.translation = ball_vis.desired_location;
+        ball_transform.translation = ball_transform.translation.lerp(ball_vis.desired_location, timer.delta_seconds() * 5.0)
+        // ball_transform.translation = ball_vis.desired_location;
     }
 
-    // Only update the simulation every second, otherwise would be too fast
-    // ZJ-TODO: allow this to be configurable
-    const TIME_BETWEEN_TICKS: Duration = Duration::from_millis(100);
-    if (Instant::now() - game_state.last_update_time) < TIME_BETWEEN_TICKS {
+    if time_since_last_update < TIME_BETWEEN_TICKS {
         return;
     }
 
@@ -375,6 +382,7 @@ fn update(
                     .next()
                     .unwrap();
 
+                combatant_vis.last_position = combatant_vis.desired_location;
                 combatant_vis.desired_location = Vec3::new(position.x, position.z, position.y);
             },
             SimulationEvent::CombatantOnPlate { combatant_id, plate_id } => {},

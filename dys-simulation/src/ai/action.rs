@@ -1,7 +1,8 @@
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
+use dys_satisfiable::SatisfiabilityTest;
 use crate::game_state::GameState;
-use crate::simulation::simulation_event::SimulationEvent;
+use crate::simulation::simulation_event::{PendingSimulationTick, SimulationEvent};
 
 use super::agent::Agent;
 use super::belief::{Belief, BeliefSatisfiabilityTest, BeliefSet, BeliefTest};
@@ -27,7 +28,11 @@ pub struct Action {
     /// Belief tests that prevent the action from being taken
     prohibited_beliefs: Vec<BeliefTest>,
 
-    /// Concrete beliefs applied once the action completes successfully
+    /// Promised beliefs are concrete beliefs that will be applied by sensors
+    /// rather than the action itself.
+    promised_beliefs: Vec<Belief>,
+
+    /// Concrete beliefs applied once the action completes successfully.
     completion_beliefs: Vec<Belief>,
 }
 
@@ -40,6 +45,8 @@ impl Action {
         self.cost
     }
 
+    /// Given an agent's belief set, can this action currently be performed?
+    #[tracing::instrument(name = "action::can_perform", skip_all, level = "trace")]
     pub fn can_perform(&self, owned_beliefs: &BeliefSet) -> bool {
         let all_prereqs = self
             .prerequisite_beliefs
@@ -57,13 +64,31 @@ impl Action {
             .unwrap()
             .can_perform(owned_beliefs);
 
-        tracing::debug!("[action::can_perform] {}: all_prereqs: {all_prereqs} | none_prohibited: {none_prohibited} | can_perform_strategy: {can_perform_strategy}", self.name);
-
         all_prereqs && none_prohibited && can_perform_strategy
     }
 
-    pub fn is_complete(&self) -> bool {
-        self.strategy.lock().unwrap().is_complete()
+    /// If performed, could this action satisfy the given belief test?
+    #[tracing::instrument(name = "action::can_perform", skip_all, level = "trace")]
+    pub fn can_satisfy(&self, belief_test: BeliefTest) -> bool {
+        self
+            .completion_beliefs
+            .iter()
+            .chain(self.promised_beliefs.iter())
+            .any(|belief| belief_test.satisfied_by(*belief))
+    }
+
+    pub fn is_complete(&self, agent_beliefs: &BeliefSet) -> bool {
+        let strategy_is_complete = self.strategy.lock().unwrap().is_complete();
+        let all_promised_beliefs_satisfied = if self.promised_beliefs.is_empty() {
+            false
+        } else {
+            self
+                .promised_beliefs
+                .iter()
+                .all(|promised_belief| agent_beliefs.can_satisfy(*promised_belief))
+        };
+
+        strategy_is_complete || all_promised_beliefs_satisfied
     }
 
     #[tracing::instrument(name = "action::tick", fields(combatant_id = agent.combatant().id), skip_all, level = "trace")]
@@ -87,6 +112,10 @@ impl Action {
 
     pub fn prohibited_beliefs(&self) -> &Vec<BeliefTest> {
         &self.prohibited_beliefs
+    }
+
+    pub fn promised_beliefs(&self) -> &Vec<Belief> {
+        &self.promised_beliefs
     }
 
     pub fn prerequisite_beliefs(&self) -> &Vec<BeliefTest> {
@@ -122,6 +151,7 @@ impl ActionBuilder {
                 prerequisite_beliefs: vec![],
                 prohibited_beliefs: vec![],
                 completion_beliefs: vec![],
+                promised_beliefs: vec![],
             }
         }
     }
@@ -144,8 +174,8 @@ impl ActionBuilder {
         self
     }
 
-    pub fn strategy(mut self, strategy: StrategyT) -> ActionBuilder {
-        self.action.strategy = strategy;
+    pub fn strategy(mut self, strategy: impl Strategy + 'static) -> ActionBuilder {
+        self.action.strategy = Arc::new(Mutex::new(strategy));
         self
     }
 
@@ -173,6 +203,11 @@ impl ActionBuilder {
 
     pub fn completion(mut self, beliefs: Vec<Belief>) -> ActionBuilder {
         self.action.completion_beliefs = beliefs;
+        self
+    }
+
+    pub fn promised(mut self, beliefs: impl IntoIterator<Item = Belief>) -> Self {
+        self.action.promised_beliefs = beliefs.into_iter().collect();
         self
     }
 }

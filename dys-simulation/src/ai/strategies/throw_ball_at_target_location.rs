@@ -3,6 +3,7 @@ use rapier3d::{na::Vector3, prelude::*};
 use dys_satisfiable::SatisfiableField;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::{combatant::CombatantId, game_object::GameObject}, game_state::{GameState}, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::{BeliefSet, SatisfiableBelief};
+use crate::simulation::simulation_event::PendingSimulationTick;
 
 pub struct ThrowBallAtTargetStrategy {
     self_id: CombatantId,
@@ -40,7 +41,7 @@ impl Strategy for ThrowBallAtTargetStrategy {
         &mut self,
         agent: &dyn Agent,
         game_state: Arc<Mutex<GameState>>,
-    ) -> Option<Vec<SimulationEvent>> {        
+    ) -> Option<Vec<SimulationEvent>> {
         // Agents may believe that they're holding a ball, but not actually holding a ball per the simulation
         // If the authoritative game state says they're not holding a ball, consider this strategy complete
         // ZJ-TODO: delay first?

@@ -5,6 +5,7 @@ use rapier3d::prelude::{ColliderHandle, RigidBodyHandle};
 
 use crate::{game_objects::combatant::{CombatantId, CombatantObject, CombatantState, TeamAlignment}, game_state::GameState, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
+use crate::simulation::simulation_event::PendingSimulationTick;
 use super::{agent::Agent, belief::Belief};
 
 

@@ -4,6 +4,7 @@ use dys_satisfiable::SatisfiableField;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::ball::BallId, game_state::GameState, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::{BeliefSet, SatisfiableBelief};
 use crate::game_objects::combatant::CombatantId;
+use crate::simulation::simulation_event::PendingSimulationTick;
 
 pub struct PickUpBallStrategy {
     self_combatant_id: CombatantId,
@@ -30,18 +31,19 @@ impl Strategy for PickUpBallStrategy {
         format!("Pick Up Ball {}", self.ball_id)
     }
 
+    #[tracing::instrument(name = "strategy::pick_up_ball::can_perform", skip_all, level = "trace")]
     fn can_perform(&self, owned_beliefs: &BeliefSet) -> bool {
         // ZJ-TODO: out earlier if we know the ball has already been picked up by someone else
         //          stretch goal - if we believe we have no chance of getting to the ball first, abort early?
-        let self_not_holding_ball = owned_beliefs.can_satisfy(
+        let self_not_holding_ball = !owned_beliefs.can_satisfy(
             SatisfiableBelief::HeldBall()
-                .combatant_id(SatisfiableField::NotExactly(self.self_combatant_id))
+                .combatant_id(SatisfiableField::Exactly(self.self_combatant_id))
         );
 
         let self_can_reach_ball = owned_beliefs.can_satisfy(
-            SatisfiableBelief::BallPosition()
+            SatisfiableBelief::InBallPickupRange()
                 .ball_id(SatisfiableField::Exactly(self.ball_id))
-                // .position(SatisfiableField::) ZJ-TODO: implement ::Within or similar
+                .combatant_id(SatisfiableField::Exactly(self.self_combatant_id))
         );
 
         self_not_holding_ball && self_can_reach_ball
@@ -65,15 +67,15 @@ impl Strategy for PickUpBallStrategy {
 
         let Some(ball_object) = balls.get(&self.ball_id) else {
             tracing::error!("Failed to find ball object {}", self.ball_id);
-            self.is_complete = true;
             return None;
         };
 
         if let Some(holder_combatant_id) = ball_object.held_by {
             tracing::debug!("Failed to pick up ball object; currently held by combatant {}", holder_combatant_id);
-            self.is_complete = true;
             return None;
         }
+
+        self.is_complete = true;
 
         Some(vec![
             SimulationEvent::CombatantPickedUpBall { combatant_id: agent.combatant().id, ball_id: self.ball_id }
