@@ -5,6 +5,7 @@ use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geom
 
 use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
+use crate::simulation::simulation_event::PendingSimulationTick;
 use super::{ball::BallId, game_object::GameObject};
 
 pub type CombatantId = u64;
@@ -223,7 +224,7 @@ impl Agent for CombatantObject {
         };
 
         if !action.can_perform(&self.beliefs()) {
-            tracing::debug!("Can no longer perform action; setting to None to replan next tick");
+            tracing::info!("Can no longer perform action; setting to None to replan next tick");
             return vec![];
         }
 
@@ -236,7 +237,7 @@ impl Agent for CombatantObject {
 
         events.extend(action_result_events);
 
-        if !action.is_complete() {
+        if !action.is_complete(&self.beliefs()) {
             // The action is not complete - set it to the same action again
             let mut combatant_state = self.combatant_state.lock().unwrap();
             combatant_state.current_action = Some(action);

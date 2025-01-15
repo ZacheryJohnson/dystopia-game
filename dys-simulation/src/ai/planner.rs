@@ -27,23 +27,21 @@ pub fn plan(
         let mut action_plan: Vec<Action> = vec![];
         let mut desired_beliefs_remaining = goal.desired_beliefs();
 
-        // ZJ-TODO: refactor...
+        while let Some(desired_belief) = desired_beliefs_remaining.pop() {
+            let Some(action) = get_action_for_belief(desired_belief, &agent.beliefs(), &actions) else {
+                action_plan.clear();
+                break;
+            };
 
-        // while let Some(desired_belief) = desired_beliefs_remaining.pop() {
-        //     let Some(action) = get_action_for_belief(desired_belief, &agent.beliefs(), &actions) else {
-        //         action_plan.clear();
-        //         break;
-        //     };
-        //
-        //     tracing::debug!("Selecting action {}", action.name());
-        //     for newly_desired_belief in action.prerequisite_beliefs() {
-        //         if !agent.beliefs().can_satisfy(newly_desired_belief) {
-        //             desired_beliefs_remaining.push(newly_desired_belief.to_owned());
-        //             tracing::debug!("Adding new desired belief {:?}", newly_desired_belief);
-        //         }
-        //     }
-        //     action_plan.push(action);
-        // }
+            tracing::debug!("Selecting action {}", action.name());
+            for newly_desired_belief in action.prerequisite_beliefs() {
+                if !agent.beliefs().can_satisfy(newly_desired_belief.to_owned()) {
+                    desired_beliefs_remaining.push(newly_desired_belief.to_owned());
+                    tracing::debug!("Adding new desired belief {:?}", newly_desired_belief);
+                }
+            }
+            action_plan.push(action);
+        }
 
         if !desired_beliefs_remaining.is_empty() || action_plan.is_empty() {
             tracing::debug!("failed to get action plan for goal {}; trying next goal", goal.name());
@@ -61,27 +59,17 @@ pub fn plan(
     vec![]
 }
 
+#[tracing::instrument(name = "planner::get_action_for_belief", skip_all, level = "trace")]
 fn get_action_for_belief(
     desired_belief: BeliefTest,
-    _: &BeliefSet,
+    current_beliefs: &BeliefSet,
     actions: &[Action]
 ) -> Option<Action> {
-    tracing::debug!("Finding action for desired belief {:?}", desired_belief);
-    let mut potential_actions = actions.iter().filter(|action| {
-        action.completion_beliefs().iter().any(|belief| desired_belief.satisfied_by(belief.to_owned()))
-    }).collect::<Vec<_>>();
-
-    potential_actions.pop().map(|action_ref| action_ref.to_owned())
-
-    // ZJ-TODO: reinstate the below so prohibited actions matter
-    // while let Some(action) = potential_actions.pop() {
-    //     // if action.prohibited_beliefs().iter().any(|prohibited_belief| current_beliefs.contains(prohibited_belief)) {
-    //     //     continue;
-    //     // }
-    //
-    //     tracing::debug!("Adding action {} to plan", action.name());
-    //     return Some(action.to_owned());
-    // }
+    actions
+        .iter()
+        .filter(|action| action.can_satisfy(desired_belief.clone()))
+        .map(|action| action.to_owned())
+        .next()
 }
 
 /// The best goal is the highest priority goal where the agent doesn't already have all of the desired beliefs.
@@ -95,7 +83,7 @@ fn get_best_goal<'a>(
     let agent_beliefs = agent.beliefs();
     let mut goals: Vec<_> = all_goals
         .into_iter()
-        .filter(|goal| !goal.desired_beliefs().iter().all(|belief| agent_beliefs.can_satisfy(belief.to_owned())))
+        .filter(|goal| goal.desired_beliefs().iter().any(|desired_belief| !agent_beliefs.can_satisfy(desired_belief.to_owned())))
         .collect();
 
     // Note: comparing b's priority to a (instead of comparing a's priority to b) as we want the largest priority goals first

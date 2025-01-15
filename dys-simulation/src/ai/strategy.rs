@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 use crate::{game_state::GameState, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
+use crate::simulation::simulation_event::PendingSimulationTick;
 use super::agent::Agent;
 
 pub trait Strategy {
@@ -19,7 +20,7 @@ pub trait Strategy {
     /// Otherwise, failure has not been encountered, and any simulation events are returned.
     fn tick(
         &mut self,
-        agent: &dyn Agent, // ZJ-TODO: `&impl Agent` instead?
+        agent: &dyn Agent,
         game_state: Arc<Mutex<GameState>>
     ) -> Option<Vec<SimulationEvent>>;
 }

@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use rapier3d::na::Vector3;
 use dys_satisfiable::*;
 use dys_satisfiable_macros::{Satisfiable};
@@ -42,22 +43,33 @@ impl BeliefSet {
     }
 
     pub fn add_belief(&mut self, belief: Belief) {
+        tracing::info!("Adding belief {:?}", belief);
         self.beliefs.push(belief)
     }
 
     pub fn add_beliefs(&mut self, beliefs: &[Belief]) {
+        tracing::info!("Adding beliefs {:?}", beliefs);
         for belief in beliefs {
             self.add_belief(*belief);
         }
     }
 
     pub fn remove_belief(&mut self, belief: Belief) {
+        tracing::info!("Removing belief {:?}", belief);
         self.beliefs.retain(|b| b != &belief)
     }
 
-    pub fn can_satisfy(&self, satisfiable: impl SatisfiabilityTest<ConcreteT=Belief>) -> bool
-    {
-        self.beliefs.iter().any(|b| satisfiable.satisfied_by(*b))
+    #[tracing::instrument(
+        name = "belief::can_satisfy",
+        skip_all,
+        fields(belief = tracing::field::debug(satisfiable.clone()))
+        level = "trace"
+    )]
+    pub fn can_satisfy(&self, satisfiable: impl SatisfiabilityTest<ConcreteT=Belief> + Debug + Clone) -> bool {
+        self
+            .beliefs
+            .iter()
+            .any(|b| satisfiable.satisfied_by(*b))
     }
 }
 
