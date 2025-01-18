@@ -33,11 +33,14 @@ impl Strategy for PickUpBallStrategy {
 
     #[tracing::instrument(name = "strategy::pick_up_ball::can_perform", skip_all, level = "trace")]
     fn can_perform(&self, owned_beliefs: &BeliefSet) -> bool {
-        // ZJ-TODO: out earlier if we know the ball has already been picked up by someone else
-        //          stretch goal - if we believe we have no chance of getting to the ball first, abort early?
-        let self_not_holding_ball = !owned_beliefs.can_satisfy(
+        let self_not_holding_any_ball = owned_beliefs.all_satisfy(
             SatisfiableBelief::HeldBall()
-                .combatant_id(SatisfiableField::Exactly(self.self_combatant_id))
+                .combatant_id(SatisfiableField::NotExactly(self.self_combatant_id))
+        );
+
+        let other_not_holding_target_ball = !owned_beliefs.can_satisfy(
+            SatisfiableBelief::HeldBall()
+                .ball_id(SatisfiableField::Exactly(self.ball_id))
         );
 
         let self_can_reach_ball = owned_beliefs.can_satisfy(
@@ -46,7 +49,7 @@ impl Strategy for PickUpBallStrategy {
                 .combatant_id(SatisfiableField::Exactly(self.self_combatant_id))
         );
 
-        self_not_holding_ball && self_can_reach_ball
+        self_not_holding_any_ball && other_not_holding_target_ball && self_can_reach_ball
     }
 
     fn is_complete(&self) -> bool {

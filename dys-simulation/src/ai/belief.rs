@@ -62,11 +62,34 @@ impl BeliefSet {
         fields(belief = tracing::field::debug(satisfiable.clone()))
         level = "trace"
     )]
+    /// Can any beliefs in this belief set with the same variant as the satisfiable belief be satisfied?
+    /// Beliefs of different variants are ignored.
+    /// If no beliefs of the satisfiable belief's variant exist in the belief set,
+    /// returns false.
     pub fn can_satisfy(&self, satisfiable: impl SatisfiabilityTest<ConcreteT=Belief> + Debug + Clone) -> bool {
         self
             .beliefs
             .iter()
-            .any(|b| satisfiable.satisfied_by(*b))
+            .filter(|belief| satisfiable.is_same_variant(belief))
+            .any(|belief| satisfiable.satisfied_by(*belief))
+    }
+
+    #[tracing::instrument(
+        name = "belief::all_satisfy",
+        skip_all,
+        fields(belief = tracing::field::debug(satisfiable.clone()))
+        level = "trace"
+    )]
+    /// Can all beliefs in this belief set with the same variant as the satisfiable belief be satisfied?
+    /// Beliefs of different variants are ignored.
+    /// If no beliefs of the satisfiable belief's variant exist in the belief set,
+    /// returns true.
+    pub fn all_satisfy(&self, satisfiable: impl SatisfiabilityTest<ConcreteT=Belief> + Debug + Clone) -> bool {
+        self
+            .beliefs
+            .iter()
+            .filter(|belief| satisfiable.is_same_variant(belief))
+            .all(|b| satisfiable.satisfied_by(*b))
     }
 }
 
@@ -132,5 +155,61 @@ mod tests {
             .combatant_id(SatisfiableField::Exactly(1));
 
         assert!(!belief_set.can_satisfy(satisfiable));
+    }
+
+    #[test]
+    fn all_satisfy_same_plate_id() {
+        let belief_set = BeliefSet::from(&vec![
+            Belief::OnPlate { plate_id: 1, combatant_id: 1 },
+            Belief::OnPlate { plate_id: 1, combatant_id: 2 },
+            Belief::OnPlate { plate_id: 1, combatant_id: 3 },
+            Belief::OnPlate { plate_id: 1, combatant_id: 4 },
+            Belief::OnPlate { plate_id: 1, combatant_id: 5 }
+        ]);
+
+        assert!(belief_set.all_satisfy(
+            SatisfiableBelief::OnPlate()
+                .plate_id(SatisfiableField::Exactly(1)),
+        ));
+    }
+
+    #[test]
+    fn all_satisfy_none_combatant_6() {
+        let belief_set = BeliefSet::from(&vec![
+            Belief::OnPlate { plate_id: 1, combatant_id: 1 },
+            Belief::OnPlate { plate_id: 1, combatant_id: 2 },
+            Belief::OnPlate { plate_id: 1, combatant_id: 3 },
+            Belief::OnPlate { plate_id: 1, combatant_id: 4 },
+            Belief::OnPlate { plate_id: 1, combatant_id: 5 }
+        ]);
+
+        assert!(belief_set.all_satisfy(
+            SatisfiableBelief::OnPlate()
+                .combatant_id(SatisfiableField::NotExactly(6)),
+        ));
+    }
+
+    #[test]
+    fn all_satisfy_mixed_beliefs() {
+        let belief_set = BeliefSet::from(&vec![
+            Belief::OnPlate { plate_id: 1, combatant_id: 1 },
+            Belief::OnPlate { plate_id: 1, combatant_id: 2 },
+            Belief::HeldBall { ball_id: 1, combatant_id: 1 },
+        ]);
+
+        assert!(belief_set.all_satisfy(
+            SatisfiableBelief::OnPlate()
+                .plate_id(SatisfiableField::Exactly(1)),
+        ));
+
+        assert!(belief_set.all_satisfy(
+            SatisfiableBelief::OnPlate()
+                .combatant_id(SatisfiableField::In(Box::new([1, 2])))
+        ));
+
+        assert!(belief_set.all_satisfy(
+            SatisfiableBelief::HeldBall()
+                .combatant_id(SatisfiableField::NotIn(Box::new([2, 3])))
+        ));
     }
 }
