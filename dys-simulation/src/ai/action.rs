@@ -132,10 +132,10 @@ impl Debug for Action {
             .field("prerequisite_beliefs", &self.prerequisite_beliefs)
             .field("prohibited_beliefs", &self.prohibited_beliefs)
             .field("completion_beliefs", &self.completion_beliefs)
+            .field("promised_beliefs", &self.promised_beliefs)
             .finish()
     }
 }
-
 
 pub(super) struct ActionBuilder {
     action: Action,
@@ -212,13 +212,21 @@ impl ActionBuilder {
     }
 }
 
+impl From<ActionBuilder> for Action {
+    fn from(value: ActionBuilder) -> Self {
+        value.action
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use dys_satisfiable::SatisfiableField;
+    use crate::ai::action::ActionBuilder;
+    use crate::ai::belief::{Belief, BeliefSet, SatisfiableBelief};
+
     mod fn_can_perform {
-        use dys_satisfiable::SatisfiableField;
-        use crate::ai::action::ActionBuilder;
-        use crate::ai::belief::{Belief, BeliefSet, SatisfiableBelief};
-    
+        use super::*;
+
         #[test]
         fn no_prereqs_no_prohibited_no_beliefs_allowed() {
             let action = ActionBuilder::empty();
@@ -366,6 +374,143 @@ mod tests {
 
             let result = action.can_perform(&belief_set);
             assert!(result);
+        }
+    }
+
+    mod fn_can_satisfy {
+        use super::*;
+
+        #[test]
+        fn completion_belief_satisfies() {
+            let combatant_id = 1;
+            let ball_id = 1;
+            let action = ActionBuilder::new()
+                .completion(vec![Belief::HeldBall {combatant_id, ball_id}])
+                .build();
+
+            assert!(action.can_satisfy(SatisfiableBelief::HeldBall()
+                .into()));
+
+            assert!(action.can_satisfy(SatisfiableBelief::HeldBall()
+                .combatant_id(SatisfiableField::Exactly(combatant_id))
+                .into()));
+
+            assert!(action.can_satisfy(SatisfiableBelief::HeldBall()
+                .ball_id(SatisfiableField::Exactly(ball_id))
+                .into()));
+
+            assert!(action.can_satisfy(SatisfiableBelief::HeldBall()
+                .combatant_id(SatisfiableField::Exactly(combatant_id))
+                .ball_id(SatisfiableField::Exactly(ball_id))
+                .into()));
+        }
+
+        #[test]
+        fn promised_belief_satisfies() {
+            let combatant_id = 1;
+            let ball_id = 1;
+            let action = ActionBuilder::new()
+                .promised(vec![Belief::HeldBall { combatant_id, ball_id }])
+                .build();
+
+            assert!(action.can_satisfy(SatisfiableBelief::HeldBall()
+                .into()));
+
+            assert!(action.can_satisfy(SatisfiableBelief::HeldBall()
+                .combatant_id(SatisfiableField::Exactly(combatant_id))
+                .into()));
+
+            assert!(action.can_satisfy(SatisfiableBelief::HeldBall()
+                .ball_id(SatisfiableField::Exactly(ball_id))
+                .into()));
+
+            assert!(action.can_satisfy(SatisfiableBelief::HeldBall()
+                .combatant_id(SatisfiableField::Exactly(combatant_id))
+                .ball_id(SatisfiableField::Exactly(ball_id))
+                .into()));
+        }
+    }
+
+    mod fn_is_complete {
+        use std::sync::{Arc, Mutex};
+        use crate::ai::agent::Agent;
+        use crate::ai::strategy::Strategy;
+        use crate::game_state::GameState;
+        use crate::simulation::simulation_event::SimulationEvent;
+        use super::*;
+
+        struct StrategyAlwaysIsComplete;
+        impl Strategy for StrategyAlwaysIsComplete {
+            fn name(&self) -> String { String::from("StrategyAlwaysIsComplete") }
+
+            fn can_perform(&self, owned_beliefs: &BeliefSet) -> bool { true }
+
+            fn is_complete(&self) -> bool { true }
+
+            fn tick(&mut self, agent: &dyn Agent, game_state: Arc<Mutex<GameState>>) -> Option<Vec<SimulationEvent>> {
+                None
+            }
+        }
+
+        struct StrategyNeverIsComplete;
+        impl Strategy for StrategyNeverIsComplete {
+            fn name(&self) -> String { String::from("StrategyNeverIsComplete") }
+
+            fn can_perform(&self, owned_beliefs: &BeliefSet) -> bool { true }
+
+            fn is_complete(&self) -> bool { false }
+
+            fn tick(&mut self, agent: &dyn Agent, game_state: Arc<Mutex<GameState>>) -> Option<Vec<SimulationEvent>> {
+                None
+            }
+        }
+
+        #[test]
+        fn strategy_is_complete_action_is_complete() {
+            let action = ActionBuilder::new()
+                .strategy(StrategyAlwaysIsComplete)
+                .build();
+
+            let belief_set = BeliefSet::from(&[]);
+
+            assert!(action.is_complete(&belief_set));
+        }
+
+        #[test]
+        fn strategy_is_not_complete_has_belief_action_is_complete() {
+            let plate_id = 1;
+            let combatant_id = 1;
+
+            let on_plate_belief = Belief::OnPlate { plate_id, combatant_id };
+
+            let action = ActionBuilder::new()
+                .strategy(StrategyNeverIsComplete)
+                .promised(vec![on_plate_belief.clone()])
+                .build();
+
+            let belief_set = BeliefSet::from(&[
+                on_plate_belief,
+            ]);
+
+            assert!(action.is_complete(&belief_set));
+        }
+
+        #[test]
+        fn strategy_is_not_complete_missing_belief_action_is_not_complete() {
+            let plate_id = 1;
+            let combatant_id = 1;
+
+            let action = ActionBuilder::new()
+                .strategy(StrategyNeverIsComplete)
+                .promised(vec![Belief::OnPlate { plate_id, combatant_id }])
+                .build();
+
+            let belief_set = BeliefSet::from(&[
+                Belief::HeldBall { combatant_id, ball_id: 1 },
+                Belief::OnPlate { combatant_id, plate_id: 2},
+            ]);
+
+            assert!(!action.is_complete(&belief_set));
         }
     }
 }

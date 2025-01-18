@@ -13,11 +13,15 @@ services:
     build:
       context: ..
       dockerfile: docker/dys-svc-webapp.Dockerfile
+      #args:
+      #  BIN_CMD: "npm run dev"
+      #  INSTALL_NPM: "true"
     environment:
       - SVC_DIRECTOR_API_BASE_URI=http://director:6081
       - OTEL_ENDPOINT=http://jaeger:4317
     ports:
       - "6080:6080"
+      #- "5173:5173"
   jaeger:
     container_name: "jaeger"
     image: "jaegertracing/all-in-one:1.61.0"

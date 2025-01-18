@@ -63,10 +63,10 @@ impl Game {
                     object_type_id,  
                     position: *feature.origin(),
                     scale: match shape.shape_type() {
-                        rapier3d::geometry::ShapeType::Ball => vector![shape.as_ball().unwrap().radius, shape.as_ball().unwrap().radius, shape.as_ball().unwrap().radius],
-                        rapier3d::geometry::ShapeType::Cuboid => shape.as_cuboid().unwrap().half_extents * 2.0,
-                        rapier3d::geometry::ShapeType::Capsule => vector![shape.as_capsule().unwrap().radius, shape.as_capsule().unwrap().height(), shape.as_capsule().unwrap().radius],
-                        rapier3d::geometry::ShapeType::Cylinder => vector![shape.as_cylinder().unwrap().radius, shape.as_cylinder().unwrap().half_height * 2.0, shape.as_cylinder().unwrap().radius],
+                        ShapeType::Ball => vector![shape.as_ball().unwrap().radius, shape.as_ball().unwrap().radius, shape.as_ball().unwrap().radius],
+                        ShapeType::Cuboid => shape.as_cuboid().unwrap().half_extents * 2.0,
+                        ShapeType::Capsule => vector![shape.as_capsule().unwrap().radius, shape.as_capsule().unwrap().height(), shape.as_capsule().unwrap().radius],
+                        ShapeType::Cylinder => vector![shape.as_cylinder().unwrap().radius, shape.as_cylinder().unwrap().half_height * 2.0, shape.as_cylinder().unwrap().radius],
                         _ => panic!("shape unsupported")
                     },
                     rotation: *feature.rotation(),
@@ -88,10 +88,6 @@ impl Game {
         loop {
             let new_tick = simulate_tick(game_state.clone());
             let is_end_of_game = new_tick.is_end_of_game();
-
-            if new_tick.tick_number % 100 == 0 {
-                tracing::info!("Simulation tick {}...", new_tick.tick_number);
-            }
 
             ticks.push(new_tick);
 

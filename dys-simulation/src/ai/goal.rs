@@ -1,6 +1,7 @@
 use super::belief::{BeliefSatisfiabilityTest, BeliefTest};
 
 /// Goals are a set of beliefs about the world.
+#[derive(Debug)]
 pub struct Goal {
     /// Name of the goal.
     name: String,

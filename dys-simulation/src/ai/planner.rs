@@ -16,12 +16,20 @@ pub fn plan(
     agent: &impl Agent,
     game_state: Arc<Mutex<GameState>>,
 ) -> Vec<Action> {
-    tracing::debug!("Planning for combatant {} with beliefs {:?}", agent.combatant().id, agent.beliefs());
-    let all_goals = goals(agent.combatant(), game_state.clone());
-
+    let goals = goals(agent.combatant(), game_state.clone());
     let actions = actions(agent.combatant(), game_state.clone());
+    make_plan(agent, game_state, goals, actions)
+}
 
-    for goal in get_best_goal(agent, game_state, all_goals) {
+fn make_plan(
+    agent: &impl Agent,
+    game_state: Arc<Mutex<GameState>>,
+    goals: Vec<Goal>,
+    actions: Vec<Action>,
+) -> Vec<Action> {
+    tracing::debug!("Planning for combatant {} with beliefs {:?}", agent.combatant().id, agent.beliefs());
+
+    for goal in next_best_goal(agent, game_state, goals) {
         tracing::debug!("Considering goal {}", goal.name());
 
         let mut action_plan: Vec<Action> = vec![];
@@ -40,10 +48,10 @@ pub fn plan(
                     tracing::debug!("Adding new desired belief {:?}", newly_desired_belief);
                 }
             }
-            action_plan.push(action);
+            action_plan.push(action.to_owned());
         }
 
-        if !desired_beliefs_remaining.is_empty() || action_plan.is_empty() {
+        if !desired_beliefs_remaining.is_empty() && action_plan.is_empty() {
             tracing::debug!("failed to get action plan for goal {}; trying next goal", goal.name());
             continue;
         }
@@ -60,34 +68,44 @@ pub fn plan(
 }
 
 #[tracing::instrument(name = "planner::get_action_for_belief", skip_all, level = "trace")]
-fn get_action_for_belief(
+fn get_action_for_belief<'a>(
     desired_belief: BeliefTest,
     current_beliefs: &BeliefSet,
-    actions: &[Action]
-) -> Option<Action> {
+    actions: &'a [Action]
+) -> Option<&'a Action> {
     actions
         .iter()
         .filter(|action| action.can_satisfy(desired_belief.clone()))
-        .map(|action| action.to_owned())
         .next()
 }
 
 /// The best goal is the highest priority goal where the agent doesn't already have all of the desired beliefs.
 /// In the event we can't find a good goal from the goals provided, we'll return the Idle goal.
 #[tracing::instrument(fields(combatant_id = agent.combatant().id), skip_all, level = "debug")]
-fn get_best_goal<'a>(
+fn next_best_goal<'a>(
     agent: &impl Agent,
     _: Arc<Mutex<GameState>>,
-    all_goals: Vec<Goal>,
+    goals: Vec<Goal>,
 ) -> impl Iterator<Item = Goal> {
     let agent_beliefs = agent.beliefs();
-    let mut goals: Vec<_> = all_goals
+    let mut goals: Vec<_> = goals
         .into_iter()
-        .filter(|goal| goal.desired_beliefs().iter().any(|desired_belief| !agent_beliefs.can_satisfy(desired_belief.to_owned())))
+        .filter(|goal| {
+            let desired_beliefs = goal.desired_beliefs();
+            if desired_beliefs.is_empty() {
+                true
+            } else {
+                desired_beliefs
+                    .iter()
+                    .any(|desired_belief| !agent_beliefs.can_satisfy(desired_belief.to_owned()))
+            }
+        })
         .collect();
 
     // Note: comparing b's priority to a (instead of comparing a's priority to b) as we want the largest priority goals first
     goals.sort_by(|a, b| b.priority().partial_cmp(&a.priority()).unwrap());
+
+    tracing::debug!("Prioritized goals: {:?}", goals);
 
     goals.into_iter()
 }
@@ -100,7 +118,7 @@ mod tests {
     use rand::SeedableRng;
     use rand_pcg::Pcg64;
     use dys_satisfiable::SatisfiableField;
-    use crate::{ai::{belief::Belief, goal::GoalBuilder, planner::get_best_goal, test_utils::{self, TestAgent}}, game::Game, game_state::GameState, physics_sim::PhysicsSim, simulation::config::SimulationConfig};
+    use crate::{ai::{belief::Belief, goal::GoalBuilder, planner::next_best_goal, test_utils::{self, TestAgent}}, game::Game, game_state::GameState, physics_sim::PhysicsSim, simulation::config::SimulationConfig};
     use crate::ai::agent::Agent;
     use crate::ai::belief::SatisfiableBelief;
 
@@ -145,97 +163,98 @@ mod tests {
         }))
     }
 
-    #[test]
-    fn test_no_goals_receive_idle_goal() {
-        let agent = make_test_agent();
-        let game_state = make_test_game_state();
+    mod next_best_goal {
+        use super::*;
 
-        let no_goals = vec![];
+        #[test]
+        fn test_no_goals_receive_idle_goal() {
+            let agent = make_test_agent();
+            let game_state = make_test_game_state();
 
-        let best_goal = get_best_goal(&agent, game_state, no_goals).next();
+            let no_goals = vec![];
 
-        assert!(best_goal.is_none());
-    }
+            let best_goal = next_best_goal(&agent, game_state, no_goals).next();
 
-    #[test]
-    fn test_best_goal_does_not_have_desired_beliefs_isnt_idle_goal() {
-        let agent = make_test_agent();
-        let game_state = make_test_game_state();
+            assert!(best_goal.is_none());
+        }
 
-        let expected_goal_name = "TestGoalSelfOnPlate";
+        #[test]
+        fn test_best_goal_does_not_have_desired_beliefs_isnt_idle_goal() {
+            let agent = make_test_agent();
+            let game_state = make_test_game_state();
 
-        let goals = vec![
-            GoalBuilder::new()
-                .name(expected_goal_name)
-                .priority(1)
-                .desired_beliefs(vec![SatisfiableBelief::OnPlate()])
-                .build()
-        ];
+            let expected_goal_name = "TestGoalSelfOnPlate";
 
-        
-        let best_goal = get_best_goal(&agent, game_state, goals).next().unwrap();
+            let goals = vec![
+                GoalBuilder::new()
+                    .name(expected_goal_name)
+                    .priority(1)
+                    .desired_beliefs(vec![SatisfiableBelief::OnPlate()])
+                    .build()
+            ];
 
-        assert_eq!(expected_goal_name, best_goal.name());
-    }
+            let best_goal = next_best_goal(&agent, game_state, goals).next().unwrap();
 
-    #[test]
-    fn test_best_goal_has_desired_beliefs_is_idle_goal() {
-        let mut agent = make_test_agent();
-        let game_state = make_test_game_state();
+            assert_eq!(expected_goal_name, best_goal.name());
+        }
 
-        let expected_goal_name = "TestGoalSelfOnPlate";
+        #[test]
+        fn test_best_goal_has_desired_beliefs_is_idle_goal() {
+            let mut agent = make_test_agent();
+            let game_state = make_test_game_state();
 
-        agent.set_beliefs(vec![
-            Belief::OnPlate { combatant_id: agent.combatant().id, plate_id: 1 }
-        ]);
+            let expected_goal_name = "TestGoalSelfOnPlate";
 
-        let goals = vec![
-            GoalBuilder::new()
-                .name(expected_goal_name)
-                .priority(1)
-                .desired_beliefs(vec![
-                    SatisfiableBelief::OnPlate()
-                        .combatant_id(SatisfiableField::Exactly(agent.combatant().id))
-                ])
-                .build()
-        ];
+            agent.set_beliefs(vec![
+                Belief::OnPlate { combatant_id: agent.combatant().id, plate_id: 1 }
+            ]);
 
-        
-        let best_goal = get_best_goal(&agent, game_state, goals).next();
+            let goals = vec![
+                GoalBuilder::new()
+                    .name(expected_goal_name)
+                    .priority(1)
+                    .desired_beliefs(vec![
+                        SatisfiableBelief::OnPlate()
+                            .combatant_id(SatisfiableField::Exactly(agent.combatant().id))
+                    ])
+                    .build()
+            ];
 
-        assert!(best_goal.is_none());
-    }
+            let best_goal = next_best_goal(&agent, game_state, goals).next();
 
-    #[test]
-    fn test_best_goal_higher_priority_wins() {
-        let agent = make_test_agent();
-        let game_state = make_test_game_state();
+            assert!(best_goal.is_none());
+        }
 
-        let lower_priority_goal_name = "TestLowerPriorityGoal";
-        let higher_priority_goal_name = "TestHigherPriorityGoal";
+        #[test]
+        fn test_best_goal_higher_priority_wins() {
+            let agent = make_test_agent();
+            let game_state = make_test_game_state();
 
-        let goals = vec![
-            GoalBuilder::new()
-                .name(lower_priority_goal_name)
-                .priority(1)
-                .desired_beliefs(vec![
-                    SatisfiableBelief::OnPlate()
-                        .combatant_id(SatisfiableField::Exactly(agent.combatant().id))
-                ])
-                .build(),
-            GoalBuilder::new()
-                .name(higher_priority_goal_name)
-                .priority(2)
-                .desired_beliefs(vec![
-                    SatisfiableBelief::HeldBall()
-                        .combatant_id(SatisfiableField::Exactly(agent.combatant().id))
-                ])
-                .build(),            
-        ];
+            let lower_priority_goal_name = "TestLowerPriorityGoal";
+            let higher_priority_goal_name = "TestHigherPriorityGoal";
 
-        
-        let best_goal = get_best_goal(&agent, game_state, goals).next().unwrap();
+            let goals = vec![
+                GoalBuilder::new()
+                    .name(lower_priority_goal_name)
+                    .priority(1)
+                    .desired_beliefs(vec![
+                        SatisfiableBelief::OnPlate()
+                            .combatant_id(SatisfiableField::Exactly(agent.combatant().id))
+                    ])
+                    .build(),
+                GoalBuilder::new()
+                    .name(higher_priority_goal_name)
+                    .priority(2)
+                    .desired_beliefs(vec![
+                        SatisfiableBelief::HeldBall()
+                            .combatant_id(SatisfiableField::Exactly(agent.combatant().id))
+                    ])
+                    .build(),
+            ];
 
-        assert_eq!(higher_priority_goal_name, best_goal.name());
+            let best_goal = next_best_goal(&agent, game_state, goals).next().unwrap();
+
+            assert_eq!(higher_priority_goal_name, best_goal.name());
+        }
     }
 }

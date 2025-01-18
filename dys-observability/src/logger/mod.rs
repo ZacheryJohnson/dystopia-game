@@ -48,7 +48,9 @@ pub fn initialize(logger_options: LoggerOptions) {
         tracing_opentelemetry::layer().boxed()
     };
 
-    let format = tracing_subscriber::fmt::format();
+    let format = tracing_subscriber::fmt::format().with_ansi(
+        std::env::var("NO_FMT").is_err()
+    );
     let format_layer = tracing_subscriber::fmt::layer().event_format(format);
 
     let subscriber = Registry::default()
