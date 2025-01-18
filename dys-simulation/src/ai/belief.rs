@@ -43,19 +43,16 @@ impl BeliefSet {
     }
 
     pub fn add_belief(&mut self, belief: Belief) {
-        tracing::info!("Adding belief {:?}", belief);
         self.beliefs.push(belief)
     }
 
     pub fn add_beliefs(&mut self, beliefs: &[Belief]) {
-        tracing::info!("Adding beliefs {:?}", beliefs);
         for belief in beliefs {
             self.add_belief(*belief);
         }
     }
 
     pub fn remove_belief(&mut self, belief: Belief) {
-        tracing::info!("Removing belief {:?}", belief);
         self.beliefs.retain(|b| b != &belief)
     }
 

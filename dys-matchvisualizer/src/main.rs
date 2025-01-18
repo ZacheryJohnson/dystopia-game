@@ -335,18 +335,20 @@ fn update(
     const TIME_BETWEEN_TICKS_MILLIS: u64 = 1000 / TICKS_PER_SECOND;
     const TIME_BETWEEN_TICKS: Duration = Duration::from_millis(TIME_BETWEEN_TICKS_MILLIS);
     let time_since_last_update = Instant::now() - game_state.last_update_time;
-    let lerp_progress = (time_since_last_update.as_millis() as u64 % 1000) as f32 / 100.0;
+    let lerp_progress = ((time_since_last_update.as_millis() as u64 % 1000) as f32 / 100.0)
+        .clamp(0.0, 1.0);
 
     // Visual updates can occur ever frame
-    for (combatant_vis, mut combatant_transform) in combatants_query.iter_mut() {
+    for (mut combatant_vis, mut combatant_transform) in combatants_query.iter_mut() {
         combatant_transform.translation = combatant_vis.last_position.lerp(
             combatant_vis.desired_location,
-            lerp_progress)
+            lerp_progress);
+
+        combatant_vis.last_position = combatant_transform.translation;
     }
 
     for (ball_vis, mut ball_transform) in balls_query.iter_mut() {
-        ball_transform.translation = ball_transform.translation.lerp(ball_vis.desired_location, timer.delta_seconds() * 5.0)
-        // ball_transform.translation = ball_vis.desired_location;
+        ball_transform.translation = ball_transform.translation.lerp(ball_vis.desired_location, timer.delta_seconds() * 5.0);
     }
 
     if time_since_last_update < TIME_BETWEEN_TICKS {

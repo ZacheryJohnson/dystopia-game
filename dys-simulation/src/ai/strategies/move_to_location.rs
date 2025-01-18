@@ -10,6 +10,7 @@ pub struct MoveToLocationStrategy {
     is_complete: bool,
     path: ArenaNavmeshPath,
     next_node: Option<ArenaNavmeshNode>,
+    start_location: Point3<f32>,
     target_location: Point3<f32>,
 }
 
@@ -17,22 +18,16 @@ impl MoveToLocationStrategy {
     pub fn new(
         start_location: Point3<f32>,
         target_location: Point3<f32>,
-        game_state: Arc<Mutex<GameState>>,
+        _: Arc<Mutex<GameState>>,
     ) -> MoveToLocationStrategy {
-        let mut path = {
-            let game_state = game_state.lock().unwrap();
-            game_state
-                .arena_navmesh
-                .create_path(start_location, target_location)
-                .unwrap_or(ArenaNavmeshPath::empty())
-        };
-
-        let next_node = path.next_node();
+        // Rather than immediately construct a path, we'll wait until actually executing the strategy
+        // Otherwise, we'd be making many paths, the majority of which we'd never use
 
         MoveToLocationStrategy {
             is_complete: false,
-            path,
-            next_node,
+            path: ArenaNavmeshPath::empty(),
+            next_node: None,
+            start_location,
             target_location,
         }
     }
@@ -44,20 +39,42 @@ impl Strategy for MoveToLocationStrategy {
     }
 
     fn can_perform(&self, _: &BeliefSet) -> bool {
-        self.next_node.is_some()
+        // If we have no path, we are either uninitialized, or have nowhere to go
+        // In either case, we can perform this action, in which this is either a no-op
+        // or will initialize the state we need.
+        //
+        // If we *do* have a path, we can only perform this strategy if we have a node to path to.
+        self.path.is_empty() || self.next_node.is_some()
     }
 
     fn is_complete(&self) -> bool {
         self.is_complete
     }
 
-    #[tracing::instrument(name = "move_to_location::tick", fields(combatant_id = agent.combatant().id), skip_all, level = "trace")]
+    #[tracing::instrument(
+        name = "move_to_location::tick",
+        fields(combatant_id = agent.combatant().id),
+        skip_all,
+        level = "trace"
+    )]
     fn tick(
         &mut self,
         agent: &dyn Agent,
         game_state: Arc<Mutex<GameState>>,
     ) -> Option<Vec<SimulationEvent>> {
         let mut events = vec![];
+
+        if self.path.is_empty() && self.next_node.is_none() {
+            self.path = {
+                let game_state = game_state.lock().unwrap();
+                game_state
+                    .arena_navmesh
+                    .create_path(self.start_location, self.target_location)
+                    .unwrap_or(ArenaNavmeshPath::empty())
+            };
+
+            self.next_node = self.path.next_node();
+        }
 
         let (mut new_combatant_position, unit_resolution) = {
             let game_state = game_state.lock().unwrap();

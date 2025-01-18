@@ -8,7 +8,7 @@ use tracing::Level;
 async fn main() {
     let logger_options = LoggerOptions {
         application_name: "testbench".to_string(),
-        log_level: Level::DEBUG,
+        log_level: Level::INFO,
     };
 
     dys_observability::logger::initialize(logger_options);

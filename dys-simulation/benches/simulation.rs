@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use dys_game::{game::Game, generator::Generator};
+use dys_simulation::{game::Game, generator::Generator};
 use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}};
 
 fn game_simulation_benchmark(c: &mut Criterion) {
