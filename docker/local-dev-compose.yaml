@@ -42,3 +42,8 @@ services:
     image: "valkey/valkey"
     ports:
       - "6379:6379"
+  redis-insight:
+    container_name: "redis-insight"
+    image: "redis/redisinsight"
+    ports:
+      - "5540:5540"

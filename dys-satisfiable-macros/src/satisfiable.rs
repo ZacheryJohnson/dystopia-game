@@ -66,11 +66,11 @@ pub fn satisfiable_impl(input: TokenStream) -> TokenStream {
 
             impl SatisfiabilityTest for #builder_struct_name {
                 type ConcreteT = #concrete_ident;
-                fn satisfied_by(&self, concrete: #concrete_ident) -> bool {
-                    if !matches!(concrete, #concrete_ident::#variant_ident #has_fields_ident) {
-                        return false;
-                    }
+                fn is_same_variant(&self, concrete: &#concrete_ident) -> bool {
+                    matches!(concrete, #concrete_ident::#variant_ident #has_fields_ident)
+                }
 
+                fn satisfied_by(&self, concrete: #concrete_ident) -> bool {
                     let #concrete_ident::#variant_ident { #(#builder_struct_field_names),* } = concrete else {
                         return false;
                     };
@@ -118,6 +118,10 @@ pub fn satisfiable_impl(input: TokenStream) -> TokenStream {
         impl SatisfiabilityTest for #tester_struct_ident {
             type ConcreteT = #concrete_ident;
 
+            fn is_same_variant(&self, concrete: &#concrete_ident) -> bool {
+                self.0.is_same_variant(concrete)
+            }
+
             fn satisfied_by(&self, concrete: Self::ConcreteT) -> bool {
                 self.0.satisfied_by(concrete)
             }
@@ -125,6 +129,11 @@ pub fn satisfiable_impl(input: TokenStream) -> TokenStream {
 
         impl SatisfiabilityTest for #concrete_ident {
             type ConcreteT = #concrete_ident;
+
+            fn is_same_variant(&self, concrete: &#concrete_ident) -> bool {
+                std::mem::discriminant(self) == std::mem::discriminant(concrete)
+            }
+
             fn satisfied_by(&self, concrete: #concrete_ident) -> bool {
                 self == &concrete
             }

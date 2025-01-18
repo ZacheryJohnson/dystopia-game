@@ -54,5 +54,6 @@ impl<
 
 pub trait SatisfiabilityTest: dyn_clone::DynClone {
     type ConcreteT;
+    fn is_same_variant(&self, concrete: &Self::ConcreteT) -> bool;
     fn satisfied_by(&self, concrete: Self::ConcreteT) -> bool;
 }
