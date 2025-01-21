@@ -2,9 +2,10 @@ use std::{fmt::Debug, sync::{Arc, Mutex}};
 
 use dys_world::{arena::plate::PlateId, combatant::instance::CombatantInstance};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
-
+use rapier3d::na::{vector, Isometry3};
 use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
+use crate::ai::sensor::{LineOfSightSensor, Sensor};
 use crate::simulation::simulation_event::PendingSimulationTick;
 use super::{ball::BallId, game_object::GameObject};
 
@@ -34,7 +35,8 @@ pub struct CombatantObject {
 pub struct CombatantState {
     current_action: Option<Action>,
     plan: Vec<Action>,
-    beliefs: BeliefSet,
+    pub beliefs: BeliefSet,
+    pub line_of_sight_sensors: Vec<(u32, LineOfSightSensor)>,
 
     pub on_plate: Option<PlateId>,
     pub holding_ball: Option<BallId>,
@@ -51,11 +53,18 @@ impl CombatantObject {
             .active_events(ActiveEvents::COLLISION_EVENTS)
             .active_collision_types(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_FIXED | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
             .density(COMBATANT_MASS)
+            .position(Isometry3::translation(0.0, 2.0 * (COMBATANT_HALF_HEIGHT + COMBATANT_RADIUS), 0.0))
             .build();
 
         let rigid_body_handle = rigid_body_set.insert(rigid_body);
-        let collider_handle = collider_set.insert_with_parent(collider, rigid_body_handle, rigid_body_set);        
-        
+        let collider_handle = collider_set.insert_with_parent(collider, rigid_body_handle, rigid_body_set);
+
+        const SIGHT_DISTANCE: f32 = 50.0;
+        const FOV_ANGLE: f32 = 90.0;
+        let line_of_sight_sensor = LineOfSightSensor::new(
+            SIGHT_DISTANCE, FOV_ANGLE
+        );
+
         CombatantObject {
             id,
             combatant,
@@ -65,12 +74,22 @@ impl CombatantObject {
                 current_action: None,
                 plan: vec![],
                 beliefs: BeliefSet::empty(),
+                line_of_sight_sensors: vec![(1, line_of_sight_sensor)],
                 stunned_by_explosion: false,
             })),
             team,
             rigid_body_handle,
             collider_handle,
         }
+    }
+
+    pub fn sensors(&self) -> Vec<(u32, impl Sensor)> {
+        let combatant_state = self.combatant_state.lock().unwrap();
+        combatant_state
+            .line_of_sight_sensors
+            .iter()
+            .map(|ref_item| ref_item.to_owned())
+            .collect()
     }
 
     pub fn apply_explosion_force(

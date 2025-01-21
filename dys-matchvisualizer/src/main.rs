@@ -73,6 +73,7 @@ struct CombatantVisualizer {
 struct BallVisualizer {
     pub id: BallId,
     pub desired_location: Vec3,
+    pub last_position: Vec3,
 }
 
 #[derive(Component)]
@@ -282,7 +283,7 @@ fn setup_after_reload_game_log(
                 };
                 commands.spawn((
                     VisualizationObject,
-                    BallVisualizer { id: *ball_id, desired_location: translation },
+                    BallVisualizer { id: *ball_id, desired_location: translation, last_position: translation },
                     MaterialMesh2dBundle {
                         mesh: Mesh2dHandle(meshes.add(Circle { radius: 0.5 })), // ZJ-TODO: read radius from ball object
                         material: materials.add(Color::linear_rgb(1.0, 0.0, 0.0)),
@@ -326,9 +327,6 @@ fn update(
         return;
     }
 
-    // ZJ-TODO: the below lerps are incorrect
-    //          should increase over time since the last tick update
-
     // Only update the simulation every second, otherwise would be too fast
     // ZJ-TODO: allow this to be configurable
     const TICKS_PER_SECOND: u64 = 10;
@@ -347,8 +345,12 @@ fn update(
         combatant_vis.last_position = combatant_transform.translation;
     }
 
-    for (ball_vis, mut ball_transform) in balls_query.iter_mut() {
-        ball_transform.translation = ball_transform.translation.lerp(ball_vis.desired_location, timer.delta_seconds() * 5.0);
+    for (mut ball_vis, mut ball_transform) in balls_query.iter_mut() {
+        ball_transform.translation = ball_vis.last_position.lerp(
+            ball_vis.desired_location,
+            lerp_progress);
+
+        ball_vis.last_position = ball_transform.translation;
     }
 
     if time_since_last_update < TIME_BETWEEN_TICKS {
@@ -373,6 +375,7 @@ fn update(
                     .next()
                     .unwrap();
 
+                ball_vis.last_position = ball_vis.desired_location;
                 ball_vis.desired_location = Vec3::new(position.x, position.z, position.y);
             },
             SimulationEvent::CombatantPickedUpBall { combatant_id, ball_id } => {

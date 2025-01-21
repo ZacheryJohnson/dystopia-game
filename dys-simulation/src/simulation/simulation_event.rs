@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use dys_world::arena::plate::PlateId;
-use rapier3d::na::{Quaternion, Vector3};
+use rapier3d::na::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
 use crate::ai::belief::Belief;
 use crate::game_objects::{ball::BallId, combatant::CombatantId};
@@ -123,12 +123,23 @@ impl SimulationEvent {
             SimulationEvent::CombatantPickedUpBall { combatant_id, ball_id } => {
                 let mut game_state = game_state.lock().unwrap();
 
-                let combatant_object = game_state
-                    .combatants
-                    .get_mut(&combatant_id)
-                    .unwrap();
+                {
+                    let combatant_object = game_state
+                        .combatants
+                        .get_mut(&combatant_id)
+                        .unwrap();
 
-                combatant_object.pickup_ball(ball_id);
+                    combatant_object.pickup_ball(ball_id);
+                }
+
+                {
+                    let current_tick = game_state.current_tick;
+                    let ball_object = game_state
+                        .balls
+                        .get_mut(&ball_id)
+                        .unwrap();
+                    ball_object.set_held_by(Some(combatant_id), current_tick);
+                }
             }
             SimulationEvent::BallThrownAtEnemy { thrower_id, enemy_id: _, ball_id: _, ball_impulse_vector: _ } => {
                 let mut game_state = game_state.lock().unwrap();

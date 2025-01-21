@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use crate::{ai::agent::Agent, game_state::GameState};
+use crate::{ai::{agent::Agent, sensor::Sensor}, game_state::GameState};
 use crate::simulation::simulation_stage::SimulationStage;
 
 pub(crate) fn simulate_combatants(
@@ -10,12 +10,44 @@ pub(crate) fn simulate_combatants(
 
     let mut events = vec![];
 
-    let combatants = {
+    let mut combatants = {
         let game_state = game_state.lock().unwrap();
         game_state.combatants.clone()
     };
 
-    for (_combatant_id, mut combatant_object) in combatants {
+    // Update combatants' sensors
+    for (_, mut combatant_object) in &mut combatants {
+        {
+            let mut game_state = game_state.lock().unwrap();
+            let active_colliders = game_state.active_colliders.clone();
+            let combatants = game_state.combatants.clone();
+            let balls = game_state.balls.clone();
+            let (
+                query_pipeline,
+                rigid_body_set,
+                collider_set
+            ) = game_state.physics_sim.query_pipeline_and_sets();
+
+            let combatant_isometry = rigid_body_set
+                .get(combatant_object.rigid_body_handle)
+                .unwrap()
+                .position();
+
+            for (sensor_id, sensor) in combatant_object.sensors() {
+                let new_beliefs = sensor.sense(
+                    combatant_isometry,
+                    query_pipeline,
+                    rigid_body_set,
+                    collider_set,
+                    &active_colliders,
+                    &combatants,
+                    &balls);
+
+                let mut combatant_state = combatant_object.combatant_state.lock().unwrap();
+                combatant_state.beliefs.add_beliefs_from_source(sensor_id, &new_beliefs);
+            }
+        }
+
         events.append(&mut combatant_object.tick(game_state.clone()));
     }
 

@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use dys_world::arena::navmesh::{ArenaNavmeshNode, ArenaNavmeshPath};
-use rapier3d::na::Point3;
+use rapier3d::na::{Point3, Quaternion, UnitQuaternion, Vector3};
 
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
@@ -76,14 +76,14 @@ impl Strategy for MoveToLocationStrategy {
             self.next_node = self.path.next_node();
         }
 
-        let (mut new_combatant_position, unit_resolution) = {
+        let (combatant_isometry, unit_resolution) = {
             let game_state = game_state.lock().unwrap();
 
             let (rigid_body_set, _, _) = game_state.physics_sim.sets();
             let combatant_pos = rigid_body_set
                 .get(agent.combatant().rigid_body_handle)
                 .unwrap()
-                .translation()
+                .position()
                 .to_owned();
 
             let unit_resolution = game_state.arena_navmesh.config().unit_resolution;
@@ -91,23 +91,30 @@ impl Strategy for MoveToLocationStrategy {
             (combatant_pos, unit_resolution)
         };
 
-        // ZJ-TODO: HACK: y coordinate is wonky
-        //                ignore whatever we see initially and just maintain the combatant's y-pos
-        self.target_location.y = new_combatant_position.y;
+        let mut combatant_position = combatant_isometry.translation.vector;
+        let mut combatant_rotation = combatant_isometry.rotation;
 
-        // ZJ-TODO: this is broken somehow - even with different move speeds, combatants are still moving uniform distances
         let mut total_distance_can_travel_this_tick = agent.combatant().combatant.lock().unwrap().move_speed();
 
         while total_distance_can_travel_this_tick > 0.0 {
-            let Some(next_node) = self.next_node else {
+            let Some(mut next_node) = self.next_node else {
                 break;
             };
     
-            let lerp_distance = total_distance_can_travel_this_tick.clamp(0.0, unit_resolution);
-            new_combatant_position = new_combatant_position.lerp(&next_node.as_vector(), lerp_distance);
-            total_distance_can_travel_this_tick = (total_distance_can_travel_this_tick - unit_resolution).max(0.0);
+            let lerp_amount = total_distance_can_travel_this_tick.clamp(0.0, 1.0);
+            let updated_position = combatant_position.lerp(&next_node.as_vector(), lerp_amount);
+            let difference_vector = updated_position - combatant_position;
+            let distance_traveled = difference_vector.magnitude();
+            combatant_rotation = UnitQuaternion::face_towards(&difference_vector, &Vector3::y());
 
-            let distance_from_node = (next_node.as_vector() - new_combatant_position).magnitude();
+            if distance_traveled == 0.0 {
+                total_distance_can_travel_this_tick = 0.0;
+            } else {
+                combatant_position = updated_position;
+                total_distance_can_travel_this_tick = (total_distance_can_travel_this_tick - distance_traveled).max(0.0);
+            }
+
+            let distance_from_node = (next_node.as_vector() - combatant_position).magnitude();
             if distance_from_node == 0.0 {
                 if let Some(next_node) = self.path.next_node() {
                     self.next_node = Some(next_node);
@@ -117,17 +124,14 @@ impl Strategy for MoveToLocationStrategy {
             }
         }
 
-        // ZJ-TODO: HACK: y coordinate is wonky
-        //                ignore whatever we see initially and just maintain the combatant's y-pos
-        new_combatant_position.y = self.target_location.y;
-        let is_at_target = (self.target_location - new_combatant_position).coords.magnitude() <= unit_resolution;
+        let is_at_target = (self.target_location - combatant_position).coords.magnitude() <= unit_resolution;
         if is_at_target {
             self.is_complete = true;
         }
 
         events.push(SimulationEvent::CombatantPositionUpdate { 
             combatant_id: agent.combatant().id,
-            position: new_combatant_position
+            position: combatant_position,
         });
 
         Some(events)

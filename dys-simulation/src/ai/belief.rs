@@ -1,3 +1,5 @@
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 use std::fmt::Debug;
 use rapier3d::na::Vector3;
 use dys_satisfiable::*;
@@ -29,6 +31,7 @@ pub enum Belief {
 #[derive(Clone, Default, Debug)]
 pub struct BeliefSet {
     beliefs: Vec<Belief>,
+    sourced_beliefs: HashMap<u32, Vec<Belief>>,
 }
 
 impl BeliefSet {
@@ -39,6 +42,7 @@ impl BeliefSet {
     pub fn from(beliefs: &[Belief]) -> BeliefSet {
         BeliefSet {
             beliefs: beliefs.to_vec(),
+            sourced_beliefs: HashMap::new(),
         }
     }
 
@@ -52,8 +56,40 @@ impl BeliefSet {
         }
     }
 
+    pub fn add_beliefs_from_source(&mut self, source_id: u32, beliefs: &[Belief]) {
+        if beliefs.is_empty() {
+            return;
+        }
+
+        match self.sourced_beliefs.entry(source_id) {
+            Entry::Occupied(mut entry) => {
+                for belief in beliefs {
+                    entry.get_mut().push(*belief);
+                }
+            },
+            Entry::Vacant(mut empty) => {
+                empty.insert(beliefs.to_vec());
+            }
+        }
+    }
+
     pub fn remove_belief(&mut self, belief: Belief) {
         self.beliefs.retain(|b| b != &belief)
+    }
+
+    pub fn remove_beliefs_from_source(&mut self, source_id: u32,) {
+        self.sourced_beliefs.remove(&source_id);
+    }
+
+    fn beliefs(&self) -> Vec<Belief> {
+        let unsourced_beliefs = self.sourced_beliefs.values().flatten();
+        self
+            .beliefs
+            .clone()
+            .iter()
+            .chain(unsourced_beliefs)
+            .map(|belief| belief.to_owned())
+            .collect()
     }
 
     #[tracing::instrument(

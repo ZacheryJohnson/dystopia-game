@@ -6,9 +6,10 @@ use rand_pcg::Pcg64;
 use rapier3d::prelude::*;
 
 use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType, plate::PlateObject}, game_tick::GameTickNumber, physics_sim::PhysicsSim, simulation::config::SimulationConfig};
+use crate::game_objects::combatant::CombatantId;
 
 pub type SeedT = [u8; 32];
-pub type CombatantsMapT = HashMap<CombatantInstanceId, CombatantObject>;
+pub type CombatantsMapT = HashMap<CombatantId, CombatantObject>;
 pub type BallsMapT = HashMap<BallId, BallObject>;
 pub type PlatesMapT = HashMap<PlateId, PlateObject>;
 pub type CollidersMapT = HashMap<ColliderHandle, GameObjectType>;
@@ -111,7 +112,6 @@ impl GameState {
             let mut combatant_id = 0;
             for player_start in combatant_starts {
                 combatant_id += 1;
-                let position = player_start.origin() + vector![0.0, 2.5, 0.0];
 
                 let team_combatants = if player_start.is_home_team { &mut home_combatants } else { &mut away_combatants };
                 let Some(combatant) = team_combatants.pop() else {
@@ -122,7 +122,7 @@ impl GameState {
 
                 let team_alignment = if player_start.is_home_team { TeamAlignment::Home } else { TeamAlignment::Away };
 
-                let combatant_object = CombatantObject::new(combatant_id, combatant, position, team_alignment, rigid_body_set, collider_set);
+                let combatant_object = CombatantObject::new(combatant_id, combatant, *player_start.origin(), team_alignment, rigid_body_set, collider_set);
                 active_colliders.insert(combatant_object.collider_handle().expect("combatant game objects must have collider handles"), GameObjectType::Combatant(combatant_id));
                 combatants.insert(combatant_id, combatant_object);
             }
