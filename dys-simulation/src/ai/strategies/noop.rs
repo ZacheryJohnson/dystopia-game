@@ -14,6 +14,10 @@ impl Strategy for NoopStrategy {
         true
     }
 
+    fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool {
+        false
+    }
+
     fn is_complete(&self) -> bool {
         true
     }

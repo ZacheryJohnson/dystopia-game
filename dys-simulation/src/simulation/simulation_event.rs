@@ -1,4 +1,5 @@
 use std::sync::{Arc, Mutex};
+use rand_distr::num_traits::Zero;
 use dys_world::arena::plate::PlateId;
 use rapier3d::na::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
@@ -97,7 +98,14 @@ impl SimulationEvent {
                     .get_mut(combatant_object.rigid_body_handle)
                     .unwrap();
 
+                let old_position: &Vector3<f32> = combatant_rb.translation();
+                let difference_vector = (position - old_position);
+                let rotation = UnitQuaternion::face_towards(&difference_vector, &Vector3::y());
                 combatant_rb.set_translation(position, true);
+
+                if rotation.axis_angle().is_some() {
+                    combatant_rb.set_rotation(rotation, true);
+                }
 
                 // ZJ-TODO: investigate if using kinematic controllers would be better
                 // combatant_rb.set_next_kinematic_translation(new_combatant_position);

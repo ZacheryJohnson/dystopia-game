@@ -47,6 +47,10 @@ impl Strategy for MoveToLocationStrategy {
         self.path.is_empty() || self.next_node.is_some()
     }
 
+    fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool {
+        false
+    }
+
     fn is_complete(&self) -> bool {
         self.is_complete
     }
@@ -92,7 +96,6 @@ impl Strategy for MoveToLocationStrategy {
         };
 
         let mut combatant_position = combatant_isometry.translation.vector;
-        let mut combatant_rotation = combatant_isometry.rotation;
 
         let mut total_distance_can_travel_this_tick = agent.combatant().combatant.lock().unwrap().move_speed();
 
@@ -105,7 +108,6 @@ impl Strategy for MoveToLocationStrategy {
             let updated_position = combatant_position.lerp(&next_node.as_vector(), lerp_amount);
             let difference_vector = updated_position - combatant_position;
             let distance_traveled = difference_vector.magnitude();
-            combatant_rotation = UnitQuaternion::face_towards(&difference_vector, &Vector3::y());
 
             if distance_traveled == 0.0 {
                 total_distance_can_travel_this_tick = 0.0;

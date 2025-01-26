@@ -67,6 +67,10 @@ impl Action {
         all_prereqs && none_prohibited && can_perform_strategy
     }
 
+    pub fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool {
+        self.strategy.lock().unwrap().should_interrupt(owned_beliefs)
+    }
+
     /// If performed, could this action satisfy the given belief test?
     #[tracing::instrument(name = "action::can_perform", skip_all, level = "trace")]
     pub fn can_satisfy(&self, belief_test: BeliefTest) -> bool {
@@ -445,6 +449,10 @@ mod tests {
 
             fn can_perform(&self, owned_beliefs: &BeliefSet) -> bool { true }
 
+            fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool {
+                false
+            }
+            
             fn is_complete(&self) -> bool { true }
 
             fn tick(&mut self, agent: &dyn Agent, game_state: Arc<Mutex<GameState>>) -> Option<Vec<SimulationEvent>> {
@@ -457,6 +465,10 @@ mod tests {
             fn name(&self) -> String { String::from("StrategyNeverIsComplete") }
 
             fn can_perform(&self, owned_beliefs: &BeliefSet) -> bool { true }
+
+            fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool {
+                false
+            }
 
             fn is_complete(&self) -> bool { false }
 

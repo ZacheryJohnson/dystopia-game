@@ -2,10 +2,11 @@ use std::{fmt::Debug, sync::{Arc, Mutex}};
 
 use dys_world::{arena::plate::PlateId, combatant::instance::CombatantInstance};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
-use rapier3d::na::{vector, Isometry3};
+use rapier3d::prelude::*;
+use rapier3d::na::Isometry3;
 use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
-use crate::ai::sensor::{LineOfSightSensor, Sensor};
+use crate::ai::sensor::{FieldOfViewSensor, Sensor};
 use crate::simulation::simulation_event::PendingSimulationTick;
 use super::{ball::BallId, game_object::GameObject};
 
@@ -36,7 +37,7 @@ pub struct CombatantState {
     current_action: Option<Action>,
     plan: Vec<Action>,
     pub beliefs: BeliefSet,
-    pub line_of_sight_sensors: Vec<(u32, LineOfSightSensor)>,
+    pub field_of_view_sensors: Vec<(u32, FieldOfViewSensor)>,
 
     pub on_plate: Option<PlateId>,
     pub holding_ball: Option<BallId>,
@@ -44,12 +45,20 @@ pub struct CombatantState {
 }
 
 impl CombatantObject {
-    pub fn new(id: CombatantId, combatant: Arc<Mutex<CombatantInstance>>, position: Vector3<f32>, team: TeamAlignment, rigid_body_set: &mut RigidBodySet, collider_set: &mut ColliderSet) -> CombatantObject {
+    pub fn new(
+        id: CombatantId,
+        combatant: Arc<Mutex<CombatantInstance>>,
+        position: Vector3<f32>,
+        team: TeamAlignment,
+        rigid_body_set: &mut RigidBodySet,
+        collider_set: &mut ColliderSet
+    ) -> CombatantObject {
         let rigid_body = RigidBodyBuilder::dynamic() // RigidBodyBuilder::kinematic_position_based()
             .translation(position)
+            .enabled_rotations(false, true, false)
             .build();
         
-        let collider = ColliderBuilder::capsule_y(COMBATANT_HALF_HEIGHT, COMBATANT_RADIUS)
+        let collider = ColliderBuilder::cuboid(COMBATANT_RADIUS, COMBATANT_HALF_HEIGHT, COMBATANT_RADIUS)
             .active_events(ActiveEvents::COLLISION_EVENTS)
             .active_collision_types(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_FIXED | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
             .density(COMBATANT_MASS)
@@ -60,9 +69,8 @@ impl CombatantObject {
         let collider_handle = collider_set.insert_with_parent(collider, rigid_body_handle, rigid_body_set);
 
         const SIGHT_DISTANCE: f32 = 50.0;
-        const FOV_ANGLE: f32 = 90.0;
-        let line_of_sight_sensor = LineOfSightSensor::new(
-            SIGHT_DISTANCE, FOV_ANGLE
+        let field_of_view_sensor = FieldOfViewSensor::new(
+            SIGHT_DISTANCE, collider_handle
         );
 
         CombatantObject {
@@ -74,7 +82,7 @@ impl CombatantObject {
                 current_action: None,
                 plan: vec![],
                 beliefs: BeliefSet::empty(),
-                line_of_sight_sensors: vec![(1, line_of_sight_sensor)],
+                field_of_view_sensors: vec![(1, field_of_view_sensor)],
                 stunned_by_explosion: false,
             })),
             team,
@@ -86,10 +94,25 @@ impl CombatantObject {
     pub fn sensors(&self) -> Vec<(u32, impl Sensor)> {
         let combatant_state = self.combatant_state.lock().unwrap();
         combatant_state
-            .line_of_sight_sensors
+            .field_of_view_sensors
             .iter()
             .map(|ref_item| ref_item.to_owned())
             .collect()
+    }
+
+    /// Gets the "forward" isometry for the current combatant.
+    /// This consists of a translation, which is the origin of the rigid body + the radius of the combatant,
+    /// and a rotation, which is the direction the combatant is currently facing.
+    /// The rotation will always be strictly around the Y-axis, and the X and Z axes will always be zero.
+    pub fn forward_isometry(&self, rigid_body_set: &RigidBodySet) -> Isometry3<f32> {
+        let rigid_body = rigid_body_set
+            .get(self.rigid_body_handle)
+            .unwrap();
+
+        Isometry3::new(
+            rigid_body.translation().to_owned(),
+            rigid_body.rotation().scaled_axis()
+        )
     }
 
     pub fn apply_explosion_force(
@@ -214,6 +237,21 @@ impl Agent for CombatantObject {
         game_state: Arc<Mutex<GameState>>,
     ) -> Vec<SimulationEvent> {
         let mut events = vec![];
+
+        let current_plan = {
+            let mut combatant_state = self.combatant_state.lock().unwrap();
+            combatant_state.plan.clone()
+        };
+
+        let current_beliefs = self.beliefs();
+        for action in &current_plan {
+            if action.should_interrupt(&current_beliefs) {
+                let mut combatant_state = self.combatant_state.lock().unwrap();
+                combatant_state.plan.clear();
+                combatant_state.current_action = None;
+                break;
+            }
+        }
 
         let (current_action_is_none, plan_is_empty) = {
             let combatant_state = self.combatant_state.lock().unwrap();

@@ -1,7 +1,6 @@
 use std::sync::{Arc, Mutex};
 use crate::{game_state::GameState, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
-use crate::simulation::simulation_event::PendingSimulationTick;
 use super::agent::Agent;
 
 pub trait Strategy {
@@ -9,6 +8,9 @@ pub trait Strategy {
 
     /// Can this strategy be performed given our current beliefs about the world?
     fn can_perform(&self, owned_beliefs: &BeliefSet) -> bool;
+
+    /// Should we interrupt the entire plan, forcing a re-plan?
+    fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool;
 
     /// Was this strategy running and is now complete?
     fn is_complete(&self) -> bool;

@@ -30,7 +30,7 @@ pub enum Belief {
 /// BeliefSets are collections of beliefs that allow for tests against existing beliefs.
 #[derive(Clone, Default, Debug)]
 pub struct BeliefSet {
-    beliefs: Vec<Belief>,
+    unsourced_beliefs: Vec<Belief>,
     sourced_beliefs: HashMap<u32, Vec<Belief>>,
 }
 
@@ -41,13 +41,13 @@ impl BeliefSet {
 
     pub fn from(beliefs: &[Belief]) -> BeliefSet {
         BeliefSet {
-            beliefs: beliefs.to_vec(),
+            unsourced_beliefs: beliefs.to_vec(),
             sourced_beliefs: HashMap::new(),
         }
     }
 
     pub fn add_belief(&mut self, belief: Belief) {
-        self.beliefs.push(belief)
+        self.unsourced_beliefs.push(belief)
     }
 
     pub fn add_beliefs(&mut self, beliefs: &[Belief]) {
@@ -74,7 +74,7 @@ impl BeliefSet {
     }
 
     pub fn remove_belief(&mut self, belief: Belief) {
-        self.beliefs.retain(|b| b != &belief)
+        self.unsourced_beliefs.retain(|b| b != &belief)
     }
 
     pub fn remove_beliefs_from_source(&mut self, source_id: u32,) {
@@ -82,12 +82,12 @@ impl BeliefSet {
     }
 
     fn beliefs(&self) -> Vec<Belief> {
-        let unsourced_beliefs = self.sourced_beliefs.values().flatten();
+        let sourced_beliefs = self.sourced_beliefs.values().flatten();
         self
-            .beliefs
+            .unsourced_beliefs
             .clone()
             .iter()
-            .chain(unsourced_beliefs)
+            .chain(sourced_beliefs)
             .map(|belief| belief.to_owned())
             .collect()
     }
@@ -104,7 +104,7 @@ impl BeliefSet {
     /// returns false.
     pub fn can_satisfy(&self, satisfiable: impl SatisfiabilityTest<ConcreteT=Belief> + Debug + Clone) -> bool {
         self
-            .beliefs
+            .beliefs()
             .iter()
             .filter(|belief| satisfiable.is_same_variant(belief))
             .any(|belief| satisfiable.satisfied_by(*belief))
@@ -122,7 +122,7 @@ impl BeliefSet {
     /// returns true.
     pub fn all_satisfy(&self, satisfiable: impl SatisfiabilityTest<ConcreteT=Belief> + Debug + Clone) -> bool {
         self
-            .beliefs
+            .beliefs()
             .iter()
             .filter(|belief| satisfiable.is_same_variant(belief))
             .all(|b| satisfiable.satisfied_by(*b))
@@ -247,5 +247,14 @@ mod tests {
             SatisfiableBelief::HeldBall()
                 .combatant_id(SatisfiableField::NotIn(Box::new([2, 3])))
         ));
+    }
+
+    #[test]
+    fn sourced_beliefs_returned_with_unsourced() {
+        let mut belief_set = BeliefSet::from(&vec![Belief::OnPlate { plate_id: 1, combatant_id: 1 }]);
+        belief_set.add_beliefs_from_source(1, &vec![Belief::HeldBall { ball_id: 1, combatant_id: 1 }]);
+
+        let beliefs = belief_set.beliefs();
+        assert_eq!(beliefs.len(), 2);
     }
 }

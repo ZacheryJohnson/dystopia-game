@@ -33,6 +33,10 @@ impl Strategy for ThrowBallAtTargetStrategy {
         )
     }
 
+    fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool {
+        false
+    }
+
     fn is_complete(&self) -> bool {
         self.is_complete
     }

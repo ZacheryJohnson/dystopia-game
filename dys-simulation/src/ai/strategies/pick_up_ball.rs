@@ -38,18 +38,23 @@ impl Strategy for PickUpBallStrategy {
                 .combatant_id(SatisfiableField::NotExactly(self.self_combatant_id))
         );
 
-        let other_not_holding_target_ball = !owned_beliefs.can_satisfy(
-            SatisfiableBelief::HeldBall()
-                .ball_id(SatisfiableField::Exactly(self.ball_id))
-        );
-
         let self_can_reach_ball = owned_beliefs.can_satisfy(
             SatisfiableBelief::InBallPickupRange()
                 .ball_id(SatisfiableField::Exactly(self.ball_id))
                 .combatant_id(SatisfiableField::Exactly(self.self_combatant_id))
         );
 
-        self_not_holding_any_ball && other_not_holding_target_ball && self_can_reach_ball
+        !self.should_interrupt(owned_beliefs) && self_not_holding_any_ball && self_can_reach_ball
+    }
+
+    fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool {
+        // If someone picks up the ball we're targeting, interrupt
+        let other_combatant_holding_target_ball = owned_beliefs.can_satisfy(
+            SatisfiableBelief::HeldBall()
+                .ball_id(SatisfiableField::Exactly(self.ball_id))
+        );
+
+        other_combatant_holding_target_ball
     }
 
     fn is_complete(&self) -> bool {
