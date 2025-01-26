@@ -1,10 +1,12 @@
 use std::sync::{Arc, Mutex};
 use rand_distr::num_traits::Zero;
 use dys_world::arena::plate::PlateId;
+use rapier3d::prelude::*;
 use rapier3d::na::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
 use crate::ai::belief::Belief;
 use crate::game_objects::{ball::BallId, combatant::CombatantId};
+use crate::game_objects::ball::BallState;
 use crate::game_objects::game_object::GameObject;
 use crate::game_state::GameState;
 
@@ -167,8 +169,6 @@ impl SimulationEvent {
                     ball_object.rigid_body_handle().unwrap()
                 };
 
-                tracing::info!("{event:?}");
-
                 let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
                 let ball_rb = rigid_body_set.get_mut(ball_rigid_body_handle).unwrap();
                 ball_rb.apply_impulse(ball_impulse_vector, true);
@@ -190,18 +190,60 @@ impl SimulationEvent {
                     ball_object.rigid_body_handle().unwrap()
                 };
 
-                tracing::info!("{event:?}");
-
                 let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
                 let ball_rb = rigid_body_set.get_mut(ball_rigid_body_handle).unwrap();
                 ball_rb.apply_impulse(ball_impulse_vector, true);
             }
-            SimulationEvent::BallCollisionEnemy { .. } => {
-                // ZJ-TODO: explosion logic
+            SimulationEvent::BallCollisionEnemy { ball_id, .. } => {
+                let mut game_state = game_state.lock().unwrap();
+                let current_tick = game_state.current_tick;
+                let ball_object = game_state.balls.get_mut(&ball_id).unwrap();
+                ball_object.change_state(current_tick, BallState::Explode);
             }
-            SimulationEvent::BallCollisionArena { .. } => {}
-            SimulationEvent::BallExplosion { .. } => {}
-            SimulationEvent::BallExplosionForceApplied { .. } => {}
+            SimulationEvent::BallCollisionArena { .. } => {
+                // ZJ-TODO: 'disable' ball
+            }
+            SimulationEvent::BallExplosion { ball_id, charge } => {
+                let mut game_state = game_state.lock().unwrap();
+                let current_tick = game_state.current_tick;
+                let ball_rigid_body_handle = game_state.balls.get(&ball_id).unwrap().rigid_body_handle().unwrap();
+                {
+                    let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+
+                    // After exploding, reset charge, make ball idle
+                    // ZJ-TODO: delete ball, spawn new one, etc
+                    let ball_rb = rigid_body_set.get_mut(ball_rigid_body_handle).unwrap();
+                    ball_rb.set_linvel(vector![0.0, 0.0, 0.0], true);
+                    ball_rb.set_angvel(vector![0.0, 0.0, 0.0], true);
+                }
+
+                {
+                    let mut ball_object = game_state.balls.get_mut(&ball_id).unwrap();
+                    ball_object.charge = 0.0;
+                    ball_object.change_state(current_tick, BallState::Idle);
+                }
+            }
+            SimulationEvent::BallExplosionForceApplied { ball_id, combatant_id, force_magnitude, force_direction } => {
+                let mut game_state = game_state.lock().unwrap();
+                let current_tick = game_state.current_tick;
+                let combatant_rigid_body_handle = game_state.combatants.get(&combatant_id).unwrap().rigid_body_handle;
+                let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+
+                // ZJ_TODO: investigate kinematic rigid bodies
+
+                let combatant_rb = rigid_body_set
+                    .get_mut(combatant_rigid_body_handle)
+                    .unwrap();
+                let impulse = force_direction.normalize() * force_magnitude;
+                combatant_rb.apply_impulse(impulse, true);
+
+                // ZJ-TODO: apply damage to limbs, etc
+                {
+                    let combatant_object = game_state.combatants.get_mut(&combatant_id).unwrap();
+                    let mut combatant_state = combatant_object.combatant_state.lock().unwrap();
+                    combatant_state.stunned_by_explosion = true;
+                }
+            }
             SimulationEvent::PointsScoredByCombatant { .. } => {}
         };
 

@@ -115,26 +115,6 @@ impl CombatantObject {
         )
     }
 
-    pub fn apply_explosion_force(
-        &mut self,
-        _: GameTickNumber,
-        force_magnitude: f32,
-        force_direction: Vector3<f32>,
-        rigid_body_set: &mut RigidBodySet)
-    {
-        // ZJ-TODO: rework; when we moved to kinematic rigid bodies, we can't apply impulses any more
-
-        let self_rb = rigid_body_set.get_mut(self.rigid_body_handle).expect("failed to get own rigidbody");
-        let impulse = force_direction.normalize() * force_magnitude;
-        self_rb.apply_impulse(impulse, true);
-
-        // ZJ-TODO: apply damage to limbs, etc
-        {
-            let mut combatant_state = self.combatant_state.lock().unwrap();
-            combatant_state.stunned_by_explosion = true;
-        }
-    }
-
     pub fn set_on_plate(&mut self, plate_id: PlateId) {
         {
             let mut combatant_state = self.combatant_state.lock().unwrap();
