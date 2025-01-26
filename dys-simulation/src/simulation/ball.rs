@@ -19,25 +19,24 @@ pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationSta
     };
 
     for (_, ball_object) in balls {
-        let (explosion_simulation_events, _affected_colliders) = explode(&ball_object, game_state.clone());
+        let explosion_simulation_events = explode(&ball_object, game_state.clone());
         events.extend(explosion_simulation_events);
 
         if let Some(event) = try_move_if_held(&ball_object, game_state.clone()) {
             events.push(event);
         }
+    }
 
-        // ZJ-TODO: move to simulation
-        // let explosion_force_simulation_events = apply_explosion_forces(game_state.current_tick, affected_colliders, ball_object, &game_state.active_colliders, &mut game_state.combatants, rigid_body_set);
-        // events.extend(explosion_force_simulation_events);
-        // decrease_charge(ball_object, &game_state.simulation_config);
-
-        // let ball_rb_handle = ball_object.rigid_body_handle().expect("ball should have a valid rigidbody handle");
-        // let ball_rb: &mut RigidBody = rigid_body_set.get_mut(ball_rb_handle).expect("ball rigid bodies should be registered with main set");
+    {
+        // let mut game_state = game_state.lock().unwrap();
+        // for (ball_id, ball_object) in &mut game_state.balls {
+        //     // ZJ-TODO: move to simulation
+        //     decrease_charge(ball_object, &game_state.simulation_config);
+        //     // try_freeze_slow_moving_ball(game_state.current_tick, ball_object, ball_rb);
         //
-        // try_freeze_slow_moving_ball(game_state.current_tick, ball_object, ball_rb);
-        //
-        // if ball_object.is_dirty() {
-        //     events.push(SimulationEvent::BallPositionUpdate { ball_id: *ball_id, position: *ball_rb.translation() });
+        //     if ball_object.is_dirty() {
+        //         events.push(SimulationEvent::BallPositionUpdate { ball_id: *ball_id, position: *ball_rb.translation() });
+        //     }
         // }
     }
 
@@ -81,10 +80,10 @@ fn try_move_if_held(
 fn explode(
     ball: &BallObject,
     game_state: Arc<Mutex<GameState>>,
-) -> (Vec<SimulationEvent>, Vec<ColliderHandle>) {
+) -> Vec<SimulationEvent> {
     // Only handle balls in the Explode state
     let BallState::Explode = ball.state else {
-        return (vec![], vec![]);
+        return vec![];
     };
 
     let ball_pos = {
@@ -118,50 +117,53 @@ fn explode(
         });
     }
 
-    // ZJ-TODO: move to simulation
-    // let ball_rb = rigid_body_set.get_mut(ball.rigid_body_handle().unwrap()).unwrap();
-    // ball_rb.set_linvel(vector![0.0, 0.0, 0.0], true);
-    // ball_rb.set_angvel(vector![0.0, 0.0, 0.0], true);
+    let mut events = vec![
+        SimulationEvent::BallExplosion { ball_id: ball.id, charge: ball.charge }
+    ];
 
-    (vec![SimulationEvent::BallExplosion { ball_id: ball.id, charge: ball.charge }], affected_colliders)
+    for collider_handle in affected_colliders {
+        let new_events = apply_explosion_forces(
+            game_state.clone(),
+            collider_handle,
+            ball,
+        );
+    }
+
+    events
 }
 
 fn apply_explosion_forces(
-    current_tick: GameTickNumber,
-    affected_colliders: Vec<ColliderHandle>,
-    ball_object: &mut BallObject,
-    active_colliders: &HashMap<ColliderHandle, GameObjectType>,
-    combatants: &mut HashMap<u64, CombatantObject>,
-    rigid_body_set: &mut RigidBodySet,
+    game_state: Arc<Mutex<GameState>>,
+    collider_handle: ColliderHandle,
+    ball_object: &BallObject,
 ) -> Vec<SimulationEvent> {
     let BallState::Explode = ball_object.state else {
         return vec![];
     };
 
     let mut events = vec![];
-    for collider in affected_colliders {
-        let GameObjectType::Combatant(combatant_id) = active_colliders.get(&collider).unwrap() else {
-            continue;
-        };
+    let game_state = game_state.lock().unwrap();
+    let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+    let GameObjectType::Combatant(combatant_id) = game_state.active_colliders.get(&collider_handle).unwrap() else {
+        return vec![];
+    };
 
-        let combatant = combatants.get_mut(combatant_id).unwrap();
-        let combatant_pos = rigid_body_set.get(combatant.rigid_body_handle().unwrap()).unwrap().translation();
-        let ball_pos = rigid_body_set.get(ball_object.rigid_body_handle().unwrap()).unwrap().translation();
+    let combatant_rigid_body_handle = game_state.combatants.get(combatant_id).unwrap().rigid_body_handle;
+    let combatant_pos = rigid_body_set.get(combatant_rigid_body_handle).unwrap().translation();
+    let ball_pos = rigid_body_set.get(ball_object.rigid_body_handle().unwrap()).unwrap().translation();
 
-        // Magnitude of the explosion force is the charge of the ball divided by the square distance
-        // This means direct impacts will apply a LOT of force, while nearby combatants will take exponentially less per unit away
-        let position_difference = combatant_pos - ball_pos;
-        let force_direction = vector![position_difference.x, 0.0, position_difference.z].normalize();
-        let force_magnitude = ball_object.charge * CHARGE_FORCE_MODIFIER / position_difference.magnitude().powi(2);
+    // Magnitude of the explosion force is the charge of the ball divided by the square distance
+    // This means direct impacts will apply a LOT of force, while nearby combatants will take exponentially less per unit away
+    let position_difference = combatant_pos - ball_pos;
+    let force_direction = vector![position_difference.x, 0.0, position_difference.z].normalize();
+    let force_magnitude = ball_object.charge * CHARGE_FORCE_MODIFIER / position_difference.magnitude().powi(2);
 
-        combatant.apply_explosion_force(current_tick, force_magnitude, force_direction, rigid_body_set);
-        events.push(SimulationEvent::BallExplosionForceApplied { ball_id: ball_object.id, combatant_id: *combatant_id, force_magnitude, force_direction });
-    }
-
-    // After exploding, reset charge, make ball idle
-    // ZJ-TODO: delete ball, spawn new one, etc
-    ball_object.charge = 0.0;
-    ball_object.change_state(current_tick, BallState::Idle);
+    events.push(SimulationEvent::BallExplosionForceApplied {
+        ball_id: ball_object.id,
+        combatant_id: *combatant_id,
+        force_magnitude,
+        force_direction
+    });
 
     events
 }
