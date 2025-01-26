@@ -40,6 +40,30 @@ async fn query_latest_games(_: Request) -> Result<Response, Infallible> {
     Ok(json.into_response())
 }
 
+#[tracing::instrument]
+async fn query_combatants(_: Request) -> Result<Response, Infallible> {
+    let director_api_base_uri = std::env::var("SVC_DIRECTOR_API_BASE_URI").unwrap_or(String::from("http://localhost:6081"));
+    let request_url = format!("{director_api_base_uri}/combatants");
+
+    tracing::info!("Requesting combatants from director...");
+    let maybe_response = dys_observability::reqwest::get(request_url).await;
+    if let Err(err) = maybe_response {
+        tracing::warn!("Failed to get combatants from {}: {err:?}", director_api_base_uri);
+        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get combatants").into_response());
+    };
+
+    let response = maybe_response.unwrap();
+
+    let Ok(response_body) = response.text().await else {
+        tracing::warn!("Failed to get combatants response content");
+        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get combatants").into_response());
+    };
+
+    tracing::info!("Sending response...");
+    let json = axum::Json(response_body);
+    Ok(json.into_response())
+}
+
 #[tokio::main]
 async fn main() {
     let logger_options = LoggerOptions {
@@ -61,6 +85,14 @@ async fn main() {
                 .map_request(map_trace_context)    
                 .map_request(record_trace_id)    
                 .service_fn(query_latest_games)
+        )
+        .nest_service(
+            "/api/combatants",
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
+                .map_request(map_trace_context)
+                .map_request(record_trace_id)
+                .service_fn(query_combatants)
         )
         .nest_service(
             "/assets",

@@ -28,6 +28,13 @@ struct MatchResult {
     game_log_serialized: Vec<u8>,
 }
 
+// ZJ-TODO: this should also live elsewhere
+#[derive(Clone, Serialize)]
+struct CombatantTeamMember {
+    team_name: String,
+    combatant_name: String,
+}
+
 #[derive(Clone)]
 struct WorldState {
     game_world: Arc<Mutex<World>>,
@@ -72,6 +79,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/latest_games", get(latest_games))
+        .route("/combatants", get(combatants))
         .layer(trace_middleware_layer)
         .with_state(world_state);
 
@@ -154,6 +162,34 @@ async fn latest_games(State(world_state): State<WorldState>) -> Response {
         }
     ).into_response();
       
+    response.headers_mut()
+        // ZJ-TODO: not *
+        .insert("Access-Control-Allow-Origin", HeaderValue::from_str("*").unwrap());
+
+    response
+}
+
+#[tracing::instrument(skip_all)]
+async fn combatants(State(world_state): State<WorldState>) -> Response {
+    // ZJ-TODO: caching
+    tracing::info!("Trying to acquire world lock...");
+    let world = world_state.game_world.lock().unwrap();
+
+    let mut combatants = vec![];
+    for team in &world.teams {
+        let team_instance = team.lock().unwrap();
+        for combatant in &team_instance.combatants {
+            let combatant_instance = combatant.lock().unwrap();
+
+            combatants.push(CombatantTeamMember {
+                team_name: team_instance.name.clone(),
+                combatant_name: combatant_instance.name.clone(),
+            });
+        }
+    }
+
+    tracing::info!("Sending response...");
+    let mut response = axum::Json(combatants).into_response();
     response.headers_mut()
         // ZJ-TODO: not *
         .insert("Access-Control-Allow-Origin", HeaderValue::from_str("*").unwrap());
