@@ -12,7 +12,7 @@ pub fn idle_goal() -> Goal {
 
 pub fn goals(
     combatant_object: &CombatantObject,
-    _game_state: Arc<Mutex<GameState>>,
+    game_state: Arc<Mutex<GameState>>,
 ) -> Vec<Goal> {
     vec![
         GoalBuilder::new()
@@ -24,13 +24,19 @@ pub fn goals(
             .priority(10)
             .build(),
         GoalBuilder::new()
-            .name("Hold Ball")
+            .name("Throw Ball At Enemies")
             .desired_beliefs(vec![
-                SatisfiableBelief::HeldBall()
-                    .combatant_id(SatisfiableField::Exactly(combatant_object.id))
+                SatisfiableBelief::BallThrownAtCombatant()
+                    .target_id(SatisfiableField::NotIn(
+                        game_state.lock().unwrap().team_combatants(combatant_object.team)
+                            .iter()
+                            .map(|combatant_object| combatant_object.id)
+                            .collect()
+                    ))
             ])
             .priority(10)
             .build(),
+        // ZJ-TODO: goal: recover from explosion / self is cogent
         idle_goal()
     ]
 }

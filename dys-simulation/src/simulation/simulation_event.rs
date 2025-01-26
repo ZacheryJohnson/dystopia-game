@@ -5,6 +5,7 @@ use rapier3d::na::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
 use crate::ai::belief::Belief;
 use crate::game_objects::{ball::BallId, combatant::CombatantId};
+use crate::game_objects::game_object::GameObject;
 use crate::game_state::GameState;
 
 pub struct PendingSimulationTick {
@@ -149,7 +150,7 @@ impl SimulationEvent {
                     ball_object.set_held_by(Some(combatant_id), current_tick);
                 }
             }
-            SimulationEvent::BallThrownAtEnemy { thrower_id, enemy_id: _, ball_id: _, ball_impulse_vector: _ } => {
+            SimulationEvent::BallThrownAtEnemy { thrower_id, enemy_id: _, ball_id, ball_impulse_vector } => {
                 let mut game_state = game_state.lock().unwrap();
                 let combatant_object = game_state
                     .combatants
@@ -157,8 +158,22 @@ impl SimulationEvent {
                     .unwrap();
 
                 combatant_object.drop_ball();
+
+                let ball_rigid_body_handle = {
+                    let current_tick = game_state.current_tick;
+                    let mut ball_object = game_state.balls.get_mut(&ball_id).unwrap();
+                    ball_object.set_held_by(None, current_tick);
+
+                    ball_object.rigid_body_handle().unwrap()
+                };
+
+                tracing::info!("{event:?}");
+
+                let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+                let ball_rb = rigid_body_set.get_mut(ball_rigid_body_handle).unwrap();
+                ball_rb.apply_impulse(ball_impulse_vector, true);
             }
-            SimulationEvent::BallThrownAtTeammate { thrower_id, .. } => {
+            SimulationEvent::BallThrownAtTeammate { thrower_id, teammate_id, ball_id, ball_impulse_vector } => {
                 let mut game_state = game_state.lock().unwrap();
                 let combatant_object = game_state
                     .combatants
@@ -166,6 +181,20 @@ impl SimulationEvent {
                     .unwrap();
 
                 combatant_object.drop_ball();
+
+                let ball_rigid_body_handle = {
+                    let current_tick = game_state.current_tick;
+                    let mut ball_object = game_state.balls.get_mut(&ball_id).unwrap();
+                    ball_object.set_held_by(None, current_tick);
+
+                    ball_object.rigid_body_handle().unwrap()
+                };
+
+                tracing::info!("{event:?}");
+
+                let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+                let ball_rb = rigid_body_set.get_mut(ball_rigid_body_handle).unwrap();
+                ball_rb.apply_impulse(ball_impulse_vector, true);
             }
             SimulationEvent::BallCollisionEnemy { .. } => {
                 // ZJ-TODO: explosion logic

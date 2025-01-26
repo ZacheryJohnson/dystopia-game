@@ -25,6 +25,7 @@ pub enum Belief {
     OnPlate { plate_id: PlateId, combatant_id: CombatantId },
     HeldBall { ball_id: BallId, combatant_id: CombatantId },
     InBallPickupRange { ball_id: BallId, combatant_id: CombatantId },
+    BallThrownAtCombatant { ball_id: BallId, thrower_id: CombatantId, target_id: CombatantId },
 }
 
 /// BeliefSets are collections of beliefs that allow for tests against existing beliefs.
@@ -240,12 +241,12 @@ mod tests {
 
         assert!(belief_set.all_satisfy(
             SatisfiableBelief::OnPlate()
-                .combatant_id(SatisfiableField::In(Box::new([1, 2])))
+                .combatant_id(SatisfiableField::In(vec![1, 2]))
         ));
 
         assert!(belief_set.all_satisfy(
             SatisfiableBelief::HeldBall()
-                .combatant_id(SatisfiableField::NotIn(Box::new([2, 3])))
+                .combatant_id(SatisfiableField::NotIn(vec![2, 3]))
         ));
     }
 

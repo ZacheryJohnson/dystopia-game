@@ -98,6 +98,7 @@ pub fn actions(
             ActionBuilder::new()
                 .name(format!("Pick Up Ball {ball_id}"))
                 .strategy(PickUpBallStrategy::new(combatant.id, combatant_pos, ball_id))
+                .cost(1.0)
                 .prerequisites(vec![
                     SatisfiableBelief::InBallPickupRange()
                         .combatant_id(SatisfiableField::Exactly(combatant.id))
@@ -108,25 +109,32 @@ pub fn actions(
                 ])
                 .build()
         );
-    }
 
-    for (target_combatant_id, _) in combatants {
-        // Don't try to throw a ball at ourselves
-        if target_combatant_id == combatant.id {
-            continue;
+        for (target_combatant_id, target_combatant) in combatants.clone() {
+            // Don't try to throw a ball at ourselves
+            if target_combatant_id == combatant.id {
+                continue;
+            }
+
+            actions.push(
+                ActionBuilder::new()
+                    .name(format!("Throw Ball {} at/to Combatant {}", ball_id, target_combatant_id))
+                    .strategy(ThrowBallAtTargetStrategy::new(combatant.id, target_combatant_id))
+                    .cost(10.0_f32 /* ZJ-TODO */)
+                    .prerequisites(vec![
+                        SatisfiableBelief::HeldBall()
+                            .combatant_id(SatisfiableField::Exactly(combatant.id))
+                    ])
+                    .completion(vec![
+                        Belief::BallThrownAtCombatant {
+                            ball_id,
+                            thrower_id: combatant.id,
+                            target_id: target_combatant_id
+                        },
+                    ])
+                    .build()
+            );
         }
-
-        actions.push(
-            ActionBuilder::new()
-                .name(format!("Throw Ball at/to Combatant {}", target_combatant_id))
-                .strategy(ThrowBallAtTargetStrategy::new(combatant.id, target_combatant_id))
-                .cost(10.0_f32 /* ZJ-TODO */)
-                .prerequisites(vec![
-                    SatisfiableBelief::HeldBall()
-                        .combatant_id(SatisfiableField::Exactly(combatant.id))
-                ])
-                .build()
-        );
     }
 
     actions

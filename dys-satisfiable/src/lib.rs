@@ -16,10 +16,10 @@ pub enum SatisfiableField<
     NotExactly(ValueT),
 
     /// The concrete value must be in the range of values of type T
-    In(Box<[ValueT]>),
+    In(Vec<ValueT>),
 
     /// The concrete value must NOT be in the range of values of type T
-    NotIn(Box<[ValueT]>),
+    NotIn(Vec<ValueT>),
 
     /// The concrete value must be strictly greater than the value of type T
     GreaterThan(ValueT),

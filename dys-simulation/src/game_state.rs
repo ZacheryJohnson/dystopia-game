@@ -146,4 +146,30 @@ impl GameState {
             arena_navmesh
         }
     }
+
+    pub fn home_and_away_combatants(&self) -> [Vec<CombatantObject>; 2] {
+        let home_team = self.combatants
+            .clone()
+            .into_iter()
+            .filter(|(_, combatant_object)| combatant_object.team == TeamAlignment::Home)
+            .map(|(_, combatant_object)| combatant_object)
+            .collect::<Vec<_>>();
+
+        let away_team = self.combatants
+            .clone()
+            .into_iter()
+            .filter(|(_, combatant_object)| combatant_object.team == TeamAlignment::Away)
+            .map(|(_, combatant_object)| combatant_object)
+            .collect::<Vec<_>>();
+
+        [home_team, away_team]
+    }
+
+    pub fn team_combatants(&self, team: TeamAlignment) -> Vec<CombatantObject> {
+        let [home_combatants, away_combatants] = self.home_and_away_combatants();
+        match team {
+            TeamAlignment::Home => home_combatants,
+            TeamAlignment::Away => away_combatants,
+        }
+    }
 }
