@@ -239,7 +239,7 @@ impl Agent for CombatantObject {
         let mut events = vec![];
 
         let current_plan = {
-            let mut combatant_state = self.combatant_state.lock().unwrap();
+            let combatant_state = self.combatant_state.lock().unwrap();
             combatant_state.plan.clone()
         };
 

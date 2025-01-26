@@ -1,4 +1,5 @@
 use std::sync::{Arc, Mutex};
+use rand_distr::num_traits::Zero;
 use rapier3d::{na::Vector3, prelude::*};
 use dys_satisfiable::SatisfiableField;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::{combatant::CombatantId, game_object::GameObject}, game_state::{GameState}, simulation::simulation_event::SimulationEvent};
@@ -83,7 +84,6 @@ impl Strategy for ThrowBallAtTargetStrategy {
             (target_pos, ball_pos, is_same_team, y_axis_gravity)
         };
 
-
         let throw_speed_units_per_sec_hack = 30.0_f32;
         let accuracy_hack = 1.0_f32;
 
@@ -95,11 +95,15 @@ impl Strategy for ThrowBallAtTargetStrategy {
             y_axis_gravity
         );
 
+        if ball_impulse_vector.magnitude().is_zero() {
+            tracing::info!("Zero vector for ball throw?");
+            self.is_complete = true;
+            return None;
+        }
+
         // ZJ-TODO: wait for some delay to simulate a "windup" for a throw - should we allow movement in a direction (eg crow hop)?
 
-        // ZJ-TODO: move these to simulation processing
-        // ball_rb.apply_impulse(ball_impulse, true);
-        // agent.combatant_mut().combatant_state.holding_ball = None;
+        self.is_complete = true;
 
         Some(vec![
             if is_same_team {
