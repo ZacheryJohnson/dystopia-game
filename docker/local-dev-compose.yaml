@@ -6,6 +6,7 @@ services:
       dockerfile: docker/dys-svc-director.Dockerfile
     environment:
       - OTEL_ENDPOINT=http://jaeger:4317
+      - RUST_BACKTRACE=1
     ports:
       - "6081:6081"
   webapp:
@@ -19,6 +20,7 @@ services:
     environment:
       - SVC_DIRECTOR_API_BASE_URI=http://director:6081
       - OTEL_ENDPOINT=http://jaeger:4317
+      - RUST_BACKTRACE=1
     ports:
       - "6080:6080"
       #- "5173:5173"

@@ -24,7 +24,7 @@ async fn query_latest_games(_: Request) -> Result<Response, Infallible> {
     tracing::info!("Requesting latest games from director...");
     let maybe_response = dys_observability::reqwest::get(request_url).await;
     if let Err(err) = maybe_response {
-        tracing::warn!("Failed to get latest_games from {}: {err}", director_api_base_uri);
+        tracing::warn!("Failed to get latest_games from {}: {err:?}", director_api_base_uri);
         return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get latest_games").into_response());
     };
 
