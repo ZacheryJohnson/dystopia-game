@@ -14,7 +14,7 @@ pub struct CombatantInstance {
 }
 
 impl CombatantInstance {
-    fn get_attribute_value(&self, attribute_type: &AttributeType) -> Option<AttributeValueT> {
+    pub fn get_attribute_value(&self, attribute_type: &AttributeType) -> Option<AttributeValueT> {
         self
             .limbs
             .iter()

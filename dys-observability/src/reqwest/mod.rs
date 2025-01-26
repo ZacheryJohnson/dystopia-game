@@ -7,8 +7,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 /// Sends a GET request to the provided URL with headers that enable tracing.
 pub async fn get(request_url: impl Into<String>) -> Result<Response, Error> {
     let http_client = reqwest::Client::builder()
-        .build()
-        .unwrap();
+        .build()?;
 
     let mut request = http_client
         .request(Method::GET, request_url.into())

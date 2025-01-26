@@ -18,12 +18,19 @@ pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationSta
         game_state.balls.clone()
     };
 
-    for (_, ball_object) in balls {
+    for (ball_id, ball_object) in balls {
         let explosion_simulation_events = explode(&ball_object, game_state.clone());
         events.extend(explosion_simulation_events);
 
         if let Some(event) = try_move_if_held(&ball_object, game_state.clone()) {
             events.push(event);
+        }
+
+        if ball_object.is_dirty() {
+            let game_state = game_state.lock().unwrap();
+            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+            let ball_rb = rigid_body_set.get(ball_object.rigid_body_handle().unwrap()).unwrap();
+            events.push(SimulationEvent::BallPositionUpdate { ball_id, position: *ball_rb.translation() });
         }
     }
 
@@ -34,9 +41,7 @@ pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationSta
         //     decrease_charge(ball_object, &game_state.simulation_config);
         //     // try_freeze_slow_moving_ball(game_state.current_tick, ball_object, ball_rb);
         //
-        //     if ball_object.is_dirty() {
-        //         events.push(SimulationEvent::BallPositionUpdate { ball_id: *ball_id, position: *ball_rb.translation() });
-        //     }
+        //
         // }
     }
 

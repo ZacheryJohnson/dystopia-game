@@ -29,7 +29,6 @@ COPY $WORKING_DIR/dys-satisfiable-macros/ /opt/dystopia/dys-satisfiable-macros/
 COPY $WORKING_DIR/dys-simulation/ /opt/dystopia/dys-simulation/
 COPY $WORKING_DIR/dys-world/ /opt/dystopia/dys-world/
 COPY $WORKING_DIR/dys-matchvisualizer/ /opt/dystopia/dys-matchvisualizer/
-COPY $WORKING_DIR/dys-observability/ /opt/dystopia/dys-observability/
 
 RUN cargo build -p $RUST_PROJECT_NAME --release --target wasm32-unknown-unknown
 
@@ -41,6 +40,7 @@ RUN wasm-bindgen --target web \
 
 RUN wasm-opt -Oz -o $OUT_DIR/${BIN_NAME}_opt.wasm $OUT_DIR/${BIN_NAME}_bg.wasm
 
+COPY $WORKING_DIR/dys-observability/ /opt/dystopia/dys-observability/
 COPY $WORKING_DIR/dys-svc-webapp/ /opt/dystopia/dys-svc-webapp/
 RUN cp $OUT_DIR/matchvisualizer_opt.wasm /opt/dystopia/$WEBAPP_PUBLIC_DIR_PATH/matchvisualizer_opt.wasm
 RUN cp $OUT_DIR/matchvisualizer.d.ts /opt/dystopia/$WEBAPP_INTERNAL_DIR_PATH/matchvisualizer.d.ts
