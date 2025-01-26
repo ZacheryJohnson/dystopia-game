@@ -59,6 +59,7 @@ helm repo add grafana https://grafana.github.io/helm-charts
 helm repo update
 kubectl create namespace $GRAFANA_NAMESPACE
 
+echo "Setting up Grafana to receive traces. Click 'Send Traces' in Grafana Cloud config panel for the following."
 read -p "Enter Grafana cloud user (all numeric): " GRAFANA_CLOUD_USER
 read -p "Enter Grafana API token: " GRAFANA_CLOUD_API_TOKEN
 export GRAFANA_CLOUD_USER

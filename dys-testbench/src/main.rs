@@ -28,9 +28,11 @@ async fn main() {
         date,
     };
     let game = Game { schedule_game };
-    let seed: [u8; 32] = [13; 32];
-
-    let game_log = game.simulate_seeded(&seed);
+    // ZJ-TODO: restore fixed seed
+    // let seed: [u8; 32] = [13; 32];
+    //
+    // let game_log = game.simulate_seeded(&seed);
+    let game_log = game.simulate();
     let game_log_artifact = postcard::to_allocvec(&game_log).expect("failed to serialize game log");
     std::fs::write("game_log.bin", game_log_artifact).expect("failed to write game log artifact to file");
 

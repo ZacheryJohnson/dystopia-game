@@ -1,7 +1,7 @@
 # --------------------------------------------
 #   Build
 # --------------------------------------------
-FROM rust:1.83-bookworm AS builder
+FROM rust:1.84-bookworm AS builder
 
 ARG WORKING_DIR="."
 
