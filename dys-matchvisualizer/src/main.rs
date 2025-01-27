@@ -285,8 +285,8 @@ fn setup_after_reload_game_log(
                     VisualizationObject,
                     BallVisualizer { id: *ball_id, desired_location: translation, last_position: translation },
                     MaterialMesh2dBundle {
-                        mesh: Mesh2dHandle(meshes.add(Circle { radius: 0.5 })), // ZJ-TODO: read radius from ball object
-                        material: materials.add(Color::linear_rgb(1.0, 0.0, 0.0)),
+                        mesh: Mesh2dHandle(meshes.add(Circle { radius: 1.0 })), // ZJ-TODO: read radius from ball object
+                        material: materials.add(Color::linear_rgb(0.75, 0.75, 0.0)),
                         transform,
                         ..default()
                     },
@@ -299,12 +299,20 @@ fn setup_after_reload_game_log(
                     rotation: Quat::default(),
                     scale: Vec3::ONE, // ZJ-TODO
                 };
+
+                // ZJ-TODO: don't assume team by position
+                let home_team = if position.x < 50.0 { true } else { false };
+
                 commands.spawn((
                     VisualizationObject,
                     CombatantVisualizer { id: *combatant_id, desired_location: translation, last_position: translation },
                     MaterialMesh2dBundle {
                         mesh: Mesh2dHandle(meshes.add(Capsule2d::new(1.0, 2.0))), // ZJ-TODO: read radius
-                        material: materials.add(Color::linear_rgb(0.0, 1.0, 0.0)),
+                        material: materials.add(Color::linear_rgb(
+                            0.0,
+                            if home_team { 1.0 } else { 0.0 },
+                            if home_team { 0.0 } else { 1.0 },
+                        )),
                         transform,
                         ..default()
                     },
