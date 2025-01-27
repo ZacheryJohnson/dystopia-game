@@ -21,23 +21,23 @@ pub struct Arena {
 impl Arena {
     pub fn new_with_testing_defaults() -> Arena {
         Arena {
-            // X: horizontal; Y: vertical; Z: depth
+            // X: west-east; Y: up-down; Z: north-south
             all_features: vec![
                 // West Wall
                 Box::new(
-                    ArenaBarrier::new(vector![0.0, -5.0, 50.0], vector![3.0, 20.0, 100.0], Quaternion::identity(), BarrierPathing::Disabled)
+                    ArenaBarrier::new(vector![0.0, 0.0, 50.0], vector![3.0, 20.0, 100.0], Quaternion::identity(), BarrierPathing::Disabled)
                 ),
                 // East Wall
                 Box::new(
-                    ArenaBarrier::new(vector![100.0, -5.0, 50.0], vector![3.0, 20.0, 100.0], Quaternion::identity(), BarrierPathing::Disabled)
+                    ArenaBarrier::new(vector![100.0, 0.0, 50.0], vector![3.0, 20.0, 100.0], Quaternion::identity(), BarrierPathing::Disabled)
                 ),
                 // South Wall
                 Box::new(
-                    ArenaBarrier::new(vector![50.0, -5.0, 0.0], vector![100.0, 20.0, 3.0], Quaternion::identity(), BarrierPathing::Disabled)
+                    ArenaBarrier::new(vector![50.0, 0.0, 0.0], vector![100.0, 20.0, 3.0], Quaternion::identity(), BarrierPathing::Disabled)
                 ),
                 // North Wall
                 Box::new(
-                    ArenaBarrier::new(vector![50.0, -5.0, 100.0], vector![100.0, 20.0, 3.0], Quaternion::identity(), BarrierPathing::Disabled)
+                    ArenaBarrier::new(vector![50.0, 0.0, 100.0], vector![100.0, 20.0, 3.0], Quaternion::identity(), BarrierPathing::Disabled)
                 ),
                 // Floor
                 Box::new(
@@ -57,11 +57,11 @@ impl Arena {
                 ),
                 // North Plate Wall
                 Box::new(
-                    ArenaBarrier::new(vector![50.0, -5.0, 70.0], vector![30.0, 10.0, 5.0], Quaternion::identity(), BarrierPathing::Disabled)
+                    ArenaBarrier::new(vector![50.0, 0.0, 70.0], vector![30.0, 10.0, 5.0], Quaternion::identity(), BarrierPathing::Disabled)
                 ),
                 // South Plate Wall
                 Box::new(
-                    ArenaBarrier::new(vector![50.0, -5.0, 30.0], vector![30.0, 10.0, 5.0], Quaternion::identity(), BarrierPathing::Disabled)
+                    ArenaBarrier::new(vector![50.0, 0.0, 30.0], vector![30.0, 10.0, 5.0], Quaternion::identity(), BarrierPathing::Disabled)
                 ),
                 // Home Team Player 1 Start
                 Box::new(

@@ -62,7 +62,7 @@ impl CombatantObject {
             .active_events(ActiveEvents::COLLISION_EVENTS)
             .active_collision_types(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_FIXED | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
             .density(COMBATANT_MASS)
-            .position(Isometry3::translation(0.0, 2.0 * (COMBATANT_HALF_HEIGHT + COMBATANT_RADIUS), 0.0))
+            .position(Isometry3::translation(0.0, COMBATANT_HALF_HEIGHT, 0.0))
             .build();
 
         let rigid_body_handle = rigid_body_set.insert(rigid_body);

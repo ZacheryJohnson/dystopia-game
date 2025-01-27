@@ -19,13 +19,16 @@ pub mod simulation_event;
 pub fn simulate_tick(game_state: Arc<Mutex<GameState>>) -> GameTick {
     let pre_tick_timestamp = Instant::now();
 
-    let (current_tick, simulation_config) = {
+    let (current_tick, simulation_config, phys_duration) = {
         let mut game_state = game_state.lock().unwrap();
 
         game_state.current_tick += 1;
-        game_state.physics_sim.tick();
 
-        (game_state.current_tick, game_state.simulation_config.clone())
+        let pre_tick_timestamp = Instant::now();
+        game_state.physics_sim.tick();
+        let post_tick_timestamp = Instant::now();
+
+        (game_state.current_tick, game_state.simulation_config.clone(), post_tick_timestamp - pre_tick_timestamp)
     };
 
     let is_halftime = current_tick == simulation_config.ticks_per_half();
@@ -64,7 +67,7 @@ pub fn simulate_tick(game_state: Arc<Mutex<GameState>>) -> GameTick {
     GameTick {
         tick_number: current_tick,
         tick_performance: TickPerformance::new(
-            Duration::from_secs(0), // ZJ-TODO
+            phys_duration,
             balls_stage.execution_duration,
             combatants_stage.execution_duration,
             scoring_stage.execution_duration,
