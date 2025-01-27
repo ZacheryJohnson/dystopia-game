@@ -1,5 +1,4 @@
 use std::sync::{Arc, Mutex};
-use dys_satisfiable::SatisfiabilityTest;
 use crate::{ai::goals::goals, game_state::GameState};
 use crate::ai::belief::{BeliefSet, BeliefTest};
 use super::{action::Action, actions::actions, agent::Agent, goal::Goal};
@@ -70,7 +69,7 @@ fn make_plan(
 #[tracing::instrument(name = "planner::get_action_for_belief", skip_all, level = "trace")]
 fn get_action_for_belief<'a>(
     desired_belief: BeliefTest,
-    current_beliefs: &BeliefSet,
+    _: &BeliefSet,
     actions: &'a [Action]
 ) -> Option<&'a Action> {
     actions

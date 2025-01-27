@@ -1,3 +1,5 @@
+#![allow(non_snake_case)] // this shouldn't be necessary for enums?
+
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -68,7 +70,7 @@ impl BeliefSet {
                     entry.get_mut().push(*belief);
                 }
             },
-            Entry::Vacant(mut empty) => {
+            Entry::Vacant(empty) => {
                 empty.insert(beliefs.to_vec());
             }
         }

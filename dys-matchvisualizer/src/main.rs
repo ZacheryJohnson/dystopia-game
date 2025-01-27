@@ -378,9 +378,6 @@ fn update(
                 ball_vis.last_position = ball_vis.desired_location;
                 ball_vis.desired_location = Vec3::new(position.x, position.z, position.y);
             },
-            SimulationEvent::CombatantPickedUpBall { combatant_id, ball_id } => {
-                // ZJ-TODO
-            },
             SimulationEvent::CombatantPositionUpdate { combatant_id, position } => {
                 let (mut combatant_vis, _) = combatants_query.iter_mut()
                     .filter(|(combatant_vis, _)| combatant_vis.id == *combatant_id)
@@ -390,15 +387,7 @@ fn update(
                 combatant_vis.last_position = combatant_vis.desired_location;
                 combatant_vis.desired_location = Vec3::new(position.x, position.z, position.y);
             },
-            SimulationEvent::CombatantOnPlate { combatant_id, plate_id } => {},
-            SimulationEvent::CombatantOffPlate { combatant_id, plate_id } => {},
-            SimulationEvent::BallThrownAtEnemy { thrower_id, enemy_id, ball_id, ball_impulse_vector } => {},
-            SimulationEvent::BallThrownAtTeammate { thrower_id, teammate_id, ball_id, ball_impulse_vector } => {},
-            SimulationEvent::BallCollisionEnemy { thrower_id, enemy_id, ball_id } => {},
-            SimulationEvent::BallCollisionArena { thrower_id, original_target_id, ball_id } => {},
-            SimulationEvent::BallExplosion { ball_id, charge } => {},
-            SimulationEvent::BallExplosionForceApplied { ball_id, combatant_id, force_magnitude, force_direction } => {},
-            SimulationEvent::PointsScoredByCombatant { plate_id, combatant_id, points } => {},
+            _ => {}
         }
     }
 
@@ -427,7 +416,7 @@ fn display_mouse_hover(
     mut text_query: Query<&mut Text, With<DebugPositionText>>,
 ) {   
     let mut text = text_query.get_single_mut().expect("failed to get debug position text component");
-    text.sections[0].value = format!("");
+    text.sections[0].value = String::new();
 
     let Ok((camera, camera_global_transform)) = camera_query.get_single_mut() else {
         return;

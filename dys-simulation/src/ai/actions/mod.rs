@@ -1,7 +1,6 @@
 use std::sync::{Arc, Mutex};
 use dys_satisfiable::SatisfiableField;
 use crate::{ai::{action::ActionBuilder, belief::Belief, strategies::move_to_location::MoveToLocationStrategy}, game_objects::{combatant::CombatantObject, game_object::GameObject}, game_state::GameState};
-use crate::ai::agent::Agent;
 use crate::ai::belief::SatisfiableBelief;
 use super::{action::Action, strategies::{pick_up_ball::PickUpBallStrategy, throw_ball_at_target_location::ThrowBallAtTargetStrategy}};
 
@@ -110,7 +109,7 @@ pub fn actions(
                 .build()
         );
 
-        for (target_combatant_id, target_combatant) in combatants.clone() {
+        for (target_combatant_id, _) in combatants.clone() {
             // Don't try to throw a ball at ourselves
             if target_combatant_id == combatant.id {
                 continue;

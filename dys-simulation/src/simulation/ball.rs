@@ -1,9 +1,8 @@
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use rapier3d::{na::vector, prelude::*};
 
-use crate::{game_objects::{ball::{BallObject, BallState}, combatant::CombatantObject, game_object::GameObject, game_object_type::GameObjectType}, game_state::GameState, game_tick::GameTickNumber};
+use crate::{game_objects::{ball::{BallObject, BallState}, game_object::GameObject, game_object_type::GameObjectType}, game_state::GameState, game_tick::GameTickNumber};
 use crate::simulation::simulation_stage::SimulationStage;
 use super::{config::SimulationConfig, simulation_event::SimulationEvent};
 
@@ -132,6 +131,8 @@ fn explode(
             collider_handle,
             ball,
         );
+
+        events.extend(new_events);
     }
 
     events

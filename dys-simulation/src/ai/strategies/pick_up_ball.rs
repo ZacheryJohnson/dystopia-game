@@ -4,7 +4,6 @@ use dys_satisfiable::SatisfiableField;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::ball::BallId, game_state::GameState, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::{BeliefSet, SatisfiableBelief};
 use crate::game_objects::combatant::CombatantId;
-use crate::simulation::simulation_event::PendingSimulationTick;
 
 pub struct PickUpBallStrategy {
     self_combatant_id: CombatantId,

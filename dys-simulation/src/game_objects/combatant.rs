@@ -2,12 +2,10 @@ use std::{fmt::Debug, sync::{Arc, Mutex}};
 
 use dys_world::{arena::plate::PlateId, combatant::instance::CombatantInstance};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
-use rapier3d::prelude::*;
 use rapier3d::na::Isometry3;
 use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
 use crate::ai::sensor::{FieldOfViewSensor, Sensor};
-use crate::simulation::simulation_event::PendingSimulationTick;
 use super::{ball::BallId, game_object::GameObject};
 
 pub type CombatantId = u64;

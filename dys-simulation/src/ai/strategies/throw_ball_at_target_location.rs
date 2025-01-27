@@ -4,7 +4,6 @@ use rapier3d::{na::Vector3, prelude::*};
 use dys_satisfiable::SatisfiableField;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::{combatant::CombatantId, game_object::GameObject}, game_state::{GameState}, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::{BeliefSet, SatisfiableBelief};
-use crate::simulation::simulation_event::PendingSimulationTick;
 
 pub struct ThrowBallAtTargetStrategy {
     self_id: CombatantId,
@@ -34,7 +33,7 @@ impl Strategy for ThrowBallAtTargetStrategy {
         )
     }
 
-    fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool {
+    fn should_interrupt(&self, _: &BeliefSet) -> bool {
         false
     }
 

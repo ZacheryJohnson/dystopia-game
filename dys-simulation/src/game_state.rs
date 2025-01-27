@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, combatant_start::ArenaCombatantStart, feature::ArenaFeature, navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, plate::{ArenaPlate, PlateId}}, combatant::instance::CombatantInstanceId};
+use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, combatant_start::ArenaCombatantStart, feature::ArenaFeature, navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, plate::{ArenaPlate, PlateId}}};
 use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64;
 use rapier3d::prelude::*;

@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 use dys_satisfiable::SatisfiabilityTest;
 use crate::game_state::GameState;
-use crate::simulation::simulation_event::{PendingSimulationTick, SimulationEvent};
+use crate::simulation::simulation_event::SimulationEvent;
 
 use super::agent::Agent;
 use super::belief::{Belief, BeliefSatisfiabilityTest, BeliefSet, BeliefTest};
@@ -447,15 +447,15 @@ mod tests {
         impl Strategy for StrategyAlwaysIsComplete {
             fn name(&self) -> String { String::from("StrategyAlwaysIsComplete") }
 
-            fn can_perform(&self, owned_beliefs: &BeliefSet) -> bool { true }
+            fn can_perform(&self, _: &BeliefSet) -> bool { true }
 
-            fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool {
+            fn should_interrupt(&self, _: &BeliefSet) -> bool {
                 false
             }
             
             fn is_complete(&self) -> bool { true }
 
-            fn tick(&mut self, agent: &dyn Agent, game_state: Arc<Mutex<GameState>>) -> Option<Vec<SimulationEvent>> {
+            fn tick(&mut self, _: &dyn Agent, _: Arc<Mutex<GameState>>) -> Option<Vec<SimulationEvent>> {
                 None
             }
         }
@@ -464,15 +464,15 @@ mod tests {
         impl Strategy for StrategyNeverIsComplete {
             fn name(&self) -> String { String::from("StrategyNeverIsComplete") }
 
-            fn can_perform(&self, owned_beliefs: &BeliefSet) -> bool { true }
+            fn can_perform(&self, _: &BeliefSet) -> bool { true }
 
-            fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool {
+            fn should_interrupt(&self, _: &BeliefSet) -> bool {
                 false
             }
 
             fn is_complete(&self) -> bool { false }
 
-            fn tick(&mut self, agent: &dyn Agent, game_state: Arc<Mutex<GameState>>) -> Option<Vec<SimulationEvent>> {
+            fn tick(&mut self, _: &dyn Agent, _: Arc<Mutex<GameState>>) -> Option<Vec<SimulationEvent>> {
                 None
             }
         }

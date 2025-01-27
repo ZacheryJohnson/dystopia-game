@@ -1,7 +1,6 @@
 use std::sync::{Arc, Mutex};
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
-use crate::simulation::simulation_event::PendingSimulationTick;
 
 pub(in crate::ai) struct NoopStrategy;
 
@@ -14,7 +13,7 @@ impl Strategy for NoopStrategy {
         true
     }
 
-    fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool {
+    fn should_interrupt(&self, _: &BeliefSet) -> bool {
         false
     }
 

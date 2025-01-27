@@ -1,19 +1,12 @@
 use std::sync::{Arc, Mutex};
-use rand_distr::num_traits::Zero;
 use dys_world::arena::plate::PlateId;
 use rapier3d::prelude::*;
 use rapier3d::na::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
-use crate::ai::belief::Belief;
 use crate::game_objects::{ball::BallId, combatant::CombatantId};
 use crate::game_objects::ball::BallState;
 use crate::game_objects::game_object::GameObject;
 use crate::game_state::GameState;
-
-pub struct PendingSimulationTick {
-    simulation_event: SimulationEvent,
-    beliefs_upon_confirmation: Vec<Belief>,
-}
 
 /// SimulationEvents are any notable action that happens during a simulation.
 /// These events will be collected to form a recap of the game.
@@ -102,7 +95,7 @@ impl SimulationEvent {
                     .unwrap();
 
                 let old_position: &Vector3<f32> = combatant_rb.translation();
-                let difference_vector = (position - old_position);
+                let difference_vector = position - old_position;
                 let rotation = UnitQuaternion::face_towards(&difference_vector, &Vector3::y());
                 combatant_rb.set_translation(position, true);
 
@@ -163,7 +156,7 @@ impl SimulationEvent {
 
                 let ball_rigid_body_handle = {
                     let current_tick = game_state.current_tick;
-                    let mut ball_object = game_state.balls.get_mut(&ball_id).unwrap();
+                    let ball_object = game_state.balls.get_mut(&ball_id).unwrap();
                     ball_object.set_held_by(None, current_tick);
 
                     ball_object.rigid_body_handle().unwrap()
@@ -173,7 +166,7 @@ impl SimulationEvent {
                 let ball_rb = rigid_body_set.get_mut(ball_rigid_body_handle).unwrap();
                 ball_rb.apply_impulse(ball_impulse_vector, true);
             }
-            SimulationEvent::BallThrownAtTeammate { thrower_id, teammate_id, ball_id, ball_impulse_vector } => {
+            SimulationEvent::BallThrownAtTeammate { thrower_id, teammate_id: _, ball_id, ball_impulse_vector } => {
                 let mut game_state = game_state.lock().unwrap();
                 let combatant_object = game_state
                     .combatants
@@ -184,7 +177,7 @@ impl SimulationEvent {
 
                 let ball_rigid_body_handle = {
                     let current_tick = game_state.current_tick;
-                    let mut ball_object = game_state.balls.get_mut(&ball_id).unwrap();
+                    let ball_object = game_state.balls.get_mut(&ball_id).unwrap();
                     ball_object.set_held_by(None, current_tick);
 
                     ball_object.rigid_body_handle().unwrap()
@@ -203,7 +196,7 @@ impl SimulationEvent {
             SimulationEvent::BallCollisionArena { .. } => {
                 // ZJ-TODO: 'disable' ball
             }
-            SimulationEvent::BallExplosion { ball_id, charge } => {
+            SimulationEvent::BallExplosion { ball_id, charge: _ } => {
                 let mut game_state = game_state.lock().unwrap();
                 let current_tick = game_state.current_tick;
                 let ball_rigid_body_handle = game_state.balls.get(&ball_id).unwrap().rigid_body_handle().unwrap();
@@ -218,14 +211,13 @@ impl SimulationEvent {
                 }
 
                 {
-                    let mut ball_object = game_state.balls.get_mut(&ball_id).unwrap();
+                    let ball_object = game_state.balls.get_mut(&ball_id).unwrap();
                     ball_object.charge = 0.0;
                     ball_object.change_state(current_tick, BallState::Idle);
                 }
             }
-            SimulationEvent::BallExplosionForceApplied { ball_id, combatant_id, force_magnitude, force_direction } => {
+            SimulationEvent::BallExplosionForceApplied { ball_id: _, combatant_id, force_magnitude, force_direction } => {
                 let mut game_state = game_state.lock().unwrap();
-                let current_tick = game_state.current_tick;
                 let combatant_rigid_body_handle = game_state.combatants.get(&combatant_id).unwrap().rigid_body_handle;
                 let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
 

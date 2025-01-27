@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use rapier3d::geometry::ColliderHandle;
-use rapier3d::na::{vector, Isometry3, UnitQuaternion, Vector3};
+use rapier3d::na::{vector, Isometry3};
 use rapier3d::prelude::*;
 use crate::ai::belief::Belief;
 use crate::game_objects::game_object::GameObject;
@@ -138,7 +138,7 @@ impl Sensor for FieldOfViewSensor {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use rapier3d::na::{vector, Isometry3, Rotation3, UnitQuaternion, Vector3};
+    use rapier3d::na::vector;
     use rapier3d::prelude::*;
     use GameObjectType::Combatant;
     use crate::ai::belief::Belief;
@@ -246,9 +246,9 @@ mod tests {
             assert!(matches!(new_belief, Belief::CombatantPosition { combatant_id: 2, .. }));
         }
         {
-            let (mut rigid_body_set, _, _) = physics_sim.sets_mut();
+            let (rigid_body_set, _, _) = physics_sim.sets_mut();
             // Rotate combatant 1 around to face combatant 3
-            let mut combatant_1_rigid_body = rigid_body_set
+            let combatant_1_rigid_body = rigid_body_set
                 .get_mut(combatant_1.rigid_body_handle)
                 .unwrap();
 

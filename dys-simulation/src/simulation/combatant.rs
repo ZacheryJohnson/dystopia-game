@@ -16,7 +16,7 @@ pub(crate) fn simulate_combatants(
     };
 
     // Update combatants' sensors
-    for (_, mut combatant_object) in &mut combatants {
+    for (_, combatant_object) in &mut combatants {
         {
             let mut game_state = game_state.lock().unwrap();
             let active_colliders = game_state.active_colliders.clone();

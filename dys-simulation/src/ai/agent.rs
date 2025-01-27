@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use crate::{game_objects::combatant::CombatantObject, game_state::GameState, simulation::simulation_event::PendingSimulationTick};
+use crate::{game_objects::combatant::CombatantObject, game_state::GameState};
 use crate::simulation::simulation_event::SimulationEvent;
 use super::belief::BeliefSet;
 

@@ -1,10 +1,9 @@
 use std::sync::{Arc, Mutex};
 use dys_world::arena::navmesh::{ArenaNavmeshNode, ArenaNavmeshPath};
-use rapier3d::na::{Point3, Quaternion, UnitQuaternion, Vector3};
+use rapier3d::na::Point3;
 
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
-use crate::simulation::simulation_event::PendingSimulationTick;
 
 pub struct MoveToLocationStrategy {
     is_complete: bool,
@@ -47,7 +46,7 @@ impl Strategy for MoveToLocationStrategy {
         self.path.is_empty() || self.next_node.is_some()
     }
 
-    fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool {
+    fn should_interrupt(&self, _: &BeliefSet) -> bool {
         false
     }
 
@@ -100,7 +99,7 @@ impl Strategy for MoveToLocationStrategy {
         let mut total_distance_can_travel_this_tick = agent.combatant().combatant.lock().unwrap().move_speed();
 
         while total_distance_can_travel_this_tick > 0.0 {
-            let Some(mut next_node) = self.next_node else {
+            let Some(next_node) = self.next_node else {
                 break;
             };
     
