@@ -7,7 +7,6 @@ use ordered_float::{self, OrderedFloat};
 use petgraph::algo;
 use petgraph::visit::EdgeRef;
 use petgraph::graphmap::UnGraphMap;
-use rand::Rng;
 use rapier3d::prelude::*;
 use rapier3d::na::vector;
 
@@ -20,14 +19,6 @@ pub struct ArenaNavmeshConfig {
     /// If =1, there will be one navmesh node per unit, so a square arena of 20x20 units would have 400 navmesh nodes.
     /// If <1, there will be more than one navmesh node per unit.
     pub unit_resolution: f32,
-}
-
-impl Default for ArenaNavmeshConfig {
-    fn default() -> Self {
-        Self { 
-            unit_resolution: 1.0,
-        }
-    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -90,7 +81,7 @@ impl ArenaNavmeshPath {
 
 pub struct ArenaNavmesh {
     graph: UnGraphMap<ArenaNavmeshNode, f32>,
-    config: ArenaNavmeshConfig
+    config: ArenaNavmeshConfig,
 }
 
 impl ArenaNavmesh {
@@ -197,7 +188,7 @@ impl ArenaNavmesh {
 
         ArenaNavmesh {
             graph,
-            config
+            config,
         }
     }
 
@@ -228,32 +219,12 @@ impl ArenaNavmesh {
         // To introduce suboptimal pathing for combatants,
         // we'll add a random vector to A*'s normal heuristic algorithm of euclidean distance.
 
-        // Generate a random vector. This isn't a prod-ready solution, as this can produce illogical vectors
-        // (such as the exact opposite direction of where we want to go).
-        // We'd fix this by comparing the cross product of the random vector with the euclidean vector,
-        // and if a very small negative number, flipping the random vector (eg multiplying by -1).
-        let random_vector = vector![
-            rand::thread_rng().gen_range(-1.0..1.0),
-            0.0,
-            rand::thread_rng().gen_range(-1.0..1.0),
-        ].normalize();
-
-        // Generate a random amount of bias. This isn't a prod-ready solution, and should instead
-        // read the stats from the pathing combatant, where combatants with good "game sense" have a smaller factor
-        // (and thus are less affected by the potentially suboptimal vector).
-        let suboptimal_decision_bias_factor = rand::thread_rng().gen_range(0.0..1.0);
-        let suboptimal_bias_vector = random_vector * suboptimal_decision_bias_factor;
-
         let astar_result = algo::astar(
             &self.graph, 
             from, 
             |node| node.as_point() == to.as_point(), 
             |edge| *edge.weight(),
-            |node| {
-                let euclidean_vector = to.as_point() - node.as_point();
-                let scaled_suboptimal_vector = suboptimal_bias_vector * euclidean_vector.magnitude();
-                (euclidean_vector + scaled_suboptimal_vector).magnitude()
-            }
+            |node| (to.as_point() - node.as_point()).magnitude(),
         );
 
         let Some((_total_cost, path)) = astar_result else {
@@ -353,7 +324,7 @@ mod tests {
         let (test_arena, test_config) = test_defaults();
         let unit_resolution = test_config.unit_resolution;
 
-        let navmesh = ArenaNavmesh::new_from(test_arena, test_config);
+        let mut navmesh = ArenaNavmesh::new_from(test_arena, test_config);
 
         let start_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.0, 0.0, 1.0], unit_resolution).expect("failed to get start node");
         let end_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.0, 0.0, 5.0], unit_resolution).expect("failed to get end node");
@@ -370,7 +341,7 @@ mod tests {
         let (test_arena, test_config) = test_defaults();
         let unit_resolution = test_config.unit_resolution;
 
-        let navmesh = ArenaNavmesh::new_from(test_arena, test_config);
+        let mut navmesh = ArenaNavmesh::new_from(test_arena, test_config);
 
         let start_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.0, 0.0, 1.0], unit_resolution).expect("failed to get start node");
         let end_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![2.0, 0.0, 2.0], unit_resolution).expect("failed to get end node");
@@ -391,7 +362,7 @@ mod tests {
         test_config.unit_resolution = 0.5;
         let unit_resolution = test_config.unit_resolution;
 
-        let navmesh = ArenaNavmesh::new_from(test_arena, test_config);
+        let mut navmesh = ArenaNavmesh::new_from(test_arena, test_config);
 
         let start_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.0, 0.0, 1.0], unit_resolution).expect("failed to get start node");
         let end_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.0, 0.0, 5.0], unit_resolution).expect("failed to get end node");

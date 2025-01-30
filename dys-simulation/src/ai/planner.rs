@@ -143,7 +143,12 @@ mod tests {
             },
         };
         let simulation_config = SimulationConfig::default();
-        let arena_navmesh = ArenaNavmesh::new_from(game.schedule_game.arena.clone(), ArenaNavmeshConfig::default());
+        let arena_navmesh = ArenaNavmesh::new_from(
+            game.schedule_game.arena.clone(),
+            ArenaNavmeshConfig {
+                unit_resolution: 1.0
+            }
+        );
 
         Arc::new(Mutex::new(GameState {
             game,

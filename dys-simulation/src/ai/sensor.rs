@@ -138,6 +138,8 @@ impl Sensor for FieldOfViewSensor {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use rand::prelude::StdRng;
+    use rand::SeedableRng;
     use rapier3d::na::vector;
     use rapier3d::prelude::*;
     use GameObjectType::Combatant;
@@ -151,7 +153,7 @@ mod tests {
 
     #[test]
     fn should_see_combatant_directly_in_front() {
-        let world = Generator::new().generate_world();
+        let world = Generator::new().generate_world(&mut StdRng::from_entropy());
         let (combatant_1_instance, combatant_2_instance, combatant_3_instance) = {
             (world.combatants[0].clone(), world.combatants[1].clone(), world.combatants[2].clone())
         };

@@ -1,8 +1,10 @@
 use std::{sync::{Arc, Mutex}, time::Duration};
+use rand::prelude::StdRng;
 use dys_observability::logger::LoggerOptions;
 use dys_simulation::{game::Game, game_log::GameLog, generator::Generator};
 use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}};
 use tracing::Level;
+use rand::{random, SeedableRng};
 
 #[tokio::main]
 async fn main() {
@@ -13,8 +15,12 @@ async fn main() {
 
     dys_observability::logger::initialize(logger_options);
 
+    let seed: [u8; 32] = [13; 32];
+
     let generator = Generator::new();
-    let world = generator.generate_world();
+
+    let mut rng = StdRng::from_seed(seed);
+    let world = generator.generate_world(&mut rng);
 
     let away_team = world.teams.first().expect("failed to get away team from generated world").to_owned();
     let home_team = world.teams.get(1).expect("failed to get home team from generated world").to_owned();
@@ -28,7 +34,6 @@ async fn main() {
         date,
     };
     let game = Game { schedule_game };
-    let seed: [u8; 32] = [13; 32];
 
     let game_log = game.simulate_seeded(&seed);
     let game_log_artifact = postcard::to_allocvec(&game_log).expect("failed to serialize game log");

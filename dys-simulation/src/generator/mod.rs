@@ -1,12 +1,12 @@
 use std::sync::{Arc, Mutex};
 use rand::distributions::Distribution;
+use rand::Rng;
 use dys_world::combatant::instance::CombatantInstance;
 use dys_world::combatant::limb::{Limb, LimbModifier, LimbType};
 use dys_world::attribute::instance::AttributeInstance;
 use dys_world::attribute::attribute_type::AttributeType;
 use dys_world::team::instance::TeamInstance;
 use dys_world::world::World;
-use rand::rngs::ThreadRng;
 use rand::seq::SliceRandom;
 use rand_distr::Normal;
 
@@ -56,7 +56,7 @@ impl Generator {
         }
     }
 
-    fn generate_limbs(&self, rng: &mut ThreadRng) -> Vec<Limb> {
+    fn generate_limbs(&self, rng: &mut impl Rng) -> Vec<Limb> {
         let mut generate_value_around_fn = |mean| {
             let normal_distribution = Normal::new(mean, 3.0).unwrap();
             normal_distribution.sample(rng)
@@ -341,7 +341,7 @@ impl Generator {
         ]
     } 
 
-    fn generate_combatant(&self, id: u64, rng: &mut ThreadRng) -> CombatantInstance {
+    fn generate_combatant(&self, id: u64, rng: &mut impl Rng) -> CombatantInstance {
         let combatant_given_name = self.given_names.choose(rng).unwrap().to_owned();
         let combatant_surname = self.surnames.choose(rng).unwrap().to_owned();
 
@@ -358,26 +358,24 @@ impl Generator {
         }
     }
     
-    pub fn generate_combatants(&self, count: u64) -> Vec<Arc<Mutex<CombatantInstance>>> {
+    pub fn generate_combatants(&self, count: u64, rng: &mut impl Rng) -> Vec<Arc<Mutex<CombatantInstance>>> {
         let mut combatants = vec![];
-    
-        let mut thread_rng = rand::thread_rng();
 
         for i in 0..count {
-            let new_combatant = self.generate_combatant(i, &mut thread_rng);
+            let new_combatant = self.generate_combatant(i, rng);
             combatants.push(Arc::new(Mutex::new(new_combatant)));
         }
     
         combatants
     }
 
-    pub fn generate_world(&self) -> World {
+    pub fn generate_world(&self, rng: &mut impl Rng) -> World {
         // ZJ-TODO: this should be config driven
         let number_of_teams = 12;
         let players_per_team = 8;
         let total_combatants_to_generate = number_of_teams * players_per_team;
 
-        let combatants = self.generate_combatants(total_combatants_to_generate);
+        let combatants = self.generate_combatants(total_combatants_to_generate, rng);
         let teams = combatants
             .clone()
             .chunks(players_per_team as usize)

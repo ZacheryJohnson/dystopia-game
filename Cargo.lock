@@ -2031,6 +2031,7 @@ dependencies = [
  "dys-simulation",
  "dys-world",
  "postcard",
+ "rand",
  "serde",
  "tokio",
  "tracing",

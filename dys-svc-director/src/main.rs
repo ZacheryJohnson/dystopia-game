@@ -13,7 +13,8 @@ use dys_world::schedule::schedule_game::ScheduleGame;
 use dys_world::world::World;
 use serde::Serialize;
 
-use rand::{thread_rng, RngCore};
+use rand::{thread_rng, RngCore, SeedableRng};
+use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
@@ -52,7 +53,7 @@ async fn main() {
 
     tracing::info!("Starting server...");
 
-    let game_world = Arc::new(Mutex::new(dys_simulation::generator::Generator::new().generate_world()));
+    let game_world = Arc::new(Mutex::new(dys_simulation::generator::Generator::new().generate_world(&mut StdRng::from_entropy())));
     
     let world_state = WorldState {
         game_world: game_world.clone(),

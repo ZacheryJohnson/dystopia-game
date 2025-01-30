@@ -96,10 +96,7 @@ impl Game {
             }
         }
 
-        let game_state = game_state.lock().unwrap();
-        tracing::info!("Final score: {} - {}", game_state.away_points, game_state.home_points);
-
-        GameLog::from_ticks(ticks)
+        GameLog::from_ticks(ticks, game_state)
     }
 
     pub fn simulate(&self) -> GameLog {
@@ -119,14 +116,15 @@ impl Game {
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
-
+    use rand::prelude::StdRng;
+    use rand::SeedableRng;
     use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}};
 
     use crate::{game::Game, generator::Generator};
 
     #[test]
-    fn test_speed() {
-        let world = Generator::new().generate_world();
+    fn test_deterministic_simulations() {
+        let world = Generator::new().generate_world(&mut StdRng::from_entropy());
 
         let game = Game {
             schedule_game: ScheduleGame {
@@ -137,6 +135,10 @@ mod tests {
             },
         };
         let seed = &[0; 32];
-        let _ = game.simulate_seeded(seed);
+        let game_1 = game.simulate_seeded(seed);
+        let game_2 = game.simulate_seeded(seed);
+
+        assert_eq!(game_1.home_score(), game_2.home_score());
+        assert_eq!(game_1.away_score(), game_2.away_score());
     }
 }

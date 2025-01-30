@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, combatant_start::ArenaCombatantStart, feature::ArenaFeature, navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, plate::{ArenaPlate, PlateId}}};
-use rand::{Rng, SeedableRng};
+use rand::{random, SeedableRng};
 use rand_pcg::Pcg64;
 use rapier3d::prelude::*;
 
@@ -48,7 +48,7 @@ fn get_game_object_type_from_feature(feature: &dyn ArenaFeature) -> GameObjectTy
 
 impl GameState {
     pub fn from_game(game: Game) -> GameState {
-        let seed = rand::thread_rng().gen::<SeedT>();
+        let seed = random::<SeedT>();
         GameState::from_game_seeded(game, &seed)
     }
 
@@ -128,7 +128,12 @@ impl GameState {
             }
         }
 
-        let arena_navmesh = ArenaNavmesh::new_from(game.schedule_game.arena.clone(), ArenaNavmeshConfig::default());
+        let arena_navmesh = ArenaNavmesh::new_from(
+            game.schedule_game.arena.clone(),
+            ArenaNavmeshConfig {
+                unit_resolution: 1.0
+            }
+        );
 
         GameState {
             game,
