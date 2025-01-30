@@ -172,4 +172,8 @@ impl GameState {
             TeamAlignment::Away => away_combatants,
         }
     }
+
+    pub fn is_scoring_tick(&self) -> bool {
+        self.current_tick % self.simulation_config.ticks_per_second() == 0
+    }
 }

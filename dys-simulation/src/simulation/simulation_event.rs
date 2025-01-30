@@ -5,6 +5,7 @@ use rapier3d::na::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
 use crate::game_objects::{ball::BallId, combatant::CombatantId};
 use crate::game_objects::ball::BallState;
+use crate::game_objects::combatant::TeamAlignment;
 use crate::game_objects::game_object::GameObject;
 use crate::game_state::GameState;
 
@@ -236,7 +237,20 @@ impl SimulationEvent {
                     combatant_state.stunned_by_explosion = true;
                 }
             }
-            SimulationEvent::PointsScoredByCombatant { .. } => {}
+            SimulationEvent::PointsScoredByCombatant { plate_id, combatant_id, points } => {
+                // ZJ-TODO: double points if no other combatants are on the plate
+
+                let mut game_state = game_state.lock().unwrap();
+                assert!(game_state.is_scoring_tick());
+
+                let combatant_team = game_state.combatants.get_mut(&combatant_id).unwrap();
+
+                if combatant_team.team == TeamAlignment::Home {
+                    game_state.home_points += points as u16;
+                } else {
+                    game_state.away_points += points as u16;
+                }
+            }
         };
 
         true

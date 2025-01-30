@@ -30,6 +30,6 @@ impl CombatantInstance {
 
         // ZJ-TODO: tune this value
         // ZJ-TODO: factor in weight
-        dexterity / 35.0
+        dexterity / 50.0
     }
 }

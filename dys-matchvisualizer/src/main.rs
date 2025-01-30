@@ -3,6 +3,8 @@ use std::sync::{Arc, Mutex};
 use dys_simulation::{game_log::GameLog, game_objects::{ball::BallId, combatant::CombatantId}, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 
 use bevy::{math::{bounding::{Aabb2d, IntersectsVolume}, vec2}, prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}, window::PrimaryWindow};
+use bevy::sprite::Anchor;
+use bevy::text::Text2dBounds;
 use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_time::{Duration, Instant};
@@ -28,6 +30,9 @@ struct GameLogPerfText;
 #[derive(Component)]
 struct DebugPositionText;
 
+#[derive(Component)]
+struct CurrentScoreText;
+
 #[derive(Debug)]
 enum VisualizationMode {
     /// THe visualization will not progress
@@ -45,6 +50,8 @@ struct GameState {
     game_log: Option<GameLog>,
     current_tick: GameTickNumber,
     last_update_time: Instant,
+    home_score: u16,
+    away_score: u16,
     mode: VisualizationMode,
 }
 
@@ -103,6 +110,8 @@ pub fn initialize_with_canvas(
             game_log: None,
             current_tick: 0,
             last_update_time: Instant::now(),
+            home_score: 0,
+            away_score: 0,
             mode: VisualizationMode::Paused,
         })
         .add_systems(Startup, setup)
@@ -110,6 +119,7 @@ pub fn initialize_with_canvas(
             update,
             display_game_log_perf,
             display_mouse_hover,
+            display_current_score,
             try_reload_game_state.before(update),
         ))
         .run();
@@ -127,6 +137,8 @@ pub fn load_game_log(
         game_log: Some(game_log),
         current_tick: 0,
         last_update_time: Instant::now(),
+        home_score: 0,
+        away_score: 0,
         mode: VisualizationMode::Play,
     });
 }
@@ -187,6 +199,28 @@ fn setup(
             ..default()
         }),
         GameLogPerfText
+    ));
+
+    commands.spawn((
+        // Create a TextBundle that has a Text with a single section.
+        TextBundle::from_section(
+            // Accepts a `String` or any type that converts into a `String`, such as `&str`
+            "0 - 0",
+            TextStyle {
+                // This font is loaded and will be used instead of the default font.
+                font_size: 30.0,
+                ..default()
+            },
+        ) // Set the justification of the Text
+            .with_text_justify(JustifyText::Center)
+            // Set the style of the TextBundle itself.
+            .with_style(Style {
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(10.0),
+                justify_self: JustifySelf::Center,
+                ..default()
+            }),
+        CurrentScoreText
     ));
 }
 
@@ -313,10 +347,29 @@ fn setup_after_reload_game_log(
                             if home_team { 1.0 } else { 0.0 },
                             if home_team { 0.0 } else { 1.0 },
                         )),
-                        transform,
+                        transform: transform.clone(),
                         ..default()
                     },
-                ));
+                )).with_children(|builder| {
+                    // We'll inherit the x and y coords from the parent,
+                    // but we want this text to always be on top, and to be smooth
+                    let mut new_transform = Transform::default();
+                    new_transform.translation.z = 30.0;
+                    new_transform.scale *= 0.07;
+
+                    builder.spawn((
+                        Text2dBundle {
+                            text: Text::from_section(combatant_id.to_string(), TextStyle {
+                                font_size: 64.0,
+                                color: if home_team { Color::BLACK } else { Color::WHITE },
+                                ..Default::default()
+                            }),
+                            transform: new_transform,
+                            ..default()
+                        },
+                        VisualizationObject
+                    ));
+                });
             },
             _ => {}, // ZJ-TODO: we should assert if we have any unexpected events
         }
@@ -366,39 +419,53 @@ fn update(
     }
 
     game_state.current_tick += 1;
+    let mut new_home_score = game_state.home_score;
+    let mut new_away_score = game_state.away_score;
 
     let current_tick = game_state.current_tick;
-    let events_this_tick = 
     {
-        let game_log = game_state.game_log.as_ref().unwrap();
-        game_log.ticks().iter().nth(current_tick as usize).unwrap()
-    };
-        
-    for event in &events_this_tick.simulation_events {
-        match event {
-            SimulationEvent::ArenaObjectPositionUpdate { .. } => { /* no-op, nothing to move with arena objects currently - this may change if plates start moving */},
-            SimulationEvent::BallPositionUpdate { ball_id, position } => {
-                let (mut ball_vis, _) = balls_query.iter_mut()
-                    .filter(|(ball_vis, _)| ball_vis.id == *ball_id)
-                    .next()
-                    .unwrap();
+        let events_this_tick =
+            {
+                let game_log = game_state.game_log.as_ref().unwrap();
+                game_log.ticks().iter().nth(current_tick as usize).unwrap()
+            };
 
-                ball_vis.last_position = ball_vis.desired_location;
-                ball_vis.desired_location = Vec3::new(position.x, position.z, position.y);
-            },
-            SimulationEvent::CombatantPositionUpdate { combatant_id, position } => {
-                let (mut combatant_vis, _) = combatants_query.iter_mut()
-                    .filter(|(combatant_vis, _)| combatant_vis.id == *combatant_id)
-                    .next()
-                    .unwrap();
+        for event in &events_this_tick.simulation_events {
+            match event {
+                SimulationEvent::ArenaObjectPositionUpdate { .. } => { /* no-op, nothing to move with arena objects currently - this may change if plates start moving */},
+                SimulationEvent::BallPositionUpdate { ball_id, position } => {
+                    let (mut ball_vis, _) = balls_query.iter_mut()
+                        .filter(|(ball_vis, _)| ball_vis.id == *ball_id)
+                        .next()
+                        .unwrap();
 
-                combatant_vis.last_position = combatant_vis.desired_location;
-                combatant_vis.desired_location = Vec3::new(position.x, position.z, position.y);
-            },
-            _ => {}
+                    ball_vis.last_position = ball_vis.desired_location;
+                    ball_vis.desired_location = Vec3::new(position.x, position.z, position.y);
+                },
+                SimulationEvent::CombatantPositionUpdate { combatant_id, position } => {
+                    let (mut combatant_vis, _) = combatants_query.iter_mut()
+                        .filter(|(combatant_vis, _)| combatant_vis.id == *combatant_id)
+                        .next()
+                        .unwrap();
+
+                    combatant_vis.last_position = combatant_vis.desired_location;
+                    combatant_vis.desired_location = Vec3::new(position.x, position.z, position.y);
+                },
+                SimulationEvent::PointsScoredByCombatant { plate_id: _, combatant_id, points } => {
+                    let is_home_team = *combatant_id <= 5;
+                    if is_home_team {
+                        new_home_score = new_home_score + (*points as u16);
+                    } else {
+                        new_away_score = new_away_score + (*points as u16);
+                    }
+                },
+                _ => {}
+            }
         }
     }
 
+    game_state.home_score = new_home_score;
+    game_state.away_score = new_away_score;
     game_state.last_update_time = Instant::now();
 }
 
@@ -416,13 +483,12 @@ fn display_game_log_perf(
     text.sections[0].value = game_log.perf_string().replace("μ", "u") + format!(" (tick {})", game_state.current_tick).as_str();
 }
 
-
 fn display_mouse_hover(
     mut camera_query: Query<(&Camera, &GlobalTransform)>,
     vis_objects_query: Query<&Transform, Or<(With<CombatantVisualizer>, With<BallVisualizer>)>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut text_query: Query<&mut Text, With<DebugPositionText>>,
-) {   
+) {
     let mut text = text_query.get_single_mut().expect("failed to get debug position text component");
     text.sections[0].value = String::new();
 
@@ -457,10 +523,18 @@ fn display_mouse_hover(
         }
 
         text.sections[0].value = format!("({}, {}, {})",
-            vis_object_transform.translation.x.round(),
-            vis_object_transform.translation.y.round(),
-            vis_object_transform.translation.z.round(),
+                                         vis_object_transform.translation.x.round(),
+                                         vis_object_transform.translation.y.round(),
+                                         vis_object_transform.translation.z.round(),
         );
         return;
     }
+}
+
+fn display_current_score(
+    mut text_query: Query<&mut Text, With<CurrentScoreText>>,
+    game_state: Res<GameState>,
+) {
+    let mut text = text_query.get_single_mut().expect("failed to get current score text component");
+    text.sections[0].value = format!("{} - {}", game_state.home_score, game_state.away_score);
 }

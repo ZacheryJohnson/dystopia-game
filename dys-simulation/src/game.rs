@@ -96,6 +96,9 @@ impl Game {
             }
         }
 
+        let game_state = game_state.lock().unwrap();
+        tracing::info!("Final score: {} - {}", game_state.away_points, game_state.home_points);
+
         GameLog::from_ticks(ticks)
     }
 
