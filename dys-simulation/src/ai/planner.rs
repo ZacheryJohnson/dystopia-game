@@ -120,6 +120,7 @@ mod tests {
     use crate::{ai::{belief::Belief, goal::GoalBuilder, planner::next_best_goal, test_utils::{self, TestAgent}}, game::Game, game_state::GameState, physics_sim::PhysicsSim, simulation::config::SimulationConfig};
     use crate::ai::agent::Agent;
     use crate::ai::belief::SatisfiableBelief;
+    use crate::game_state::{BallsMapT, CollidersMapT, CombatantsMapT, PlatesMapT};
 
     fn make_test_agent() -> TestAgent {
         test_utils::TestAgent::new()
@@ -155,10 +156,10 @@ mod tests {
             seed: [0; 32],
             rng: Pcg64::from_seed([0; 32]),
             physics_sim: PhysicsSim::new(simulation_config.ticks_per_second()),
-            combatants: HashMap::new(),
-            balls: HashMap::new(),
-            plates: HashMap::new(),
-            active_colliders: HashMap::new(),
+            combatants: CombatantsMapT::new(),
+            balls: BallsMapT::new(),
+            plates: PlatesMapT::new(),
+            active_colliders: CollidersMapT::new(),
             home_points: 0,
             away_points: 0,
             current_tick: 0,

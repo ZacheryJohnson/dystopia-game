@@ -49,5 +49,7 @@ async fn main() {
         }
     }
 
+    tracing::info!("H {} - {} A", game_log.home_score(), game_log.away_score());
+
     tokio::time::sleep(Duration::from_secs(1)).await;
 }

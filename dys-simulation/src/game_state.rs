@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use indexmap::IndexMap;
 use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, combatant_start::ArenaCombatantStart, feature::ArenaFeature, navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, plate::{ArenaPlate, PlateId}}};
 use rand::{random, SeedableRng};
 use rand_pcg::Pcg64;
@@ -9,10 +8,14 @@ use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::{C
 use crate::game_objects::combatant::CombatantId;
 
 pub type SeedT = [u8; 32];
-pub type CombatantsMapT = HashMap<CombatantId, CombatantObject>;
-pub type BallsMapT = HashMap<BallId, BallObject>;
-pub type PlatesMapT = HashMap<PlateId, PlateObject>;
-pub type CollidersMapT = HashMap<ColliderHandle, GameObjectType>;
+
+// IndexMap is a crate that preserves order of insertions.
+// This is *critical* for ensuring that simulations are deterministic and repeatable.
+
+pub type CombatantsMapT = IndexMap<CombatantId, CombatantObject>;
+pub type BallsMapT = IndexMap<BallId, BallObject>;
+pub type PlatesMapT = IndexMap<PlateId, PlateObject>;
+pub type CollidersMapT = IndexMap<ColliderHandle, GameObjectType>;
 
 pub struct GameState {
     pub game: Game,
@@ -59,10 +62,10 @@ impl GameState {
         let mut physics_sim = PhysicsSim::new(simulation_config.ticks_per_second());
         let (rigid_body_set, collider_set, _) = physics_sim.sets_mut();
 
-        let mut active_colliders = HashMap::new();
-        let mut balls = HashMap::new();
-        let mut combatants = HashMap::new();
-        let mut plates = HashMap::new();
+        let mut active_colliders = CollidersMapT::new();
+        let mut balls = BallsMapT::new();
+        let mut combatants = CombatantsMapT::new();
+        let mut plates = PlatesMapT::new();
 
         {
             let arena = game.schedule_game.arena.lock().unwrap();

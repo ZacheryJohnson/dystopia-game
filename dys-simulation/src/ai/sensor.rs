@@ -5,7 +5,7 @@ use rapier3d::prelude::*;
 use crate::ai::belief::Belief;
 use crate::game_objects::game_object::GameObject;
 use crate::game_objects::game_object_type::GameObjectType;
-use crate::game_state::{BallsMapT, CombatantsMapT};
+use crate::game_state::{BallsMapT, CollidersMapT, CombatantsMapT};
 
 pub trait Sensor {
     fn set_enabled(&mut self, enabled: bool);
@@ -16,7 +16,7 @@ pub trait Sensor {
         query_pipeline: &QueryPipeline,
         rigid_body_set: &RigidBodySet,
         collider_set: &ColliderSet,
-        active_colliders: &HashMap<ColliderHandle, GameObjectType>,
+        active_colliders: &CollidersMapT,
         combatants: &CombatantsMapT,
         balls: &BallsMapT,
     ) -> Vec<Belief>;
@@ -65,7 +65,7 @@ impl Sensor for FieldOfViewSensor {
         query_pipeline: &QueryPipeline,
         rigid_body_set: &RigidBodySet,
         collider_set: &ColliderSet,
-        active_colliders: &HashMap<ColliderHandle, GameObjectType>,
+        active_colliders: &CollidersMapT,
         combatants: &CombatantsMapT,
         balls: &BallsMapT,
     ) -> Vec<Belief> {
@@ -147,7 +147,7 @@ mod tests {
     use crate::ai::sensor::{FieldOfViewSensor, Sensor};
     use crate::game_objects::combatant::{CombatantObject, TeamAlignment};
     use crate::game_objects::game_object_type::GameObjectType;
-    use crate::game_state::{CollidersMapT, CombatantsMapT};
+    use crate::game_state::{BallsMapT, CollidersMapT, CombatantsMapT};
     use crate::generator::Generator;
     use crate::physics_sim::PhysicsSim;
 
@@ -203,13 +203,13 @@ mod tests {
             // We must tick in order for the objects to be available in our tests
             physics_sim.tick();
 
-            let mut active_colliders: CollidersMapT = HashMap::new();
+            let mut active_colliders = CollidersMapT::new();
             let combatant_1_collider_handle = combatant_1.collider_handle.clone();
             active_colliders.insert(combatant_1.collider_handle, Combatant(combatant_1.id));
             active_colliders.insert(combatant_2.collider_handle, Combatant(combatant_2.id));
             active_colliders.insert(combatant_3.collider_handle, Combatant(combatant_3.id));
 
-            let mut combatants: CombatantsMapT = HashMap::new();
+            let mut combatants = CombatantsMapT::new();
             combatants.insert(combatant_1.id, combatant_1.clone());
             combatants.insert(combatant_2.id, combatant_2);
             combatants.insert(combatant_3.id, combatant_3);
@@ -238,7 +238,7 @@ mod tests {
                 collider_set,
                 &active_colliders,
                 &combatants,
-                &HashMap::default()
+                &BallsMapT::default()
             );
 
             assert_eq!(new_beliefs.len(), 1);
@@ -283,7 +283,7 @@ mod tests {
                 collider_set,
                 &active_colliders,
                 &combatants,
-                &HashMap::default()
+                &BallsMapT::default()
             );
 
             assert_eq!(new_beliefs.len(), 1);
