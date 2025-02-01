@@ -6,7 +6,7 @@ use crate::{game_objects::{ball::{BallObject, BallState}, game_object::GameObjec
 use crate::simulation::simulation_stage::SimulationStage;
 use super::{config::SimulationConfig, simulation_event::SimulationEvent};
 
-const CHARGE_FORCE_MODIFIER: f32 = 250.0;
+const CHARGE_FORCE_MODIFIER: f32 = 500.0;
 
 pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationStage {
     let start_time = Instant::now();
@@ -102,7 +102,7 @@ fn explode(
     };
     
     const EXPLOSION_CYLINDER_HEIGHT: f32 = 30.0;
-    let explosion_radius = ball.charge * 1.0; // ZJ-TODO: figure out explosion radius as compared to charge
+    let explosion_radius = ball.charge * 0.3; // ZJ-TODO: figure out explosion radius as compared to charge
     let explosion_shape = Cylinder::new(EXPLOSION_CYLINDER_HEIGHT, explosion_radius);
     let explosion_pos = Isometry::new(ball_pos, vector![0.0, 0.0, 0.0]);
     let query_filter = QueryFilter::only_dynamic()

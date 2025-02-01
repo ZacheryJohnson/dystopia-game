@@ -4,6 +4,7 @@ use rapier3d::{na::Vector3, prelude::*};
 use dys_satisfiable::SatisfiableField;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::{combatant::CombatantId, game_object::GameObject}, game_state::{GameState}, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::{BeliefSet, SatisfiableBelief};
+use crate::game_objects::ball::BallState;
 
 pub struct ThrowBallAtTargetStrategy {
     self_id: CombatantId,
@@ -103,6 +104,17 @@ impl Strategy for ThrowBallAtTargetStrategy {
         // ZJ-TODO: wait for some delay to simulate a "windup" for a throw - should we allow movement in a direction (eg crow hop)?
 
         self.is_complete = true;
+
+        {
+            let mut game_state = game_state.lock().unwrap();
+            let current_tick = game_state.current_tick;
+            let mut ball_object = game_state.balls.get_mut(&ball_id).unwrap();
+            ball_object.change_state(current_tick, BallState::ThrownAtTarget {
+                direction: ball_impulse_vector,
+                thrower_id: self.self_id,
+                target_id: self.target,
+            });
+        }
 
         Some(vec![
             if is_same_team {

@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use crate::{ai::{agent::Agent, sensor::Sensor}, game_state::GameState};
+use crate::simulation::simulation_event::SimulationEvent;
 use crate::simulation::simulation_stage::SimulationStage;
 
 pub(crate) fn simulate_combatants(
@@ -16,7 +17,7 @@ pub(crate) fn simulate_combatants(
     };
 
     // Update combatants' sensors
-    for (_, combatant_object) in &mut combatants {
+    for (combatant_id, combatant_object) in &mut combatants {
         {
             let mut game_state = game_state.lock().unwrap();
             let active_colliders = game_state.active_colliders.clone();
@@ -46,7 +47,27 @@ pub(crate) fn simulate_combatants(
             }
         }
 
-        events.append(&mut combatant_object.tick(game_state.clone()));
+        let mut combatant_events = combatant_object.tick(game_state.clone());
+
+        let maybe_position_update = combatant_events
+            .iter()
+            .find(|evt| matches!(evt, SimulationEvent::CombatantPositionUpdate {..}));
+
+        if maybe_position_update.is_none() {
+            let game_state = game_state.lock().unwrap();
+            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+            let combatant_translation = rigid_body_set
+                .get(combatant_object.rigid_body_handle)
+                .unwrap()
+                .translation();
+
+            events.push(SimulationEvent::CombatantPositionUpdate {
+                combatant_id: *combatant_id,
+                position: *combatant_translation,
+            });
+        }
+
+        events.append(&mut combatant_events);
     }
 
     SimulationStage {

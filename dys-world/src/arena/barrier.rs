@@ -55,6 +55,8 @@ impl ArenaFeature for ArenaBarrier {
 
     fn build_collider(&self) -> Option<Collider> {
         let collider = ColliderBuilder::new(self.shape.clone())
+            .density(10000.0)
+            .restitution(0.75)
             .build();
 
         Some(collider)

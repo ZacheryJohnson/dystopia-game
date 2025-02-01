@@ -103,9 +103,6 @@ impl SimulationEvent {
                 if rotation.axis_angle().is_some() {
                     combatant_rb.set_rotation(rotation, true);
                 }
-
-                // ZJ-TODO: investigate if using kinematic controllers would be better
-                // combatant_rb.set_next_kinematic_translation(new_combatant_position);
             }
             SimulationEvent::CombatantOnPlate { combatant_id, plate_id } => {
                 let mut game_state = game_state.lock().unwrap();
@@ -222,8 +219,6 @@ impl SimulationEvent {
                 let combatant_rigid_body_handle = game_state.combatants.get(&combatant_id).unwrap().rigid_body_handle;
                 let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
 
-                // ZJ_TODO: investigate kinematic rigid bodies
-
                 let combatant_rb = rigid_body_set
                     .get_mut(combatant_rigid_body_handle)
                     .unwrap();
@@ -232,9 +227,8 @@ impl SimulationEvent {
 
                 // ZJ-TODO: apply damage to limbs, etc
                 {
-                    let combatant_object = game_state.combatants.get_mut(&combatant_id).unwrap();
-                    let mut combatant_state = combatant_object.combatant_state.lock().unwrap();
-                    combatant_state.stunned_by_explosion = true;
+                    let mut combatant_object = game_state.combatants.get_mut(&combatant_id).unwrap();
+                    combatant_object.set_stunned(true);
                 }
             }
             SimulationEvent::PointsScoredByCombatant { plate_id, combatant_id, points } => {

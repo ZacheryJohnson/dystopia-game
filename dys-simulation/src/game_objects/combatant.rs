@@ -1,8 +1,9 @@
 use std::{fmt::Debug, sync::{Arc, Mutex}};
-
+use rand::RngCore;
 use dys_world::{arena::plate::PlateId, combatant::instance::CombatantInstance};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 use rapier3d::na::Isometry3;
+use dys_world::attribute::attribute_type::AttributeType;
 use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
 use crate::ai::sensor::{FieldOfViewSensor, Sensor};
@@ -12,7 +13,7 @@ pub type CombatantId = u64;
 
 const COMBATANT_HALF_HEIGHT: f32 = 2.0; // ZJ-TODO: this should be derived from the character's limbs
 const COMBATANT_RADIUS: f32 = 0.5; // ZJ-TODO: this should be derived from the character's limbs
-const COMBATANT_MASS: f32 = 150.0;
+const COMBATANT_MASS: f32 = 100.0;
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum TeamAlignment {
@@ -51,7 +52,7 @@ impl CombatantObject {
         rigid_body_set: &mut RigidBodySet,
         collider_set: &mut ColliderSet
     ) -> CombatantObject {
-        let rigid_body = RigidBodyBuilder::dynamic() // RigidBodyBuilder::kinematic_position_based()
+        let rigid_body = RigidBodyBuilder::dynamic()
             .translation(position)
             .enabled_rotations(false, true, false)
             .build();
@@ -162,6 +163,18 @@ impl CombatantObject {
             combatant_state.holding_ball
         }
     }
+
+    pub fn set_stunned(&mut self, stunned: bool) {
+        let mut combatant_state = self.combatant_state.lock().unwrap();
+        combatant_state.stunned_by_explosion = stunned;
+
+        // ZJ_TODO: make this a function `invalidate_plan`
+        //          we also do this in the action planner
+        if stunned {
+            combatant_state.plan.clear();
+            combatant_state.current_action = None;
+        }
+    }
 }
 
 impl GameObject for CombatantObject {
@@ -215,6 +228,22 @@ impl Agent for CombatantObject {
         game_state: Arc<Mutex<GameState>>,
     ) -> Vec<SimulationEvent> {
         let mut events = vec![];
+
+        if self.combatant_state.lock().unwrap().stunned_by_explosion {
+            let random_value = game_state.lock().unwrap().rng.next_u32() % 150;
+            let constitution = self
+                .combatant
+                .lock()
+                .unwrap()
+                .get_attribute_value(&AttributeType::Constitution)
+                .unwrap_or(0.0);
+
+            if constitution >= random_value as f32 {
+                self.combatant_state.lock().unwrap().stunned_by_explosion = false;
+            } else {
+                return events;
+            }
+        }
 
         let current_plan = {
             let combatant_state = self.combatant_state.lock().unwrap();
