@@ -9,10 +9,7 @@
     ]);
 
     onMounted(async () => {
-        const wasmFileContents = await (await fetch("/matchvisualizer_opt.wasm")).arrayBuffer();
-        const wasmModule = new WebAssembly.Module(wasmFileContents);
-
-        init(wasmModule)
+        init(await fetch("/matchvisualizer_opt.wasm"))
             .then(() => startGameThen(async () => { 
                 isWasmLoaded.value = true;
             }))
