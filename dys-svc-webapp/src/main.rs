@@ -1,6 +1,7 @@
 use std::convert::Infallible;
 
 use axum::{extract::Request, http::{header, HeaderValue, StatusCode}, middleware::{self, Next}, response::{IntoResponse, Response}, Router};
+use tokio::signal;
 use dys_observability::{logger::LoggerOptions, middleware::{make_span, map_trace_context, record_trace_id}};
 use tower::ServiceBuilder;
 use tower_http::{services::{ServeDir, ServeFile}, trace::TraceLayer};
@@ -113,5 +114,32 @@ async fn main() {
         );
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:6080").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .unwrap();
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => { tracing::warn!("received ctrl+c...") },
+        _ = terminate => { tracing::warn!("received terminate...") },
+    }
 }

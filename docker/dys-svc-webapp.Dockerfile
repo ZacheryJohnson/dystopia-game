@@ -87,4 +87,4 @@ RUN ls -la frontend
 
 WORKDIR /frontend/
 ENV BIN_CMD=$BIN_CMD
-CMD $BIN_CMD
+CMD [ "/dys-svc-webapp" ]
