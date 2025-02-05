@@ -44,6 +44,7 @@ rand = "0.8.5"
 rand_distr = "0.4.3"
 rand_pcg = "0.3.1"
 rapier3d = { version = "0.23.0", features = ["serde-serialize", "enhanced-determinism"] }
+redis = { version = "0.28.2", features = ["tokio-rustls-comp"] }
 reqwest = { version = "0.12.12", default-features = false, features = ["charset", "http2", "rustls-tls"] }
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = { version = "1.0.120" }
