@@ -1,0 +1,10 @@
+[package]
+name = "dys-datastore-valkey"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dys-datastore = { path = "../dys-datastore" }
+
+redis.workspace = true
+tokio.workspace = true
