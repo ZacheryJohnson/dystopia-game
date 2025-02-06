@@ -9,6 +9,5 @@ dys-simulation = { path = "../dys-simulation" }
 bevy.workspace = true
 once_cell.workspace = true
 postcard.workspace = true
-serde.workspace = true
 wasm-bindgen.workspace = true
 web-time.workspace = true

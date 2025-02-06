@@ -2,9 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use dys_simulation::{game_log::GameLog, game_objects::{ball::BallId, combatant::CombatantId}, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 
-use bevy::{math::{bounding::{Aabb2d, IntersectsVolume}, vec2}, prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}, window::PrimaryWindow};
-use bevy::sprite::Anchor;
-use bevy::text::Text2dBounds;
+use bevy::{math::{bounding::{Aabb2d, IntersectsVolume}, vec2}, prelude::*, sprite::{MeshMaterial2d}, window::PrimaryWindow};
 use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_time::{Duration, Instant};
@@ -146,80 +144,76 @@ pub fn load_game_log(
 fn setup(
     mut commands: Commands,
 ) {
-    commands.spawn(Camera2dBundle {
-        projection: OrthographicProjection {
+    commands.spawn((
+        Camera2d,
+        OrthographicProjection {
             near: -100.0, // Default sets this to zero, when it should be negative
             far: 1000.0,
             scale: 0.1667,
-            ..default()
+            viewport_origin: Default::default(),
+            scaling_mode: Default::default(),
+            area: Default::default(),
         },
-        transform: Transform::from_xyz(50.0, 50.0, 0.0),
-        ..default()
-    });
+        Transform::from_xyz(-50.0, -12.5, 0.0),
+    ));
 
     commands.spawn((
-        // Create a TextBundle that has a Text with a single section.
-        TextBundle::from_section(
-            // Accepts a `String` or any type that converts into a `String`, such as `&str`
-            "",
-            TextStyle {
-                // This font is loaded and will be used instead of the default font.
-                font_size: 50.0,
-                ..default()
-            },
-        ) // Set the justification of the Text
-        .with_text_justify(JustifyText::Center)
-        // Set the style of the TextBundle itself.
-        .with_style(Style {
-            position_type: PositionType::Absolute,
+        Text2d(String::new()),
+        TextFont {
+            font_size: 50.0,
+            ..default()
+        },
+        TextLayout::new_with_justify(JustifyText::Center),
+        Node {
+            position_type: PositionType::Relative,
             bottom: Val::Px(5.0),
             right: Val::Px(5.0),
             ..default()
-        }),
+        },
+        Transform {
+            scale: Vec3::splat(0.07),
+            ..Default::default()
+        },
         DebugPositionText
     ));
 
     commands.spawn((
-        // Create a TextBundle that has a Text with a single section.
-        TextBundle::from_section(
-            // Accepts a `String` or any type that converts into a `String`, such as `&str`
-            "",
-            TextStyle {
-                // This font is loaded and will be used instead of the default font.
-                font_size: 30.0,
-                ..default()
-            },
-        ) // Set the justification of the Text
-        .with_text_justify(JustifyText::Center)
-        // Set the style of the TextBundle itself.
-        .with_style(Style {
-            position_type: PositionType::Absolute,
+        Text2d(String::new()),
+        TextFont {
+            font_size: 30.0,
+            ..default()
+        },
+        TextLayout::new_with_justify(JustifyText::Center),
+        Node {
+            position_type: PositionType::Relative,
             top: Val::Px(5.0),
             left: Val::Px(5.0),
             ..default()
-        }),
+        },
+        Transform {
+            scale: Vec3::splat(0.07),
+            ..Default::default()
+        },
         GameLogPerfText
     ));
 
     commands.spawn((
-        // Create a TextBundle that has a Text with a single section.
-        TextBundle::from_section(
-            // Accepts a `String` or any type that converts into a `String`, such as `&str`
-            "0 - 0",
-            TextStyle {
-                // This font is loaded and will be used instead of the default font.
-                font_size: 30.0,
-                ..default()
-            },
-        ) // Set the justification of the Text
-            .with_text_justify(JustifyText::Center)
-            // Set the style of the TextBundle itself.
-            .with_style(Style {
-                position_type: PositionType::Absolute,
-                bottom: Val::Px(10.0),
-                justify_self: JustifySelf::Center,
-                ..default()
-            }),
+        Text2d(String::from("0 - 0")),
+        TextFont {
+           font_size: 30.0,
+           ..default()
+        },
+        TextLayout::new_with_justify(JustifyText::Center),
+        Node {
+            position_type: PositionType::Relative,
+            bottom: Val::Px(10.0),
+            justify_self: JustifySelf::Center,
+            ..default()
+        },
+        Transform {
+            scale: Vec3::splat(0.07),
+            ..Default::default()
+        },
         CurrentScoreText
     ));
 }
@@ -298,12 +292,9 @@ fn setup_after_reload_game_log(
                 commands.spawn((
                     VisualizationObject,
                     BarrierVisualizer, // ZJ-TODO: assuming barrier here, probably not the right idea
-                    MaterialMesh2dBundle {
-                        mesh: Mesh2dHandle(meshes.add(mesh_shape)),
-                        material: materials.add(color),
-                        transform,
-                        ..default()
-                    },
+                    Mesh2d(meshes.add(mesh_shape)),
+                    MeshMaterial2d(materials.add(color)),
+                    transform,
                 ));
             },
             SimulationEvent::BallPositionUpdate { ball_id, position } => {
@@ -318,12 +309,9 @@ fn setup_after_reload_game_log(
                 commands.spawn((
                     VisualizationObject,
                     BallVisualizer { id: *ball_id, desired_location: translation, last_position: translation },
-                    MaterialMesh2dBundle {
-                        mesh: Mesh2dHandle(meshes.add(Circle { radius: 1.0 })), // ZJ-TODO: read radius from ball object
-                        material: materials.add(Color::linear_rgb(0.75, 0.75, 0.0)),
-                        transform,
-                        ..default()
-                    },
+                    Mesh2d(meshes.add(Circle { radius: 1.0 })), // ZJ-TODO: read radius from ball object
+                    MeshMaterial2d(materials.add(Color::linear_rgb(0.75, 0.75, 0.0))),
+                    transform,
                 ));
             },
             SimulationEvent::CombatantPositionUpdate { combatant_id, position } => {
@@ -340,16 +328,13 @@ fn setup_after_reload_game_log(
                 commands.spawn((
                     VisualizationObject,
                     CombatantVisualizer { id: *combatant_id, desired_location: translation, last_position: translation },
-                    MaterialMesh2dBundle {
-                        mesh: Mesh2dHandle(meshes.add(Capsule2d::new(1.0, 2.0))), // ZJ-TODO: read radius
-                        material: materials.add(Color::linear_rgb(
-                            0.0,
-                            if home_team { 1.0 } else { 0.0 },
-                            if home_team { 0.0 } else { 1.0 },
-                        )),
-                        transform: transform.clone(),
-                        ..default()
-                    },
+                    Mesh2d(meshes.add(Capsule2d::new(1.0, 2.0))), // ZJ-TODO: read radius
+                    MeshMaterial2d(materials.add(Color::linear_rgb(
+                        0.0,
+                        if home_team { 1.0 } else { 0.0 },
+                        if home_team { 0.0 } else { 1.0 },
+                    ))),
+                    transform.clone(),
                 )).with_children(|builder| {
                     // We'll inherit the x and y coords from the parent,
                     // but we want this text to always be on top, and to be smooth
@@ -358,15 +343,13 @@ fn setup_after_reload_game_log(
                     new_transform.scale *= 0.07;
 
                     builder.spawn((
-                        Text2dBundle {
-                            text: Text::from_section(combatant_id.to_string(), TextStyle {
+                        Text2d(combatant_id.to_string()),
+                        TextFont {
                                 font_size: 64.0,
-                                color: if home_team { Color::BLACK } else { Color::WHITE },
                                 ..Default::default()
-                            }),
-                            transform: new_transform,
-                            ..default()
                         },
+                        TextColor(if home_team { Color::BLACK } else { Color::WHITE }),
+                        new_transform,
                         VisualizationObject
                     ));
                 });
@@ -471,7 +454,7 @@ fn update(
 
 fn display_game_log_perf(
     game_state: Res<GameState>,
-    mut text_query: Query<&mut Text, With<GameLogPerfText>>,
+    mut text_query: Query<&mut Text2d, With<GameLogPerfText>>,
 ) {
     let mut text = text_query.get_single_mut().expect("failed to get debug position text component");
     let Some(ref game_log) = game_state.game_log else {
@@ -480,17 +463,17 @@ fn display_game_log_perf(
 
     // Bevy default font doesn't display unicode (or at least 'μ')
     // Just replace with 'u'
-    text.sections[0].value = game_log.perf_string().replace("μ", "u") + format!(" (tick {})", game_state.current_tick).as_str();
+    text.0 = game_log.perf_string().replace("μ", "u") + format!(" (tick {})", game_state.current_tick).as_str();
 }
 
 fn display_mouse_hover(
     mut camera_query: Query<(&Camera, &GlobalTransform)>,
     vis_objects_query: Query<&Transform, Or<(With<CombatantVisualizer>, With<BallVisualizer>)>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
-    mut text_query: Query<&mut Text, With<DebugPositionText>>,
+    mut text_query: Query<&mut Text2d, With<DebugPositionText>>,
 ) {
     let mut text = text_query.get_single_mut().expect("failed to get debug position text component");
-    text.sections[0].value = String::new();
+    text.0 = String::new();
 
     let Ok((camera, camera_global_transform)) = camera_query.get_single_mut() else {
         return;
@@ -505,7 +488,7 @@ fn display_mouse_hover(
     };
 
     // use it to convert ndc to world-space coordinates
-    let Some(world_pos) =
+    let Ok(world_pos) =
         camera.viewport_to_world_2d(camera_global_transform, cursor_position)
     else {
         // Couldn't convert - mouse likely outside of window
@@ -522,19 +505,20 @@ fn display_mouse_hover(
             continue;
         }
 
-        text.sections[0].value = format!("({}, {}, {})",
-                                         vis_object_transform.translation.x.round(),
-                                         vis_object_transform.translation.y.round(),
-                                         vis_object_transform.translation.z.round(),
+        text.0 = format!(
+            "({}, {}, {})",
+            vis_object_transform.translation.x.round(),
+            vis_object_transform.translation.y.round(),
+            vis_object_transform.translation.z.round(),
         );
         return;
     }
 }
 
 fn display_current_score(
-    mut text_query: Query<&mut Text, With<CurrentScoreText>>,
+    mut text_query: Query<&mut Text2d, With<CurrentScoreText>>,
     game_state: Res<GameState>,
 ) {
     let mut text = text_query.get_single_mut().expect("failed to get current score text component");
-    text.sections[0].value = format!("{} - {}", game_state.home_score, game_state.away_score);
+    text.0 = format!("{} - {}", game_state.home_score, game_state.away_score);
 }
