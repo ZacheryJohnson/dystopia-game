@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use dys_simulation::{game_log::GameLog, game_objects::{ball::BallId, combatant::CombatantId}, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
+use dys_simulation::{game, game_log::GameLog, game_objects::{ball::BallId, combatant::CombatantId}, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 
 use bevy::{math::{bounding::{Aabb2d, IntersectsVolume}, vec2}, prelude::*, sprite::{MeshMaterial2d}, window::PrimaryWindow};
 use once_cell::sync::OnceCell;
@@ -16,8 +16,7 @@ fn main() {
 
     #[cfg(not(target_family="wasm"))]
     {
-        let game_log_bytes = include_bytes!("../data/game_log.bin");
-        load_game_log(game_log_bytes.to_vec());
+        restart_with_local_game_log();
         initialize_with_canvas(String::new());
     }
 }
@@ -31,7 +30,7 @@ struct DebugPositionText;
 #[derive(Component)]
 struct CurrentScoreText;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum VisualizationMode {
     /// THe visualization will not progress
     Paused,
@@ -118,9 +117,15 @@ pub fn initialize_with_canvas(
             display_game_log_perf,
             display_mouse_hover,
             display_current_score,
+            handle_keyboard_input,
             try_reload_game_state.before(update),
         ))
         .run();
+}
+
+fn restart_with_local_game_log() {
+    let game_log_bytes = include_bytes!("../data/game_log.bin");
+    load_game_log(game_log_bytes.to_vec());
 }
 
 #[wasm_bindgen(js_name = loadGameLog)]
@@ -131,13 +136,19 @@ pub fn load_game_log(
 
     let updated_game_state = UPDATED_GAME_STATE.get().unwrap();
 
+    #[cfg(not(target_family="wasm"))]
+    let visualization_mode = VisualizationMode::Step;
+
+    #[cfg(target_family="wasm")]
+    let visualization_mode = VisualizationMode::Play;
+
     updated_game_state.lock().unwrap().replace(GameState {
         game_log: Some(game_log),
         current_tick: 0,
         last_update_time: Instant::now(),
         home_score: 0,
         away_score: 0,
-        mode: VisualizationMode::Play,
+        mode: visualization_mode,
     });
 }
 
@@ -365,9 +376,7 @@ fn update(
     mut balls_query: Query<(&mut BallVisualizer, &mut Transform), Without<CombatantVisualizer>>,
     timer: Res<Time>,
 ) {
-    if !matches!(game_state.mode, VisualizationMode::Play) {
-        // Only play is support at the moment
-        // ZJ-TODO: add input checking to switch modes
+    if matches!(game_state.mode, VisualizationMode::Paused) {
         return;
     }
 
@@ -401,7 +410,10 @@ fn update(
         return;
     }
 
-    game_state.current_tick += 1;
+    if matches!(game_state.mode, VisualizationMode::Play) {
+        game_state.current_tick += 1;
+    }
+
     let mut new_home_score = game_state.home_score;
     let mut new_away_score = game_state.away_score;
 
@@ -521,4 +533,25 @@ fn display_current_score(
 ) {
     let mut text = text_query.get_single_mut().expect("failed to get current score text component");
     text.0 = format!("{} - {}", game_state.home_score, game_state.away_score);
+}
+
+fn handle_keyboard_input(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut game_state: ResMut<GameState>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Tab) && !matches!(game_state.mode, VisualizationMode::Play) {
+        game_state.mode = VisualizationMode::Step;
+        game_state.current_tick += 1;
+    }
+
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        game_state.mode = match &game_state.mode {
+            VisualizationMode::Play => VisualizationMode::Paused,
+            _ => VisualizationMode::Play,
+        }
+    }
+
+    if keyboard_input.just_pressed(KeyCode::KeyR) {
+        restart_with_local_game_log();
+    }
 }
