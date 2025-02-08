@@ -5,6 +5,7 @@ use dys_simulation::{game::Game, game_log::GameLog, generator::Generator};
 use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}};
 use tracing::Level;
 use rand::{random, SeedableRng};
+use rand_pcg::Pcg64;
 
 #[tokio::main]
 async fn main() {
@@ -19,7 +20,7 @@ async fn main() {
 
     let generator = Generator::new();
 
-    let mut rng = StdRng::from_seed(seed);
+    let mut rng = Pcg64::from_seed(seed);
     let world = generator.generate_world(&mut rng);
 
     let away_team = world.teams.first().expect("failed to get away team from generated world").to_owned();

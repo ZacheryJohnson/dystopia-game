@@ -1,0 +1,13 @@
+[package]
+name = "dys-tool-gamepeek"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dys-simulation = { path = "../dys-simulation" }
+dys-world = { path = "../dys-world" }
+
+eframe.workspace = true
+egui.workspace = true
+rand.workspace = true
+rand_pcg.workspace = true

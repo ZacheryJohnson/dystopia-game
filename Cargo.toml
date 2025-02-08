@@ -30,6 +30,8 @@ axum = "0.7.5"
 bevy = { version = "0.15.1", features = ["bevy_asset", "bevy_color", "bevy_core_pipeline", "bevy_render", "bevy_sprite", "bevy_state", "bevy_text", "default_font"] }
 crossbeam = "0.8.4"
 dyn-clone = "1.0"
+eframe = "0.31"
+egui = "0.31"
 indexmap = "2.7"
 once_cell = "1.19.0"
 opentelemetry = "0.24"
