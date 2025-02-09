@@ -84,7 +84,7 @@ impl BeliefSet {
         self.sourced_beliefs.remove(&source_id);
     }
 
-    fn beliefs(&self) -> Vec<Belief> {
+    pub fn beliefs(&self) -> Vec<Belief> {
         let sourced_beliefs = self.sourced_beliefs.values().flatten();
         self
             .unsourced_beliefs
