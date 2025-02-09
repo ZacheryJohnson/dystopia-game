@@ -33,8 +33,8 @@ pub struct CombatantObject {
 
 #[derive(Clone, Default, Debug)]
 pub struct CombatantState {
-    current_action: Option<Action>,
-    plan: Vec<Action>,
+    pub current_action: Option<Action>,
+    pub plan: Vec<Action>,
     pub beliefs: BeliefSet,
     pub field_of_view_sensors: Vec<(u32, FieldOfViewSensor)>,
 
@@ -54,6 +54,7 @@ impl CombatantObject {
     ) -> CombatantObject {
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation(position)
+            .gravity_scale(0.0)
             .enabled_rotations(false, true, false)
             .build();
         
@@ -240,6 +241,11 @@ impl Agent for CombatantObject {
 
             if constitution >= random_value as f32 {
                 self.combatant_state.lock().unwrap().stunned_by_explosion = false;
+                let mut game_state = game_state.lock().unwrap();
+                let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+                rigid_body_set.get_mut(self.rigid_body_handle).unwrap().set_linvel(
+                    Vector3::zeros(),
+                    true);
             } else {
                 return events;
             }

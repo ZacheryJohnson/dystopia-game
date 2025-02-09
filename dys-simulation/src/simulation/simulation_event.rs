@@ -145,12 +145,21 @@ impl SimulationEvent {
             }
             SimulationEvent::BallThrownAtEnemy { thrower_id, enemy_id: _, ball_id, ball_impulse_vector } => {
                 let mut game_state = game_state.lock().unwrap();
+                let current_tick = game_state.current_tick.to_owned();
+
                 let combatant_object = game_state
                     .combatants
                     .get_mut(&thrower_id)
                     .unwrap();
 
                 combatant_object.drop_ball();
+
+                let ball_object = game_state
+                    .balls
+                    .get_mut(&ball_id)
+                    .unwrap();
+
+                ball_object.set_held_by(None, current_tick);
 
                 let ball_rigid_body_handle = {
                     let current_tick = game_state.current_tick;
@@ -166,12 +175,21 @@ impl SimulationEvent {
             }
             SimulationEvent::BallThrownAtTeammate { thrower_id, teammate_id: _, ball_id, ball_impulse_vector } => {
                 let mut game_state = game_state.lock().unwrap();
+                let current_tick = game_state.current_tick.to_owned();
+
                 let combatant_object = game_state
                     .combatants
                     .get_mut(&thrower_id)
                     .unwrap();
 
                 combatant_object.drop_ball();
+
+                let ball_object = game_state
+                    .balls
+                    .get_mut(&ball_id)
+                    .unwrap();
+
+                ball_object.set_held_by(None, current_tick);
 
                 let ball_rigid_body_handle = {
                     let current_tick = game_state.current_tick;

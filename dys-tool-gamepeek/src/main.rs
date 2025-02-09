@@ -69,7 +69,9 @@ impl eframe::App for GamePeekApp {
                     game_state.simulation_config.ticks_per_game()
                 };
 
-                for i in 0..total_tick_count {
+                let manually_ticked_count = self.simmed_ticks.len() as u32;
+
+                for _ in manually_ticked_count..total_tick_count {
                     self.tick();
                 }
             }
@@ -77,10 +79,18 @@ impl eframe::App for GamePeekApp {
                 self.tick();
             }
 
+            let make_collapseable = |header: String| {
+                egui::CollapsingHeader::new(header)
+                    .default_open(self.combatant_filter.is_some())
+            };
+
             egui::ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
                 for tick in &self.simmed_ticks {
+                    // We don't want the tick collapseable to automatically open,
+                    // so use ui.collapsing instead.
+                    // All other collapseables should use make_collapseable
                     ui.collapsing(format!("Tick {}", tick.tick_number), |ui| {
-                        ui.collapsing("Simulation Events", |ui| {
+                        make_collapseable("Simulation Events".to_string()).show(ui, |ui| {
                             if self.combatant_filter.is_none() {
                                 for evt in &tick.simulation_events {
                                     ui.label(format!("{:?}", evt));
@@ -99,15 +109,45 @@ impl eframe::App for GamePeekApp {
                             }
                         });
 
-                        ui.collapsing("Combatants", |ui| {
-                            let states = self.combatant_states_by_tick.get(&tick.tick_number).unwrap();
-                            if self.combatant_filter.is_none() {
-                                for (combatant_id, combatant_state) in states {
-                                    ui.label(format!("{}: {:?}", combatant_id, combatant_state));
-                                }
+                        make_collapseable("Combatants".to_string()).show(ui, |ui| {
+                            let states = if self.combatant_filter.is_some() {
+                                let combatant_id = self.combatant_filter.unwrap();
+                                let combatant_state = self
+                                    .combatant_states_by_tick
+                                    .get(&tick.tick_number)
+                                    .unwrap()
+                                    .get(&combatant_id)
+                                    .unwrap();
+
+                                BTreeMap::from([(combatant_id, combatant_state.to_owned())])
                             } else {
-                                let state = states.get(&self.combatant_filter.unwrap()).unwrap();
-                                ui.label(format!("{}: {:?}", self.combatant_filter.unwrap(), state));
+                                self.combatant_states_by_tick.get(&tick.tick_number).unwrap().to_owned()
+                            };
+
+                            for (combatant_id, combatant_state) in states {
+                                make_collapseable(format!("{combatant_id}")).show(ui, |ui| {
+                                    ui.label(format!("On Plate: {:?}", combatant_state.on_plate));
+                                    ui.label(format!("Holding Ball: {:?}", combatant_state.holding_ball));
+                                    ui.label(format!("Is Stunned: {:?}", combatant_state.stunned_by_explosion));
+
+                                    make_collapseable("AI".to_string()).show(ui, |ui| {
+                                        let current_action_name = if combatant_state.current_action.is_some() {
+                                            combatant_state.current_action.unwrap().name()
+                                        } else {
+                                            String::from("(none)")
+                                        };
+
+                                        ui.label(format!("Current Action: {current_action_name}"));
+                                        for action in combatant_state.plan.iter().rev() {
+                                            ui.label(format!("Planned Action: {}", action.name()));
+                                        }
+                                        make_collapseable("Beliefs".to_string()).show(ui, |ui| {
+                                            for belief in &combatant_state.beliefs.beliefs() {
+                                                ui.label(format!("{:?}", belief));
+                                            }
+                                        });
+                                    });
+                                });
                             }
                         });
                     });
@@ -120,7 +160,7 @@ impl eframe::App for GamePeekApp {
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions::default();
 
-    let seed = [0; 32];
+    let seed = [13; 32];
     let generator = Generator::new();
     let world = generator.generate_world(&mut Pcg64::from_seed(seed.to_owned()));
 

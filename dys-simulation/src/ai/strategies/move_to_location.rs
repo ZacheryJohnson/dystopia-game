@@ -102,11 +102,17 @@ impl Strategy for MoveToLocationStrategy {
             let Some(next_node) = self.next_node else {
                 break;
             };
-    
-            let lerp_amount = total_distance_can_travel_this_tick.clamp(0.0, 1.0);
-            let updated_position = combatant_position.lerp(&next_node.as_vector(), lerp_amount);
-            let difference_vector = updated_position - combatant_position;
-            let distance_traveled = difference_vector.magnitude();
+
+            let difference_vector = next_node.as_vector() - combatant_position;
+            let (updated_position, distance_traveled) = {
+                if total_distance_can_travel_this_tick >= difference_vector.magnitude() {
+                    (next_node.as_vector(), difference_vector.magnitude())
+                } else {
+                    let partial_vector = difference_vector.normalize() * total_distance_can_travel_this_tick;
+
+                    (combatant_position + partial_vector, partial_vector.magnitude())
+                }
+            };
 
             if distance_traveled == 0.0 {
                 total_distance_can_travel_this_tick = 0.0;

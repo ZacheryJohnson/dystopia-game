@@ -35,8 +35,9 @@ fn make_plan(
         let mut desired_beliefs_remaining = goal.desired_beliefs();
 
         while let Some(desired_belief) = desired_beliefs_remaining.pop() {
-            let Some(action) = get_action_for_belief(desired_belief, &agent.beliefs(), &actions) else {
+            let Some(action) = get_action_for_belief(&desired_belief, &agent.beliefs(), &actions) else {
                 action_plan.clear();
+                desired_beliefs_remaining.push(desired_belief);
                 break;
             };
 
@@ -68,7 +69,7 @@ fn make_plan(
 
 #[tracing::instrument(name = "planner::get_action_for_belief", skip_all, level = "trace")]
 fn get_action_for_belief<'a>(
-    desired_belief: BeliefTest,
+    desired_belief: &BeliefTest,
     _: &BeliefSet,
     actions: &'a [Action]
 ) -> Option<&'a Action> {

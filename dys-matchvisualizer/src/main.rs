@@ -8,11 +8,11 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use web_time::{Duration, Instant};
 
 fn main() {
-    // Set the static memory to None for Option<GameState>,
+    // Set the static memory to None for Option<VisualizationState>,
     // indicating we have no game state to update within the Bevy app.
-    UPDATED_GAME_STATE.set(
+    UPDATED_VIS_STATE.set(
         Arc::new(Mutex::new(None))
-    ).expect("failed to set initial updated game state from web process");
+    ).expect("failed to set initial updated visualization state from web process");
 
     #[cfg(not(target_family="wasm"))]
     {
@@ -43,7 +43,7 @@ enum VisualizationMode {
 }
 
 #[derive(Debug, Resource)]
-struct GameState {
+struct VisualizationState {
     game_log: Option<GameLog>,
     current_tick: GameTickNumber,
     last_update_time: Instant,
@@ -55,11 +55,11 @@ struct GameState {
 /// This is quite the hack.
 /// 
 /// Once we start the Bevy app, we don't have a handle to the running process any more,
-/// and can't update the GameState resource in the standard Bevy ways.
+/// and can't update the VisualizationState resource in the standard Bevy ways.
 /// 
-/// To get around this, we have this static OnceCell, that holds an Arc<Mutex<Option<GameState>>>.
+/// To get around this, we have this static OnceCell, that holds an Arc<Mutex<Option<VisualizationState>>>.
 /// It is initialized in [initialize_with_canvas()] to hold a None value for the Option.
-static UPDATED_GAME_STATE: OnceCell<Arc<Mutex<Option<GameState>>>> = OnceCell::new();
+static UPDATED_VIS_STATE: OnceCell<Arc<Mutex<Option<VisualizationState>>>> = OnceCell::new();
 
 /// All objects in the simulation visualization will have this component.
 /// This allows us to easily clean up if the user wants to reload/leave the visualization.
@@ -103,7 +103,7 @@ pub fn initialize_with_canvas(
                 ..default()
             })
         )
-        .insert_resource(GameState {
+        .insert_resource(VisualizationState {
             game_log: None,
             current_tick: 0,
             last_update_time: Instant::now(),
@@ -118,7 +118,7 @@ pub fn initialize_with_canvas(
             display_mouse_hover,
             display_current_score,
             handle_keyboard_input,
-            try_reload_game_state.before(update),
+            try_reload_vis_state.before(update),
         ))
         .run();
 }
@@ -134,7 +134,7 @@ pub fn load_game_log(
 ) {
     let game_log: GameLog = postcard::from_bytes(&serialized_game_log).expect("failed to deserialize game log");
 
-    let updated_game_state = UPDATED_GAME_STATE.get().unwrap();
+    let updated_visualization_state = UPDATED_VIS_STATE.get().unwrap();
 
     #[cfg(not(target_family="wasm"))]
     let visualization_mode = VisualizationMode::Step;
@@ -142,7 +142,7 @@ pub fn load_game_log(
     #[cfg(target_family="wasm")]
     let visualization_mode = VisualizationMode::Play;
 
-    updated_game_state.lock().unwrap().replace(GameState {
+    updated_visualization_state.lock().unwrap().replace(VisualizationState {
         game_log: Some(game_log),
         current_tick: 0,
         last_update_time: Instant::now(),
@@ -229,19 +229,19 @@ fn setup(
     ));
 }
 
-fn try_reload_game_state(
+fn try_reload_vis_state(
     mut commands: Commands,
     meshes: ResMut<Assets<Mesh>>,
     materials: ResMut<Assets<ColorMaterial>>,
-    mut game_state: ResMut<GameState>,
+    mut vis_state: ResMut<VisualizationState>,
     entity_query: Query<Entity, With<VisualizationObject>>,
 ) {
     // If we don't have pending updated game state from WASM, abort early
-    let Some(updated_game_state) = UPDATED_GAME_STATE.get() else {
+    let Some(updated_vis_state) = UPDATED_VIS_STATE.get() else {
         return;
     };
 
-    let Some(new_game_state) = updated_game_state.lock().unwrap().take() else {
+    let Some(new_vis_state) = updated_vis_state.lock().unwrap().take() else {
         return;
     };
 
@@ -250,21 +250,21 @@ fn try_reload_game_state(
         commands.entity(entity).despawn();
     }
 
-    *game_state = new_game_state;
+    *vis_state = new_vis_state;
 
-    setup_after_reload_game_log(commands, meshes, materials, game_state);
+    setup_after_reload_game_log(commands, meshes, materials, vis_state);
 }
 
 fn setup_after_reload_game_log(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    game_state: ResMut<GameState>
+    vis_state: ResMut<VisualizationState>
 ) {
     // This function assumes we're setting up state from tick zero
     // Maybe there's a world where you can live-watch matches and want to join in some intermediate state, but that's not this world
-    assert!(game_state.current_tick == 0);
-    let game_log = game_state.game_log.as_ref().unwrap();
+    assert!(vis_state.current_tick == 0);
+    let game_log = vis_state.game_log.as_ref().unwrap();
     assert!(!game_log.ticks().is_empty());
 
     let tick_zero = game_log.ticks().iter().next().unwrap();
@@ -371,12 +371,12 @@ fn setup_after_reload_game_log(
 }
 
 fn update(
-    mut game_state: ResMut<GameState>,
+    mut vis_state: ResMut<VisualizationState>,
     mut combatants_query: Query<(&mut CombatantVisualizer, &mut Transform), Without<BallVisualizer>>,
     mut balls_query: Query<(&mut BallVisualizer, &mut Transform), Without<CombatantVisualizer>>,
     timer: Res<Time>,
 ) {
-    if matches!(game_state.mode, VisualizationMode::Paused) {
+    if matches!(vis_state.mode, VisualizationMode::Paused) {
         return;
     }
 
@@ -385,7 +385,7 @@ fn update(
     const TICKS_PER_SECOND: u64 = 10;
     const TIME_BETWEEN_TICKS_MILLIS: u64 = 1000 / TICKS_PER_SECOND;
     const TIME_BETWEEN_TICKS: Duration = Duration::from_millis(TIME_BETWEEN_TICKS_MILLIS);
-    let time_since_last_update = Instant::now() - game_state.last_update_time;
+    let time_since_last_update = Instant::now() - vis_state.last_update_time;
     let lerp_progress = ((time_since_last_update.as_millis() as u64 % 1000) as f32 / 100.0)
         .clamp(0.0, 1.0);
 
@@ -410,20 +410,19 @@ fn update(
         return;
     }
 
-    if matches!(game_state.mode, VisualizationMode::Play) {
-        game_state.current_tick += 1;
+    if matches!(vis_state.mode, VisualizationMode::Play) {
+        vis_state.current_tick += 1;
     }
 
-    let mut new_home_score = game_state.home_score;
-    let mut new_away_score = game_state.away_score;
+    let mut new_home_score = vis_state.home_score;
+    let mut new_away_score = vis_state.away_score;
 
-    let current_tick = game_state.current_tick;
+    let current_tick = vis_state.current_tick;
     {
-        let events_this_tick =
-            {
-                let game_log = game_state.game_log.as_ref().unwrap();
-                game_log.ticks().iter().nth(current_tick as usize).unwrap()
-            };
+        let events_this_tick = {
+            let game_log = vis_state.game_log.as_ref().unwrap();
+            game_log.ticks().iter().nth(current_tick as usize).unwrap()
+        };
 
         for event in &events_this_tick.simulation_events {
             match event {
@@ -434,7 +433,6 @@ fn update(
                         .next()
                         .unwrap();
 
-                    ball_vis.last_position = ball_vis.desired_location;
                     ball_vis.desired_location = Vec3::new(position.x, position.z, position.y);
                 },
                 SimulationEvent::CombatantPositionUpdate { combatant_id, position } => {
@@ -443,7 +441,6 @@ fn update(
                         .next()
                         .unwrap();
 
-                    combatant_vis.last_position = combatant_vis.desired_location;
                     combatant_vis.desired_location = Vec3::new(position.x, position.z, position.y);
                 },
                 SimulationEvent::PointsScoredByCombatant { plate_id: _, combatant_id, points } => {
@@ -459,23 +456,23 @@ fn update(
         }
     }
 
-    game_state.home_score = new_home_score;
-    game_state.away_score = new_away_score;
-    game_state.last_update_time = Instant::now();
+    vis_state.home_score = new_home_score;
+    vis_state.away_score = new_away_score;
+    vis_state.last_update_time = Instant::now();
 }
 
 fn display_game_log_perf(
-    game_state: Res<GameState>,
+    vis_state: Res<VisualizationState>,
     mut text_query: Query<&mut Text2d, With<GameLogPerfText>>,
 ) {
     let mut text = text_query.get_single_mut().expect("failed to get debug position text component");
-    let Some(ref game_log) = game_state.game_log else {
+    let Some(ref game_log) = vis_state.game_log else {
         return;
     };
 
     // Bevy default font doesn't display unicode (or at least 'μ')
     // Just replace with 'u'
-    text.0 = game_log.perf_string().replace("μ", "u") + format!(" (tick {})", game_state.current_tick).as_str();
+    text.0 = game_log.perf_string().replace("μ", "u") + format!(" (tick {})", vis_state.current_tick).as_str();
 }
 
 fn display_mouse_hover(
@@ -529,23 +526,23 @@ fn display_mouse_hover(
 
 fn display_current_score(
     mut text_query: Query<&mut Text2d, With<CurrentScoreText>>,
-    game_state: Res<GameState>,
+    vis_state: Res<VisualizationState>,
 ) {
     let mut text = text_query.get_single_mut().expect("failed to get current score text component");
-    text.0 = format!("{} - {}", game_state.home_score, game_state.away_score);
+    text.0 = format!("{} - {}", vis_state.home_score, vis_state.away_score);
 }
 
 fn handle_keyboard_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut game_state: ResMut<GameState>,
+    mut vis_state: ResMut<VisualizationState>,
 ) {
-    if keyboard_input.just_pressed(KeyCode::Tab) && !matches!(game_state.mode, VisualizationMode::Play) {
-        game_state.mode = VisualizationMode::Step;
-        game_state.current_tick += 1;
+    if keyboard_input.just_pressed(KeyCode::Tab) && !matches!(vis_state.mode, VisualizationMode::Play) {
+        vis_state.mode = VisualizationMode::Step;
+        vis_state.current_tick += 1;
     }
 
     if keyboard_input.just_pressed(KeyCode::Space) {
-        game_state.mode = match &game_state.mode {
+        vis_state.mode = match &vis_state.mode {
             VisualizationMode::Play => VisualizationMode::Paused,
             _ => VisualizationMode::Play,
         }
