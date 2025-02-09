@@ -56,6 +56,11 @@
         padding: 0;
         margin: 0 auto;
         display: block;
+        width: 70%;
+        max-width: 70%;
+        height: 50%;
+        max-height: 50%;
+        justify-content: center;
 
         /* Disable selecting the canvas */
         -webkit-touch-callout: none;

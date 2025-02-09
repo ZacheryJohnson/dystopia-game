@@ -5,7 +5,9 @@ use dys_world::arena::{navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, Arena};
 
 fn navmesh_simulation_benchmark(c: &mut Criterion) {    
     let arena = Arc::new(Mutex::new(Arena::new_with_testing_defaults()));
-    let config = ArenaNavmeshConfig::default();
+    let config = ArenaNavmeshConfig {
+        unit_resolution: 1.0,
+    };
     
     c.bench_function("navmesh_generation", |b| b.iter(|| {
         ArenaNavmesh::new_from(arena.clone(), config.clone());

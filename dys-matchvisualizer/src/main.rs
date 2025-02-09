@@ -3,9 +3,11 @@ use std::sync::{Arc, Mutex};
 use dys_simulation::{game, game_log::GameLog, game_objects::{ball::BallId, combatant::CombatantId}, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 
 use bevy::{math::{bounding::{Aabb2d, IntersectsVolume}, vec2}, prelude::*, sprite::{MeshMaterial2d}, window::PrimaryWindow};
+use bevy::render::camera::ScalingMode;
 use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_time::{Duration, Instant};
+use dys_simulation::game_objects::combatant::TeamAlignment::Home;
 
 fn main() {
     // Set the static memory to None for Option<VisualizationState>,
@@ -28,7 +30,13 @@ struct GameLogPerfText;
 struct DebugPositionText;
 
 #[derive(Component)]
-struct CurrentScoreText;
+struct MatchTimerText;
+
+#[derive(Component)]
+struct HomeTeamScoreText;
+
+#[derive(Component)]
+struct AwayTeamScoreText;
 
 #[derive(Clone, Debug)]
 enum VisualizationMode {
@@ -160,12 +168,15 @@ fn setup(
         OrthographicProjection {
             near: -100.0, // Default sets this to zero, when it should be negative
             far: 1000.0,
-            scale: 0.1667,
+            scale: 0.13,
             viewport_origin: Default::default(),
-            scaling_mode: Default::default(),
+            scaling_mode: ScalingMode::Fixed {
+                width: 1600.0,
+                height: 900.0,
+            },
             area: Default::default(),
         },
-        Transform::from_xyz(-50.0, -12.5, 0.0),
+        Transform::from_xyz(-50.0, -6.0, 0.0),
     ));
 
     commands.spawn((
@@ -174,11 +185,11 @@ fn setup(
             font_size: 50.0,
             ..default()
         },
-        TextLayout::new_with_justify(JustifyText::Center),
         Node {
-            position_type: PositionType::Relative,
-            bottom: Val::Px(5.0),
-            right: Val::Px(5.0),
+            position_type: PositionType::Absolute,
+            bottom: Val::Vw(2.0),
+            left: Val::Vw(50.0),
+            justify_content: JustifyContent::Center,
             ..default()
         },
         Transform {
@@ -194,11 +205,10 @@ fn setup(
             font_size: 30.0,
             ..default()
         },
-        TextLayout::new_with_justify(JustifyText::Center),
         Node {
             position_type: PositionType::Relative,
-            top: Val::Px(5.0),
-            left: Val::Px(5.0),
+            bottom: Val::Px(4.0),
+            left: Val::Px(50.0),
             ..default()
         },
         Transform {
@@ -209,23 +219,60 @@ fn setup(
     ));
 
     commands.spawn((
-        Text2d(String::from("0 - 0")),
+        Text2d(String::from("H")),
         TextFont {
-           font_size: 30.0,
-           ..default()
+            font_size: 60.0,
+            ..default()
         },
-        TextLayout::new_with_justify(JustifyText::Center),
         Node {
             position_type: PositionType::Relative,
-            bottom: Val::Px(10.0),
-            justify_self: JustifySelf::Center,
+            top: Val::Px(107.0),
+            left: Val::Px(30.0),
             ..default()
         },
         Transform {
             scale: Vec3::splat(0.07),
             ..Default::default()
         },
-        CurrentScoreText
+        HomeTeamScoreText
+    ));
+
+    commands.spawn((
+        Text2d(String::from("A")),
+        TextFont {
+            font_size: 60.0,
+            ..default()
+        },
+        Node {
+            position_type: PositionType::Relative,
+            top: Val::Px(107.0),
+            left: Val::Px(70.0),
+            ..default()
+        },
+        Transform {
+            scale: Vec3::splat(0.07),
+            ..Default::default()
+        },
+        AwayTeamScoreText
+    ));
+
+    commands.spawn((
+        Text2d(String::from("0:00")),
+        TextFont {
+            font_size: 60.0,
+            ..default()
+        },
+        Node {
+            position_type: PositionType::Relative,
+            top: Val::Px(107.0),
+            left: Val::Px(50.0),
+            ..default()
+        },
+        Transform {
+            scale: Vec3::splat(0.07),
+            ..Default::default()
+        },
+        MatchTimerText
     ));
 }
 
@@ -525,11 +572,37 @@ fn display_mouse_hover(
 }
 
 fn display_current_score(
-    mut text_query: Query<&mut Text2d, With<CurrentScoreText>>,
+    mut set: ParamSet<(
+        Query<&mut Text2d, With<HomeTeamScoreText>>,
+        Query<&mut Text2d, With<AwayTeamScoreText>>,
+        Query<&mut Text2d, With<MatchTimerText>>,
+    )>,
     vis_state: Res<VisualizationState>,
 ) {
-    let mut text = text_query.get_single_mut().expect("failed to get current score text component");
-    text.0 = format!("{} - {}", vis_state.home_score, vis_state.away_score);
+    const TICKS_PER_SECOND: u32 = 10;
+    {
+        let mut home_text_query = set.p0();
+        let mut home_text = home_text_query.get_single_mut().expect("failed to get home score text component");
+        home_text.0 = format!("{}", vis_state.home_score);
+    }
+
+    {
+        let mut away_text_query = set.p1();
+        let mut away_text = away_text_query.get_single_mut().expect("failed to get away score text component");
+        away_text.0 = format!("{}", vis_state.away_score);
+    }
+
+    {
+        let mut match_timer_text_query = set.p2();
+        let mut match_timer_text = match_timer_text_query.get_single_mut().expect("failed to get match timer text component");
+        let minutes_component = vis_state.current_tick / TICKS_PER_SECOND / 60;
+        let seconds_component = vis_state.current_tick / TICKS_PER_SECOND % 60;
+        match_timer_text.0 = format!(
+            "{}:{:02}",
+            minutes_component,
+            seconds_component,
+        );
+    }
 }
 
 fn handle_keyboard_input(
