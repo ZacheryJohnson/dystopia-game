@@ -54,7 +54,6 @@ impl CombatantObject {
     ) -> CombatantObject {
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation(position)
-            .gravity_scale(0.0)
             .enabled_rotations(false, true, false)
             .build();
         

@@ -54,9 +54,16 @@ impl ArenaFeature for ArenaBarrier {
     }
 
     fn build_collider(&self) -> Option<Collider> {
+        let restitution = if self.pathing == BarrierPathing::Disabled {
+            0.75
+        } else {
+            0.00
+        };
+
         let collider = ColliderBuilder::new(self.shape.clone())
             .density(10000.0)
-            .restitution(0.75)
+            .restitution(restitution)
+            .friction(0.85)
             .build();
 
         Some(collider)

@@ -26,22 +26,21 @@ pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationSta
         }
 
         if ball_object.is_dirty() {
-            let game_state = game_state.lock().unwrap();
-            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
-            let ball_rb = rigid_body_set.get(ball_object.rigid_body_handle().unwrap()).unwrap();
+            let mut game_state = game_state.lock().unwrap();
+            let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+            let ball_rb = rigid_body_set.get_mut(ball_object.rigid_body_handle().unwrap()).unwrap();
+
             events.push(SimulationEvent::BallPositionUpdate { ball_id, position: *ball_rb.translation() });
         }
     }
 
     {
-        // let mut game_state = game_state.lock().unwrap();
-        // for (ball_id, ball_object) in &mut game_state.balls {
-        //     // ZJ-TODO: move to simulation
-        //     decrease_charge(ball_object, &game_state.simulation_config);
-        //     // try_freeze_slow_moving_ball(game_state.current_tick, ball_object, ball_rb);
-        //
-        //
-        // }
+        let mut game_state = game_state.lock().unwrap();
+        let simulation_config = game_state.simulation_config.clone();
+
+        for (_, ball_object) in &mut game_state.balls {
+            decrease_charge(ball_object, &simulation_config);
+        }
     }
 
     SimulationStage {

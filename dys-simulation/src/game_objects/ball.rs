@@ -41,6 +41,7 @@ impl BallObject {
     pub fn new(id: BallId, creation_tick: GameTickNumber, position: Vector3<f32>, rigid_body_set: &mut RigidBodySet, collider_set: &mut ColliderSet) -> BallObject {
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation(position)
+            .lock_rotations()
             .build();
         
         let collider = ColliderBuilder::ball(BALL_RADIUS)
@@ -48,6 +49,7 @@ impl BallObject {
             .restitution(BALL_RESTITUTION)
             .restitution_combine_rule(CoefficientCombineRule::Min)
             .density(BALL_MASS)
+            .position(Isometry3::translation(0.0, BALL_RADIUS, 0.0))
             .build();
 
         let rigid_body_handle = rigid_body_set.insert(rigid_body);
