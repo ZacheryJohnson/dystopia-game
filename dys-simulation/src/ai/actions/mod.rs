@@ -120,6 +120,10 @@ pub fn actions(
                         .combatant_id(SatisfiableField::Exactly(combatant.id))
                         .ball_id(SatisfiableField::Exactly(ball_id))
                 ])
+                .prohibited(vec![
+                    SatisfiableBelief::HeldBall()
+                        .combatant_id(SatisfiableField::Exactly(combatant.id))
+                ])
                 .completion(vec![
                     Belief::HeldBall { ball_id, combatant_id: combatant.id },
                 ])

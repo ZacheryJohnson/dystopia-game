@@ -62,15 +62,16 @@ async fn main() {
     };
 
     let world_state_thread_copy = world_state.clone();
+    const SLEEP_DURATION: Duration = Duration::from_secs(5 * 60);
 
     tokio::spawn(async move {
         loop {
             tracing::info!("Executing simulations...");
             run_simulation(world_state_thread_copy.clone()).await;
 
-            // Sleep for 60 seconds before simulating more matches
-            tracing::info!("Sleeping for 60 seconds before simulating more matches...");
-            tokio::time::sleep(Duration::from_secs(60)).await;
+            // Sleep before simulating more matches
+            tracing::info!("Sleeping for {} seconds before simulating more matches...", SLEEP_DURATION.as_secs());
+            tokio::time::sleep(SLEEP_DURATION).await;
         }
     });
 
