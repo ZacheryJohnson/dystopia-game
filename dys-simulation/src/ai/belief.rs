@@ -9,6 +9,7 @@ use dys_satisfiable_macros::{Satisfiable};
 use crate::game_objects::ball::BallId;
 use crate::game_objects::combatant::CombatantId;
 use crate::game_objects::plate::PlateId;
+use crate::game_tick::GameTickNumber;
 
 /// Beliefs are an agent's understanding of the world.
 /// These aren't necessarily true statements about actual game state,
@@ -21,6 +22,7 @@ use crate::game_objects::plate::PlateId;
 /// and may choose to do any action.
 #[derive(Clone, Copy, Debug, PartialEq, Satisfiable)]
 pub enum Belief {
+    ScanningEnvironment,
     BallPosition { ball_id: BallId, position: Vector3<f32> },
     CombatantPosition { combatant_id: CombatantId, position: Vector3<f32> },
     PlatePosition { plate_id: PlateId, position: Vector3<f32> },
@@ -30,11 +32,45 @@ pub enum Belief {
     BallThrownAtCombatant { ball_id: BallId, thrower_id: CombatantId, target_id: CombatantId },
 }
 
+#[derive(Clone, Debug)]
+struct ExpiringBelief {
+    belief: Belief,
+    expires_on_tick: Option<GameTickNumber>,
+}
+
+impl ExpiringBelief {
+    pub fn new(belief: Belief, expires_on_tick: Option<GameTickNumber>) -> ExpiringBelief {
+        ExpiringBelief {
+            belief,
+            expires_on_tick,
+        }
+    }
+
+    pub fn from_beliefs<'a>(
+        beliefs: impl IntoIterator<Item = &'a Belief>,
+        expires_on_tick: Option<GameTickNumber>,
+    ) -> Vec<ExpiringBelief> {
+        let mut expiring = vec![];
+
+        for belief in beliefs.into_iter() {
+            expiring.push(ExpiringBelief::new(belief.to_owned(), expires_on_tick))
+        }
+
+        expiring
+    }
+}
+
+impl From<ExpiringBelief> for Belief {
+    fn from(value: ExpiringBelief) -> Self {
+        value.belief
+    }
+}
+
 /// BeliefSets are collections of beliefs that allow for tests against existing beliefs.
 #[derive(Clone, Default, Debug)]
 pub struct BeliefSet {
-    unsourced_beliefs: Vec<Belief>,
-    sourced_beliefs: HashMap<u32, Vec<Belief>>,
+    unsourced_beliefs: Vec<ExpiringBelief>,
+    sourced_beliefs: HashMap<u32, Vec<ExpiringBelief>>,
 }
 
 impl BeliefSet {
@@ -44,13 +80,25 @@ impl BeliefSet {
 
     pub fn from(beliefs: &[Belief]) -> BeliefSet {
         BeliefSet {
-            unsourced_beliefs: beliefs.to_vec(),
+            unsourced_beliefs: ExpiringBelief::from_beliefs(beliefs, None),
             sourced_beliefs: HashMap::new(),
         }
     }
 
+    pub fn expire_stale_beliefs(&mut self, current_tick: GameTickNumber) {
+        let retain_fn = |expiring_belief: &ExpiringBelief| {
+            expiring_belief.expires_on_tick.is_none() || current_tick < expiring_belief.expires_on_tick.unwrap()
+        };
+
+        self.unsourced_beliefs.retain(retain_fn);
+
+        self.sourced_beliefs.iter_mut().for_each(|(_, expiring_beliefs)| {
+            expiring_beliefs.retain(retain_fn);
+        });
+    }
+
     pub fn add_belief(&mut self, belief: Belief) {
-        self.unsourced_beliefs.push(belief)
+        self.unsourced_beliefs.push(ExpiringBelief::new(belief, None))
     }
 
     pub fn add_beliefs(&mut self, beliefs: &[Belief]) {
@@ -60,6 +108,15 @@ impl BeliefSet {
     }
 
     pub fn add_beliefs_from_source(&mut self, source_id: u32, beliefs: &[Belief]) {
+        self.add_expiring_beliefs_from_source(source_id, beliefs, None)
+    }
+
+    pub fn add_expiring_beliefs_from_source(
+        &mut self,
+        source_id: u32,
+        beliefs: &[Belief],
+        expires_on_tick: Option<GameTickNumber>,
+    ) {
         if beliefs.is_empty() {
             return;
         }
@@ -67,20 +124,33 @@ impl BeliefSet {
         match self.sourced_beliefs.entry(source_id) {
             Entry::Occupied(mut entry) => {
                 for belief in beliefs {
-                    entry.get_mut().push(*belief);
+                    let mut existing_beliefs = entry.get_mut();
+                    existing_beliefs.push(ExpiringBelief::new(belief.to_owned(), expires_on_tick));
                 }
             },
             Entry::Vacant(empty) => {
-                empty.insert(beliefs.to_vec());
+                empty.insert(ExpiringBelief::from_beliefs(beliefs, expires_on_tick));
             }
         }
     }
 
     pub fn remove_belief(&mut self, belief: Belief) {
-        self.unsourced_beliefs.retain(|b| b != &belief)
+        self.unsourced_beliefs.retain(|b| b.belief != belief)
     }
 
-    pub fn remove_beliefs_from_source(&mut self, source_id: u32,) {
+    pub fn remove_beliefs_by_test(&mut self, belief_test: impl SatisfiabilityTest<ConcreteT=Belief> + Debug) {
+        let retain_fn = |expiring_belief: &ExpiringBelief| {
+            let belief = expiring_belief.to_owned().belief;
+            !(belief_test.is_same_variant(&belief) && belief_test.satisfied_by(belief))
+        };
+
+        self.unsourced_beliefs.retain(retain_fn);
+        for (_, beliefs) in &mut self.sourced_beliefs  {
+            beliefs.retain(retain_fn);
+        }
+    }
+
+    pub fn remove_beliefs_from_source(&mut self, source_id: u32) {
         self.sourced_beliefs.remove(&source_id);
     }
 
@@ -91,8 +161,24 @@ impl BeliefSet {
             .clone()
             .iter()
             .chain(sourced_beliefs)
-            .map(|belief| belief.to_owned())
-            .collect()
+            .map(|belief| belief.belief.to_owned())
+            .collect::<Vec<Belief>>()
+    }
+
+    pub fn sourced_beliefs(&self) -> HashMap<u32, Vec<Belief>> {
+        let mut sourced_expiring_beliefs = self.sourced_beliefs.clone();
+        sourced_expiring_beliefs.insert(0, self.unsourced_beliefs.clone());
+        let mut sourced_beliefs = HashMap::new();
+        for (source, expiring_beliefs) in sourced_expiring_beliefs {
+            let mut beliefs = vec![];
+            for expiring_belief in expiring_beliefs {
+                beliefs.push(expiring_belief.into());
+            }
+
+            sourced_beliefs.insert(source, beliefs);
+        }
+
+        sourced_beliefs
     }
 
     #[tracing::instrument(

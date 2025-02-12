@@ -2450,6 +2450,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "crossbeam",
+ "dyn-clone",
  "dys-satisfiable",
  "dys-satisfiable-macros",
  "dys-world",

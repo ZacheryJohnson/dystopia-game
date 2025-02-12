@@ -11,6 +11,7 @@ pub(crate) fn simulate_combatants(
 
     let mut events = vec![];
 
+    let current_tick = game_state.lock().unwrap().current_tick.to_owned();
     let mut combatants = {
         let game_state = game_state.lock().unwrap();
         game_state.combatants.clone()
@@ -31,7 +32,15 @@ pub(crate) fn simulate_combatants(
 
             let combatant_isometry = combatant_object.forward_isometry(rigid_body_set);
 
-            for (sensor_id, sensor) in combatant_object.sensors() {
+            let sensors = {
+                let mut combatant_state = combatant_object.combatant_state.lock().unwrap();
+                combatant_state.beliefs.expire_stale_beliefs(current_tick);
+
+                combatant_state.sensors.iter()
+                    .map(|(id, sensor)| (id.to_owned(), sensor.to_owned()))
+                    .collect::<Vec<_>>()
+            };
+            for (sensor_id, sensor) in sensors {
                 let new_beliefs = sensor.sense(
                     &combatant_isometry,
                     query_pipeline,
@@ -42,8 +51,11 @@ pub(crate) fn simulate_combatants(
                     &balls);
 
                 let mut combatant_state = combatant_object.combatant_state.lock().unwrap();
-                combatant_state.beliefs.remove_beliefs_from_source(sensor_id);
-                combatant_state.beliefs.add_beliefs_from_source(sensor_id, &new_beliefs);
+                combatant_state.beliefs.add_expiring_beliefs_from_source(
+                    sensor_id,
+                    &new_beliefs,
+                    Some(current_tick + 12) // ZJ-TODO: sensors should define their own "memory" length
+                );
             }
         }
 

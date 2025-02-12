@@ -124,6 +124,7 @@ impl SimulationEvent {
             }
             SimulationEvent::CombatantPickedUpBall { combatant_id, ball_id } => {
                 let mut game_state = game_state.lock().unwrap();
+                let current_tick = game_state.current_tick.to_owned();
 
                 {
                     let combatant_object = game_state
@@ -135,7 +136,6 @@ impl SimulationEvent {
                 }
 
                 {
-                    let current_tick = game_state.current_tick;
                     let ball_object = game_state
                         .balls
                         .get_mut(&ball_id)
@@ -158,16 +158,8 @@ impl SimulationEvent {
                     .balls
                     .get_mut(&ball_id)
                     .unwrap();
-
                 ball_object.set_held_by(None, current_tick);
-
-                let ball_rigid_body_handle = {
-                    let current_tick = game_state.current_tick;
-                    let ball_object = game_state.balls.get_mut(&ball_id).unwrap();
-                    ball_object.set_held_by(None, current_tick);
-
-                    ball_object.rigid_body_handle().unwrap()
-                };
+                let ball_rigid_body_handle = ball_object.rigid_body_handle().unwrap();
 
                 let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
                 let ball_rb = rigid_body_set.get_mut(ball_rigid_body_handle).unwrap();
@@ -188,16 +180,8 @@ impl SimulationEvent {
                     .balls
                     .get_mut(&ball_id)
                     .unwrap();
-
                 ball_object.set_held_by(None, current_tick);
-
-                let ball_rigid_body_handle = {
-                    let current_tick = game_state.current_tick;
-                    let ball_object = game_state.balls.get_mut(&ball_id).unwrap();
-                    ball_object.set_held_by(None, current_tick);
-
-                    ball_object.rigid_body_handle().unwrap()
-                };
+                let ball_rigid_body_handle = ball_object.rigid_body_handle().unwrap();
 
                 let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
                 let ball_rb = rigid_body_set.get_mut(ball_rigid_body_handle).unwrap();

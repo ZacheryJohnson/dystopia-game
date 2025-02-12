@@ -34,6 +34,9 @@ pub struct Action {
 
     /// Concrete beliefs applied once the action completes successfully.
     completion_beliefs: Vec<Belief>,
+
+    /// Beliefs that will be consumed upon completing the action
+    consumed_beliefs: Vec<BeliefTest>,
 }
 
 impl Action {
@@ -125,6 +128,8 @@ impl Action {
     pub fn prerequisite_beliefs(&self) -> &Vec<BeliefTest> {
         &self.prerequisite_beliefs
     }
+
+    pub fn consumed_beliefs(&self) -> &Vec<BeliefTest> { &self.consumed_beliefs }
 }
 
 impl Debug for Action {
@@ -137,6 +142,7 @@ impl Debug for Action {
             .field("prohibited_beliefs", &self.prohibited_beliefs)
             .field("completion_beliefs", &self.completion_beliefs)
             .field("promised_beliefs", &self.promised_beliefs)
+            .field("consumed_beliefs", &self.consumed_beliefs)
             .finish()
     }
 }
@@ -156,6 +162,7 @@ impl ActionBuilder {
                 prohibited_beliefs: vec![],
                 completion_beliefs: vec![],
                 promised_beliefs: vec![],
+                consumed_beliefs: vec![],
             }
         }
     }
@@ -212,6 +219,11 @@ impl ActionBuilder {
 
     pub fn promised(mut self, beliefs: impl IntoIterator<Item = Belief>) -> Self {
         self.action.promised_beliefs = beliefs.into_iter().collect();
+        self
+    }
+
+    pub fn consumes(mut self, belief: impl BeliefSatisfiabilityTest + 'static) -> Self {
+        self.action.consumed_beliefs.push(BeliefTest::new(belief));
         self
     }
 }

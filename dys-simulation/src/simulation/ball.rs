@@ -178,10 +178,9 @@ fn decrease_charge(ball: &mut BallObject, simulation_config: &SimulationConfig) 
 }
 
 fn try_freeze_slow_moving_ball(current_tick: GameTickNumber, ball_object: &mut BallObject, ball_rb: &mut RigidBody) {
-    match ball_object.state {
-        BallState::Explode | BallState::Held { .. } => return,
-        _ => (),
-    };
+    if !matches!(ball_object.state, BallState::Idle) {
+        return;
+    }
 
     const KINETIC_ENERGY_THRESHOLD: f32 = 3.0;
     if ball_rb.kinetic_energy() >= KINETIC_ENERGY_THRESHOLD {

@@ -28,6 +28,9 @@ fn make_plan(
 ) -> Vec<Action> {
     tracing::debug!("Planning for combatant {} with beliefs {:?}", agent.combatant().id, agent.beliefs());
 
+    let combatant_id = agent.combatant().id;
+    let current_tick = game_state.lock().unwrap().current_tick.to_owned();
+
     for goal in next_best_goal(agent, game_state, goals) {
         tracing::debug!("Considering goal {}", goal.name());
 
@@ -43,6 +46,7 @@ fn make_plan(
 
             tracing::debug!("Selecting action {}", action.name());
             for newly_desired_belief in action.prerequisite_beliefs() {
+                let xd = format!("{:#?} {:#?}", agent.beliefs(), newly_desired_belief);
                 if !agent.beliefs().can_satisfy(newly_desired_belief.to_owned()) {
                     desired_beliefs_remaining.push(newly_desired_belief.to_owned());
                     tracing::debug!("Adding new desired belief {:?}", newly_desired_belief);

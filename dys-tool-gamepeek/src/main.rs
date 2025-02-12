@@ -137,13 +137,22 @@ impl eframe::App for GamePeekApp {
                                             String::from("(none)")
                                         };
 
+                                        let completed_action_name = if combatant_state.completed_action.is_some() {
+                                            combatant_state.completed_action.unwrap().name()
+                                        } else {
+                                            String::from("(none)")
+                                        };
+
+                                        ui.label(format!("Completed Action: {completed_action_name}"));
                                         ui.label(format!("Current Action: {current_action_name}"));
                                         for action in combatant_state.plan.iter().rev() {
                                             ui.label(format!("Planned Action: {}", action.name()));
                                         }
                                         make_collapseable("Beliefs".to_string()).show(ui, |ui| {
-                                            for belief in &combatant_state.beliefs.beliefs() {
-                                                ui.label(format!("{:?}", belief));
+                                            for (source, beliefs) in &combatant_state.beliefs.sourced_beliefs() {
+                                                for belief in beliefs {
+                                                    ui.label(format!("({source}) {:?}", belief));
+                                                }
                                             }
                                         });
                                     });

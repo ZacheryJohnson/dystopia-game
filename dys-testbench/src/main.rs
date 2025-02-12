@@ -44,13 +44,10 @@ async fn main() {
     let parsed_game_log: GameLog = postcard::from_bytes(&parsed_game_log_contents).expect("failed to serialize game log artifact into a game log");
     tracing::info!("{}", parsed_game_log.perf_string());
     for tick in parsed_game_log.ticks() {
-        if tick.tick_number < 100 {
-            tracing::debug!("Tick {}: {}", tick.tick_number, tick.tick_performance().perf_string());
-        }
+        tracing::debug!("Tick {}: {}", tick.tick_number, tick.tick_performance().perf_string());
+
         for evt in &tick.simulation_events {
-            if tick.tick_number < 100 {
-                tracing::debug!("\t{:?}", evt);
-            }
+            tracing::debug!("\t{:?}", evt);
         }
     }
 

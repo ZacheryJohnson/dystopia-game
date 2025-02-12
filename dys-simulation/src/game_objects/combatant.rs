@@ -6,7 +6,9 @@ use rapier3d::na::Isometry3;
 use dys_world::attribute::attribute_type::AttributeType;
 use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
-use crate::ai::sensor::{FieldOfViewSensor, Sensor};
+use crate::ai::sensor::Sensor;
+use crate::ai::sensors::field_of_view::FieldOfViewSensor;
+use crate::ai::sensors::proximity::ProximitySensor;
 use super::{ball::BallId, game_object::GameObject};
 
 pub type CombatantId = u64;
@@ -33,10 +35,11 @@ pub struct CombatantObject {
 
 #[derive(Clone, Default, Debug)]
 pub struct CombatantState {
+    pub completed_action: Option<Action>,
     pub current_action: Option<Action>,
     pub plan: Vec<Action>,
     pub beliefs: BeliefSet,
-    pub field_of_view_sensors: Vec<(u32, FieldOfViewSensor)>,
+    pub sensors: Vec<(u32, Box<dyn Sensor>)>,
 
     pub on_plate: Option<PlateId>,
     pub holding_ball: Option<BallId>,
@@ -72,6 +75,12 @@ impl CombatantObject {
             SIGHT_DISTANCE, collider_handle
         );
 
+        // ZJ-TODO: determine this based on limbs
+        let proximity_radius = COMBATANT_RADIUS * 2.0;
+        let proximity_sensor = ProximitySensor::new(
+            id, COMBATANT_HALF_HEIGHT * 2.0, proximity_radius, collider_handle
+        );
+
         CombatantObject {
             id,
             combatant,
@@ -79,24 +88,16 @@ impl CombatantObject {
                 on_plate: None,
                 holding_ball: None,
                 current_action: None,
+                completed_action: None,
                 plan: vec![],
                 beliefs: BeliefSet::empty(),
-                field_of_view_sensors: vec![(1, field_of_view_sensor)],
+                sensors: vec![(1, Box::new(field_of_view_sensor)), (2, Box::new(proximity_sensor))],
                 stunned_by_explosion: false,
             })),
             team,
             rigid_body_handle,
             collider_handle,
         }
-    }
-
-    pub fn sensors(&self) -> Vec<(u32, impl Sensor)> {
-        let combatant_state = self.combatant_state.lock().unwrap();
-        combatant_state
-            .field_of_view_sensors
-            .iter()
-            .map(|ref_item| ref_item.to_owned())
-            .collect()
     }
 
     /// Gets the "forward" isometry for the current combatant.
@@ -297,9 +298,9 @@ impl Agent for CombatantObject {
             return vec![];
         }
 
-        tracing::debug!("Executing action {}", action.name());
+        tracing::debug!("Combatant {} - executing action {}", self.id, action.name());
 
-        let Some(action_result_events) = action.tick(self, game_state) else {
+        let Some(action_result_events) = action.tick(self, game_state.clone()) else {
             tracing::debug!("Failed to execute action (the world state may have changed) - setting current action to None to replan next tick");
             return vec![];
         };
@@ -309,12 +310,19 @@ impl Agent for CombatantObject {
         if !action.is_complete(&self.beliefs()) {
             // The action is not complete - set it to the same action again
             let mut combatant_state = self.combatant_state.lock().unwrap();
+            combatant_state.completed_action = None;
             combatant_state.current_action = Some(action);
         } else {
             tracing::debug!("Action {} complete - rewarding completion beliefs", action.name());
 
             let mut combatant_state = self.combatant_state.lock().unwrap();
+            combatant_state.completed_action = Some(action.to_owned());
             combatant_state.beliefs.add_beliefs(&mut action.completion_beliefs().to_owned());
+
+            for consumed_belief in action.consumed_beliefs() {
+                tracing::debug!("Consuming beliefs satisfying {consumed_belief:?}");
+                combatant_state.beliefs.remove_beliefs_by_test(consumed_belief.to_owned());
+            }
         }
 
         events

@@ -11,5 +11,6 @@ pub mod strategy;
 pub mod actions;
 pub mod goals;
 pub mod strategies;
+pub mod sensors;
 
 mod test_utils;

@@ -68,17 +68,11 @@ impl BallObject {
     }
 
     pub fn set_held_by(&mut self, combatant_id: Option<CombatantId>, current_tick: GameTickNumber) {
-        if !matches!(self.state, BallState::Idle) {
-            return;
-        }
-
         self.held_by = combatant_id;
 
         if let Some(id) = combatant_id {
             self.change_state(current_tick, BallState::Held { holder_id: id });
-            self.charge = 30.0;
-        } else {
-            self.change_state(current_tick, BallState::Idle);
+            self.charge = 50.0;
         }
     }
 }

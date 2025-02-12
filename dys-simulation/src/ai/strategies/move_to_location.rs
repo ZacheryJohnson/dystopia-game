@@ -132,7 +132,7 @@ impl Strategy for MoveToLocationStrategy {
         }
 
         let is_at_target = (self.target_location - combatant_position).coords.magnitude() <= unit_resolution;
-        if is_at_target {
+        if is_at_target || self.next_node.is_none() {
             self.is_complete = true;
         }
 

@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 use dys_satisfiable::SatisfiableField;
 use crate::{ai::{action::ActionBuilder, belief::Belief, strategies::move_to_location::MoveToLocationStrategy}, game_objects::{combatant::CombatantObject, game_object::GameObject}, game_state::GameState};
 use crate::ai::belief::SatisfiableBelief;
+use crate::ai::strategies::look_around::LookAroundStrategy;
 use super::{action::Action, strategies::{pick_up_ball::PickUpBallStrategy, throw_ball_at_target_location::ThrowBallAtTargetStrategy}};
 
 /// ZJ-TODO: HACK: this value should be passed in through simulation settings.
@@ -28,6 +29,18 @@ pub fn actions(
     };
 
     let combatant_move_speed = combatant.combatant.lock().unwrap().move_speed();
+
+    actions.push(
+        ActionBuilder::new()
+            .name("Look Around")
+            .strategy(LookAroundStrategy::new())
+            .cost(100.0)
+            .completion(vec![
+                Belief::ScanningEnvironment,
+            ])
+            .consumes(SatisfiableBelief::ScanningEnvironment())
+            .build()
+    );
 
     let (plates, balls, combatants) = {
         let game_state = game_state.lock().unwrap();
@@ -82,12 +95,16 @@ pub fn actions(
                     ball_location.into(),
                     game_state.clone())
                 )
-                .cost(MOVE_TO_BALL_WEIGHT_HARDCODE_HACK * (ball_location - combatant_pos).magnitude() / combatant_move_speed) 
+                .cost(MOVE_TO_BALL_WEIGHT_HARDCODE_HACK * (ball_location - combatant_pos).magnitude() / combatant_move_speed)
+                .prerequisites(vec![
+                    SatisfiableBelief::BallPosition()
+                        .ball_id(SatisfiableField::Exactly(ball_id))
+                ])
                 .prohibited(vec![
                     SatisfiableBelief::HeldBall()
                         .combatant_id(SatisfiableField::Exactly(combatant.id))
                 ])
-                .completion(vec![
+                .promised(vec![
                     Belief::InBallPickupRange { ball_id, combatant_id: combatant.id },
                 ])
                 .build()
@@ -131,6 +148,16 @@ pub fn actions(
                             target_id: target_combatant_id
                         },
                     ])
+                    .consumes(
+                        SatisfiableBelief::HeldBall()
+                            .combatant_id(SatisfiableField::Exactly(combatant.id))
+                    )
+                    .consumes(
+                        SatisfiableBelief::BallThrownAtCombatant()
+                            .ball_id(SatisfiableField::Exactly(ball_id))
+                            .thrower_id(SatisfiableField::Exactly(combatant.id))
+                            .target_id(SatisfiableField::Exactly(target_combatant_id))
+                    )
                     .build()
             );
         }
