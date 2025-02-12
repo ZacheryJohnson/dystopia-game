@@ -3,7 +3,9 @@ use std::sync::{Arc, Mutex};
 use dys_simulation::{game, game_log::GameLog, game_objects::{ball::BallId, combatant::CombatantId}, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 
 use bevy::{math::{bounding::{Aabb2d, IntersectsVolume}, vec2}, prelude::*, sprite::{MeshMaterial2d}, window::PrimaryWindow};
+use bevy::prelude::Color::Srgba;
 use bevy::render::camera::ScalingMode;
+use bevy::sprite::AlphaMode2d;
 use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_time::{Duration, Instant};
@@ -89,6 +91,11 @@ struct BallVisualizer {
 }
 
 #[derive(Component)]
+struct ExplosionVisualizer {
+    pub opacity: u8,
+}
+
+#[derive(Component)]
 struct BarrierVisualizer;
 
 #[wasm_bindgen(js_name = initializeWithCanvas)]
@@ -126,6 +133,7 @@ pub fn initialize_with_canvas(
             display_mouse_hover,
             display_current_score,
             handle_keyboard_input,
+            update_explosion_visualizers,
             try_reload_vis_state.before(update),
         ))
         .run();
@@ -418,10 +426,12 @@ fn setup_after_reload_game_log(
 }
 
 fn update(
+    mut commands: Commands,
     mut vis_state: ResMut<VisualizationState>,
     mut combatants_query: Query<(&mut CombatantVisualizer, &mut Transform), Without<BallVisualizer>>,
     mut balls_query: Query<(&mut BallVisualizer, &mut Transform), Without<CombatantVisualizer>>,
-    timer: Res<Time>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     if matches!(vis_state.mode, VisualizationMode::Paused) {
         return;
@@ -497,6 +507,23 @@ fn update(
                     } else {
                         new_away_score = new_away_score + (*points as u16);
                     }
+                },
+                SimulationEvent::BallExplosion { ball_id, charge } => {
+                    let (_, ball_pos) = balls_query.iter()
+                        .filter(|(ball_vis, _)| ball_vis.id == *ball_id)
+                        .next()
+                        .unwrap();
+
+                    let explosion_radius = charge * 0.3;
+                    let mut color_material = ColorMaterial::from_color(Color::srgba(1.0, 0.4, 0.0, 1.0));
+                    color_material.alpha_mode = AlphaMode2d::Blend;
+                    commands.spawn((
+                        VisualizationObject,
+                        ExplosionVisualizer { opacity: 100 },
+                        Mesh2d(meshes.add(Circle::new(explosion_radius))),
+                        MeshMaterial2d(materials.add(color_material)),
+                        ball_pos.to_owned(),
+                    ));
                 },
                 _ => {}
             }
@@ -602,6 +629,34 @@ fn display_current_score(
             minutes_component,
             seconds_component,
         );
+    }
+}
+
+fn update_explosion_visualizers(
+    mut commands: Commands,
+    mut explosion_query: Query<(&mut ExplosionVisualizer, &mut MeshMaterial2d<ColorMaterial>, Entity)>,
+    mut assets: ResMut<Assets<ColorMaterial>>
+) {
+    let decrement_amount = 1.0;
+
+    for (mut explosion, mesh_handle, entity) in explosion_query.iter_mut() {
+        let Some(new_opacity) = explosion.opacity.checked_sub(decrement_amount as u8) else {
+            commands.entity(entity).despawn();
+            continue;
+        };
+
+        explosion.opacity = new_opacity;
+
+        let Some(color_material) = assets.get_mut(mesh_handle.0.id()) else {
+            continue;
+        };
+
+        let Srgba(mut rgba) = color_material.color else {
+            continue;
+        };
+
+        rgba.alpha -= 0.01;
+        color_material.color = rgba.into();
     }
 }
 
