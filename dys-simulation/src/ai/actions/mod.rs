@@ -93,7 +93,7 @@ pub fn actions(
                 .name(format!("Move to Ball {ball_id}"))
                 .strategy(MoveToLocationStrategy::new(
                     combatant_pos.into(),
-                    ball_location.into(),
+                    ball_location.clone().into(),
                     game_state.clone())
                 )
                 .cost(MOVE_TO_BALL_WEIGHT_HARDCODE_HACK * (ball_location - combatant_pos).magnitude() / combatant_move_speed)
@@ -114,7 +114,7 @@ pub fn actions(
         actions.push(
             ActionBuilder::new()
                 .name(format!("Pick Up Ball {ball_id}"))
-                .strategy(PickUpBallStrategy::new(combatant.id, combatant_pos, ball_id))
+                .strategy(PickUpBallStrategy::new(combatant.id, combatant_pos, ball_id, ball_location.to_owned()))
                 .cost(1.0)
                 .prerequisites(vec![
                     SatisfiableBelief::InBallPickupRange()

@@ -125,7 +125,7 @@ impl BeliefSet {
         match self.sourced_beliefs.entry(source_id) {
             Entry::Occupied(mut entry) => {
                 for belief in beliefs {
-                    let mut existing_beliefs = entry.get_mut();
+                    let existing_beliefs = entry.get_mut();
                     existing_beliefs.push(ExpiringBelief::new(belief.to_owned(), expires_on_tick));
                 }
             },

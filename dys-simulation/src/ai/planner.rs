@@ -28,6 +28,13 @@ fn make_plan(
 ) -> Vec<Action> {
     tracing::debug!("Planning for combatant {} with beliefs {:?}", agent.combatant().id, agent.beliefs());
 
+    #[cfg(debug_assertions)]
+    {
+        // Useful for debugging, but unnecessary in shipping builds
+        let combatant_id = agent.combatant().id;
+        let current_tick = game_state.lock().unwrap().current_tick.to_owned();
+    }
+
     for goal in next_best_goal(agent, game_state, goals) {
         tracing::debug!("Considering goal {}", goal.name());
 

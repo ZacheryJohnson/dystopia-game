@@ -193,8 +193,11 @@ impl SimulationEvent {
                 let ball_object = game_state.balls.get_mut(&ball_id).unwrap();
                 ball_object.change_state(current_tick, BallState::Explode);
             }
-            SimulationEvent::BallCollisionArena { .. } => {
-                // ZJ-TODO: 'disable' ball
+            SimulationEvent::BallCollisionArena { thrower_id: _, original_target_id: _, ball_id } => {
+                let mut game_state = game_state.lock().unwrap();
+                let current_tick = game_state.current_tick;
+                let ball_object = game_state.balls.get_mut(&ball_id).unwrap();
+                ball_object.change_state(current_tick, BallState::Idle);
             }
             SimulationEvent::BallExplosion { ball_id, charge: _ } => {
                 let mut game_state = game_state.lock().unwrap();

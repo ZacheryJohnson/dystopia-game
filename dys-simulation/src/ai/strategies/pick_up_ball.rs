@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use rapier3d::{na::Vector3};
 use dys_satisfiable::SatisfiableField;
@@ -8,18 +9,23 @@ use crate::game_objects::combatant::CombatantId;
 pub struct PickUpBallStrategy {
     self_combatant_id: CombatantId,
     self_combatant_position: Vector3<f32>,
-    self_combatant_reach: f32,
     ball_id: BallId,
+    believed_ball_position: Vector3<f32>,
     is_complete: bool,
 }
 
 impl PickUpBallStrategy {
-    pub fn new(self_id: CombatantId, self_position: Vector3<f32>, target_ball: BallId) -> PickUpBallStrategy {
+    pub fn new(
+        self_id: CombatantId,
+        self_position: Vector3<f32>,
+        target_ball: BallId,
+        believed_ball_position: Vector3<f32>
+    ) -> PickUpBallStrategy {
         PickUpBallStrategy {
             self_combatant_id: self_id,
             self_combatant_position: self_position,
-            self_combatant_reach: 1.0, // ZJ-TODO: get this from stats
             ball_id: target_ball,
+            believed_ball_position,
             is_complete: false,
         }
     }
@@ -59,7 +65,17 @@ impl Strategy for PickUpBallStrategy {
                 .ball_id(SatisfiableField::Exactly(self.ball_id))
         );
 
-        other_combatant_holding_target_ball && target_ball_now_unknown
+        // If the ball has moved significantly from where we initially planned, interrupt
+        let believed_ball_pos = self.believed_ball_position.to_owned();
+        let target_ball_moved_significantly = !owned_beliefs.can_satisfy(
+            SatisfiableBelief::BallPosition()
+                .ball_id(SatisfiableField::Exactly(self.ball_id))
+                .position(SatisfiableField::Lambda(Rc::new(move |pos| {
+                    (believed_ball_pos - pos).magnitude() <= 1.0
+                })))
+        );
+
+        other_combatant_holding_target_ball || target_ball_now_unknown || target_ball_moved_significantly
     }
 
     fn is_complete(&self) -> bool {

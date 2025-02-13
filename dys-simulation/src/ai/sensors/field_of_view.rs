@@ -74,6 +74,35 @@ impl Sensor for FieldOfViewSensor {
             query_filter,
             |collider_handle| {
                 let game_object = active_colliders.get(&collider_handle).unwrap();
+
+                // ZJ-TODO: HACK: we currently see things "through" walls.
+                //          This is not a strictly bad thing, as otherwise combatants would have
+                //          no idea about balls behind walls.
+                //          The below prevents that, BUT has the side effect of combatants forgetting
+                //          about balls behind walls, as they have goldfish like memory.
+                // let collision_pos = collider_set
+                //     .get(collider_handle)
+                //     .unwrap()
+                //     .position()
+                //     .translation;
+                //
+                // let raycast_dir = new_isometry.translation.vector - collision_pos.vector;
+                // let raycast = query_pipeline.cast_ray(
+                //     rigid_body_set,
+                //     collider_set,
+                //     &Ray::new(new_isometry.translation.vector.into(), raycast_dir),
+                //     self.shape.half_extents.x * 2.0,
+                //     false,
+                //     query_filter
+                // );
+                //
+                // if let Some((hit_collider, _)) = raycast {
+                //     if hit_collider != collider_handle {
+                //         // There's something between us and the game object we thought we saw
+                //         return true;
+                //     }
+                // }
+
                 match game_object {
                     GameObjectType::Ball(ball_id) => {
                         let ball_object = balls.get(ball_id).unwrap();

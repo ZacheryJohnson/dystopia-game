@@ -1,6 +1,8 @@
+use std::fmt::Formatter;
+use std::rc::Rc;
 pub use dyn_clone;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub enum SatisfiableField<
     ValueT: Clone + PartialEq + PartialOrd
 > {
@@ -32,6 +34,18 @@ pub enum SatisfiableField<
 
     /// The concrete value must be less than or equal to the value of type T
     LessThanOrEqual(ValueT),
+
+    /// The concrete value must pass a provided lambda
+    Lambda(Rc<dyn Fn(ValueT) -> bool>)
+}
+
+impl<ValueT: Clone + PartialEq + PartialOrd> std::fmt::Debug for SatisfiableField<ValueT> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SatisfiableField::Lambda(_) => write!(f, "<lambda fn>"),
+            _ => write!(f, "{:?}", self)
+        }
+    }
 }
 
 impl<
@@ -48,6 +62,7 @@ impl<
             SatisfiableField::GreaterThanOrEqual(self_val) => self_val >= value,
             SatisfiableField::LessThan(self_val) => self_val < value,
             SatisfiableField::LessThanOrEqual(self_val) => self_val <= value,
+            SatisfiableField::Lambda(lambda_fn) => lambda_fn(value.to_owned())
         }
     }
 }
