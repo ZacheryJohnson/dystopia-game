@@ -17,6 +17,7 @@ pub fn actions(
     game_state: Arc<Mutex<GameState>>,
 ) -> Vec<Action> {
     let mut actions = vec![];
+    let current_tick = game_state.lock().unwrap().current_tick.to_owned();
 
     let combatant_pos = {
         let game_state = game_state.lock().unwrap();
@@ -36,9 +37,9 @@ pub fn actions(
             .strategy(LookAroundStrategy::new())
             .cost(100.0)
             .completion(vec![
-                Belief::ScanningEnvironment,
+                Belief::ScannedEnvironment { tick: current_tick },
             ])
-            .consumes(SatisfiableBelief::ScanningEnvironment())
+            .consumes(SatisfiableBelief::ScannedEnvironment())
             .build()
     );
 
@@ -100,10 +101,10 @@ pub fn actions(
                     SatisfiableBelief::BallPosition()
                         .ball_id(SatisfiableField::Exactly(ball_id))
                 ])
-                .prohibited(vec![
+                .prohibits(
                     SatisfiableBelief::HeldBall()
                         .combatant_id(SatisfiableField::Exactly(combatant.id))
-                ])
+                )
                 .promised(vec![
                     Belief::InBallPickupRange { ball_id, combatant_id: combatant.id },
                 ])
@@ -120,10 +121,14 @@ pub fn actions(
                         .combatant_id(SatisfiableField::Exactly(combatant.id))
                         .ball_id(SatisfiableField::Exactly(ball_id))
                 ])
-                .prohibited(vec![
+                .prohibits(
                     SatisfiableBelief::HeldBall()
                         .combatant_id(SatisfiableField::Exactly(combatant.id))
-                ])
+                )
+                .prohibits(
+                    SatisfiableBelief::BallIsFlying()
+                        .ball_id(SatisfiableField::Exactly(ball_id))
+                )
                 .completion(vec![
                     Belief::HeldBall { ball_id, combatant_id: combatant.id },
                 ])

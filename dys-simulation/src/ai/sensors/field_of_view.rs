@@ -5,6 +5,7 @@ use rapier3d::na::{vector, Isometry3};
 use rapier3d::pipeline::{QueryFilter, QueryPipeline};
 use crate::ai::belief::Belief;
 use crate::ai::sensor::Sensor;
+use crate::game_objects::ball::BallState;
 use crate::game_objects::game_object::GameObject;
 use crate::game_objects::game_object_type::GameObjectType;
 use crate::game_state::{BallsMapT, CollidersMapT, CombatantsMapT};
@@ -91,6 +92,10 @@ impl Sensor for FieldOfViewSensor {
                                 ball_id: *ball_id,
                                 combatant_id,
                             });
+                        }
+
+                        if matches!(ball_object.state, BallState::ThrownAtTarget {..}) {
+                            beliefs.push(Belief::BallIsFlying { ball_id: *ball_id });
                         }
                     },
                     GameObjectType::Combatant(combatant_id) => {

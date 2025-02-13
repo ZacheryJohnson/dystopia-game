@@ -24,6 +24,7 @@ impl PhysicsSim {
     pub fn new(ticks_per_second: u32) -> PhysicsSim {
         let integration_params = IntegrationParameters {
             dt: 1.0 / (ticks_per_second as f32),
+            max_ccd_substeps: 10,
             ..Default::default()
         };
 

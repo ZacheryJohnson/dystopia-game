@@ -58,6 +58,7 @@ impl CombatantObject {
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation(position)
             .enabled_rotations(false, true, false)
+            .ccd_enabled(true) // enable CCD to ensure we don't phase through walls
             .build();
         
         let collider = ColliderBuilder::cuboid(COMBATANT_RADIUS, COMBATANT_HALF_HEIGHT, COMBATANT_RADIUS)
@@ -70,7 +71,7 @@ impl CombatantObject {
         let rigid_body_handle = rigid_body_set.insert(rigid_body);
         let collider_handle = collider_set.insert_with_parent(collider, rigid_body_handle, rigid_body_set);
 
-        const SIGHT_DISTANCE: f32 = 50.0;
+        const SIGHT_DISTANCE: f32 = 70.0;
         let field_of_view_sensor = FieldOfViewSensor::new(
             SIGHT_DISTANCE, collider_handle
         );
@@ -231,7 +232,7 @@ impl Agent for CombatantObject {
         let mut events = vec![];
 
         if self.combatant_state.lock().unwrap().stunned_by_explosion {
-            let random_value = game_state.lock().unwrap().rng.next_u32() % 150;
+            let random_value = game_state.lock().unwrap().rng.next_u32() % 500;
             let constitution = self
                 .combatant
                 .lock()

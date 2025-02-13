@@ -53,7 +53,13 @@ impl Strategy for PickUpBallStrategy {
                 .ball_id(SatisfiableField::Exactly(self.ball_id))
         );
 
-        other_combatant_holding_target_ball
+        // If we don't know where the ball we're targeting is, interrupt
+        let target_ball_now_unknown = !owned_beliefs.can_satisfy(
+            SatisfiableBelief::BallPosition()
+                .ball_id(SatisfiableField::Exactly(self.ball_id))
+        );
+
+        other_combatant_holding_target_ball && target_ball_now_unknown
     }
 
     fn is_complete(&self) -> bool {

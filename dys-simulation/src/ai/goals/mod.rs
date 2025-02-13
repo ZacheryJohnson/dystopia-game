@@ -8,7 +8,7 @@ use super::goal::Goal;
 pub fn idle_goal() -> Goal {
     GoalBuilder::new()
         .name("Look Around")
-        .desired_belief(SatisfiableBelief::ScanningEnvironment())
+        .desired_belief(SatisfiableBelief::ScannedEnvironment())
         .priority(1)
         .build()
 }

@@ -22,7 +22,7 @@ use crate::game_tick::GameTickNumber;
 /// and may choose to do any action.
 #[derive(Clone, Copy, Debug, PartialEq, Satisfiable)]
 pub enum Belief {
-    ScanningEnvironment,
+    ScannedEnvironment { tick: GameTickNumber },
     BallPosition { ball_id: BallId, position: Vector3<f32> },
     CombatantPosition { combatant_id: CombatantId, position: Vector3<f32> },
     PlatePosition { plate_id: PlateId, position: Vector3<f32> },
@@ -30,6 +30,7 @@ pub enum Belief {
     HeldBall { ball_id: BallId, combatant_id: CombatantId },
     InBallPickupRange { ball_id: BallId, combatant_id: CombatantId },
     BallThrownAtCombatant { ball_id: BallId, thrower_id: CombatantId, target_id: CombatantId },
+    BallIsFlying { ball_id: BallId }
 }
 
 #[derive(Clone, Debug)]

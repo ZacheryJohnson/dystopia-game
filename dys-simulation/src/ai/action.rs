@@ -201,14 +201,11 @@ impl ActionBuilder {
         self
     }
 
-    pub fn prohibited(
+    pub fn prohibits(
         mut self,
-        beliefs: impl IntoIterator<Item = (impl BeliefSatisfiabilityTest + 'static)>,
+        belief: impl BeliefSatisfiabilityTest + 'static,
     ) -> ActionBuilder {
-        self.action.prohibited_beliefs = beliefs
-            .into_iter()
-            .map(|test| BeliefTest::new(test))
-            .collect();
+        self.action.prohibited_beliefs.push(BeliefTest::new(belief));
         self
     }
 
@@ -263,9 +260,7 @@ mod tests {
         #[test]
         fn no_prereqs_some_prohibited_no_beliefs_allowed() {
             let action = ActionBuilder::new()
-                .prohibited(vec![
-                    SatisfiableBelief::OnPlate()
-                ])
+                .prohibits(SatisfiableBelief::OnPlate())
                 .build();
             let result = action.can_perform(&BeliefSet::empty());
             assert!(result);
@@ -274,9 +269,7 @@ mod tests {
         #[test]
         fn no_prereqs_some_prohibited_different_belief_types_allowed() {
             let action = ActionBuilder::new()
-                .prohibited(vec![
-                    SatisfiableBelief::HeldBall()
-                ])
+                .prohibits(SatisfiableBelief::HeldBall())
                 .build();
 
             let belief_set = BeliefSet::from(&[
@@ -293,10 +286,10 @@ mod tests {
             let combatant_id = 2;
 
             let action = ActionBuilder::new()
-                .prohibited(vec![
+                .prohibits(
                     SatisfiableBelief::HeldBall()
                         .combatant_id(SatisfiableField::Exactly(prohibited_id))
-                ])
+                )
                 .build();
 
             let belief_set = BeliefSet::from(&[
@@ -312,10 +305,10 @@ mod tests {
             let prohibited_id = 1;
 
             let action = ActionBuilder::new()
-                .prohibited(vec![
+                .prohibits(
                     SatisfiableBelief::HeldBall()
                         .combatant_id(SatisfiableField::Exactly(prohibited_id))
-                ])
+                )
                 .build();
 
             let belief_set = BeliefSet::from(&[

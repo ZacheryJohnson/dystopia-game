@@ -42,6 +42,7 @@ impl BallObject {
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation(position)
             .lock_rotations()
+            .ccd_enabled(true) // enable CCD to ensure we don't phase through walls
             .build();
         
         let collider = ColliderBuilder::ball(BALL_RADIUS)

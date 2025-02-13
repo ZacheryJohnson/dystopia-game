@@ -28,9 +28,6 @@ fn make_plan(
 ) -> Vec<Action> {
     tracing::debug!("Planning for combatant {} with beliefs {:?}", agent.combatant().id, agent.beliefs());
 
-    let combatant_id = agent.combatant().id;
-    let current_tick = game_state.lock().unwrap().current_tick.to_owned();
-
     for goal in next_best_goal(agent, game_state, goals) {
         tracing::debug!("Considering goal {}", goal.name());
 
@@ -130,55 +127,14 @@ mod tests {
         test_utils::TestAgent::new()
     }
 
-    fn make_test_game_state() -> Arc<Mutex<GameState>> {
-        let game = Game {
-            schedule_game: ScheduleGame {
-                away_team: Arc::new(Mutex::new(TeamInstance {
-                    id: 1,
-                    name: String::from("TestAwayTeam"),
-                    combatants: vec![],
-                })),
-                home_team: Arc::new(Mutex::new(TeamInstance {
-                    id: 2,
-                    name: String::from("TestHomeTeam"),
-                    combatants: vec![],
-                })),
-                arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())), // ZJ-TODO: don't use arena's default values
-                date: Date(Month::Arguscorp, 1, 10000),
-            },
-        };
-        let simulation_config = SimulationConfig::default();
-        let arena_navmesh = ArenaNavmesh::new_from(
-            game.schedule_game.arena.clone(),
-            ArenaNavmeshConfig {
-                unit_resolution: 1.0
-            }
-        );
-
-        Arc::new(Mutex::new(GameState {
-            game,
-            seed: [0; 32],
-            rng: Pcg64::from_seed([0; 32]),
-            physics_sim: PhysicsSim::new(simulation_config.ticks_per_second()),
-            combatants: CombatantsMapT::new(),
-            balls: BallsMapT::new(),
-            plates: PlatesMapT::new(),
-            active_colliders: CollidersMapT::new(),
-            home_points: 0,
-            away_points: 0,
-            current_tick: 0,
-            simulation_config,
-            arena_navmesh,
-        }))
-    }
-
     mod next_best_goal {
+        use crate::ai::test_utils::make_test_game_state;
         use super::*;
 
         #[test]
         fn test_no_goals_receive_idle_goal() {
             let agent = make_test_agent();
-            let game_state = make_test_game_state();
+            let game_state = make_test_game_state(None);
 
             let no_goals = vec![];
 
@@ -190,7 +146,7 @@ mod tests {
         #[test]
         fn test_best_goal_does_not_have_desired_beliefs_isnt_idle_goal() {
             let agent = make_test_agent();
-            let game_state = make_test_game_state();
+            let game_state = make_test_game_state(None);
 
             let expected_goal_name = "TestGoalSelfOnPlate";
 
@@ -210,7 +166,7 @@ mod tests {
         #[test]
         fn test_best_goal_has_desired_beliefs_is_idle_goal() {
             let mut agent = make_test_agent();
-            let game_state = make_test_game_state();
+            let game_state = make_test_game_state(None);
 
             let expected_goal_name = "TestGoalSelfOnPlate";
 
@@ -237,7 +193,7 @@ mod tests {
         #[test]
         fn test_best_goal_higher_priority_wins() {
             let agent = make_test_agent();
-            let game_state = make_test_game_state();
+            let game_state = make_test_game_state(None);
 
             let lower_priority_goal_name = "TestLowerPriorityGoal";
             let higher_priority_goal_name = "TestHigherPriorityGoal";
