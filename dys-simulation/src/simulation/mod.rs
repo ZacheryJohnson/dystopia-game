@@ -19,7 +19,7 @@ pub mod simulation_event;
 pub fn simulate_tick(game_state: Arc<Mutex<GameState>>) -> GameTick {
     let pre_tick_timestamp = Instant::now();
 
-    let (current_tick, simulation_config, phys_duration) = {
+    let (current_tick, simulation_config, phys_duration, highest_score) = {
         let mut game_state = game_state.lock().unwrap();
 
         game_state.current_tick += 1;
@@ -28,11 +28,13 @@ pub fn simulate_tick(game_state: Arc<Mutex<GameState>>) -> GameTick {
         game_state.physics_sim.tick();
         let post_tick_timestamp = Instant::now();
 
-        (game_state.current_tick, game_state.simulation_config.clone(), post_tick_timestamp - pre_tick_timestamp)
+        let highest_score = game_state.home_points.max(game_state.away_points);
+
+        (game_state.current_tick, game_state.simulation_config.clone(), post_tick_timestamp - pre_tick_timestamp, highest_score)
     };
 
     let is_halftime = current_tick == simulation_config.ticks_per_half();
-    let is_end_of_game = current_tick == simulation_config.ticks_per_game();
+    let is_end_of_game = current_tick == simulation_config.ticks_per_game() || highest_score >= simulation_config.game_conclusion_score();
     let is_scoring_tick = current_tick % simulation_config.ticks_per_second() == 0;
 
     let mut pending_simulation_events = vec![];
