@@ -79,9 +79,10 @@ impl eframe::App for GamePeekApp {
                 self.tick();
             }
 
-            let make_collapseable = |header: String| {
+            let make_collapseable = |header: String, tick_number: GameTickNumber| {
                 egui::CollapsingHeader::new(header)
                     .default_open(self.combatant_filter.is_some())
+                    .id_salt(tick_number)
             };
 
             egui::ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
@@ -90,7 +91,7 @@ impl eframe::App for GamePeekApp {
                     // so use ui.collapsing instead.
                     // All other collapseables should use make_collapseable
                     ui.collapsing(format!("Tick {}", tick.tick_number), |ui| {
-                        make_collapseable("Simulation Events".to_string()).show(ui, |ui| {
+                        make_collapseable("Simulation Events".to_string(), tick.tick_number).show(ui, |ui| {
                             if self.combatant_filter.is_none() {
                                 for evt in &tick.simulation_events {
                                     ui.label(format!("{:?}", evt));
@@ -109,7 +110,7 @@ impl eframe::App for GamePeekApp {
                             }
                         });
 
-                        make_collapseable("Combatants".to_string()).show(ui, |ui| {
+                        make_collapseable("Combatants".to_string(), tick.tick_number).show(ui, |ui| {
                             let states = if self.combatant_filter.is_some() {
                                 let combatant_id = self.combatant_filter.unwrap();
                                 let combatant_state = self
@@ -125,12 +126,12 @@ impl eframe::App for GamePeekApp {
                             };
 
                             for (combatant_id, combatant_state) in states {
-                                make_collapseable(format!("{combatant_id}")).show(ui, |ui| {
+                                make_collapseable(format!("{combatant_id}"), tick.tick_number).show(ui, |ui| {
                                     ui.label(format!("On Plate: {:?}", combatant_state.on_plate));
                                     ui.label(format!("Holding Ball: {:?}", combatant_state.holding_ball));
                                     ui.label(format!("Is Stunned: {:?}", combatant_state.stunned_by_explosion));
 
-                                    make_collapseable("AI".to_string()).show(ui, |ui| {
+                                    make_collapseable("AI".to_string(), tick.tick_number).show(ui, |ui| {
                                         let current_action_name = if combatant_state.current_action.is_some() {
                                             combatant_state.current_action.unwrap().name()
                                         } else {
@@ -148,7 +149,7 @@ impl eframe::App for GamePeekApp {
                                         for action in combatant_state.plan.iter().rev() {
                                             ui.label(format!("Planned Action: {}", action.name()));
                                         }
-                                        make_collapseable("Beliefs".to_string()).show(ui, |ui| {
+                                        make_collapseable("Beliefs".to_string(), tick.tick_number).show(ui, |ui| {
                                             for (source, beliefs) in &combatant_state.beliefs.sourced_beliefs() {
                                                 for belief in beliefs {
                                                     ui.label(format!("({source}) {:?}", belief));
