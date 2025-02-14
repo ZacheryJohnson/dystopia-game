@@ -3,9 +3,10 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use rand_distr::Exp;
 use rapier3d::na::Vector3;
 use dys_satisfiable::*;
-use dys_satisfiable_macros::{Satisfiable};
+use dys_satisfiable_macros::{Satisfiable, UniqueKey};
 use crate::game_objects::ball::BallId;
 use crate::game_objects::combatant::CombatantId;
 use crate::game_objects::plate::PlateId;
@@ -20,17 +21,57 @@ use crate::game_tick::GameTickNumber;
 /// aim the ball some distance in front of the runner.
 /// However, the enemy combatant is not affected by or aware of that belief,
 /// and may choose to do any action.
-#[derive(Clone, Copy, Debug, PartialEq, Satisfiable)]
+#[derive(Clone, Copy, Debug, PartialEq, Satisfiable, UniqueKey)]
 pub enum Belief {
-    ScannedEnvironment { tick: GameTickNumber },
-    BallPosition { ball_id: BallId, position: Vector3<f32> },
-    CombatantPosition { combatant_id: CombatantId, position: Vector3<f32> },
-    PlatePosition { plate_id: PlateId, position: Vector3<f32> },
-    OnPlate { plate_id: PlateId, combatant_id: CombatantId },
-    HeldBall { ball_id: BallId, combatant_id: CombatantId },
-    InBallPickupRange { ball_id: BallId, combatant_id: CombatantId },
-    BallThrownAtCombatant { ball_id: BallId, thrower_id: CombatantId, target_id: CombatantId },
-    BallIsFlying { ball_id: BallId }
+    ScannedEnvironment {
+        #[unique]
+        tick: GameTickNumber,
+    },
+    BallPosition {
+        #[unique]
+        ball_id: BallId,
+        position: Vector3<f32>,
+    },
+    CombatantPosition {
+        #[unique]
+        combatant_id: CombatantId,
+        position: Vector3<f32>,
+    },
+    PlatePosition {
+        #[unique]
+        plate_id: PlateId,
+        position: Vector3<f32>,
+    },
+    OnPlate {
+        #[unique]
+        plate_id: PlateId,
+        #[unique]
+        combatant_id: CombatantId,
+    },
+    HeldBall {
+        #[unique]
+        ball_id: BallId,
+        #[unique]
+        combatant_id: CombatantId,
+    },
+    InBallPickupRange {
+        #[unique]
+        ball_id: BallId,
+        #[unique]
+        combatant_id: CombatantId,
+    },
+    BallThrownAtCombatant {
+        #[unique]
+        ball_id: BallId,
+        #[unique]
+        thrower_id: CombatantId,
+        #[unique]
+        target_id: CombatantId,
+    },
+    BallIsFlying {
+        #[unique]
+        ball_id: BallId,
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -98,8 +139,26 @@ impl BeliefSet {
         });
     }
 
+    fn upsert_unique_unsourced_belief(&mut self, belief: ExpiringBelief) {
+        self.unsourced_beliefs.retain(|current_belief| !current_belief.belief.has_same_unique_key(&belief.belief));
+        self.unsourced_beliefs.push(belief);
+    }
+
+    fn upsert_unique_sourced_belief(&mut self, belief: ExpiringBelief, source_id: u32) {
+        match self.sourced_beliefs.entry(source_id) {
+            Entry::Occupied(mut entry) => {
+                let existing_beliefs = entry.get_mut();
+                existing_beliefs.retain(|current_belief| !current_belief.belief.has_same_unique_key(&belief.belief));
+                existing_beliefs.push(belief);
+            },
+            Entry::Vacant(empty) => {
+                empty.insert(vec![belief]);
+            }
+        }
+    }
+
     pub fn add_belief(&mut self, belief: Belief) {
-        self.unsourced_beliefs.push(ExpiringBelief::new(belief, None))
+        self.upsert_unique_unsourced_belief(ExpiringBelief::new(belief, None))
     }
 
     pub fn add_beliefs(&mut self, beliefs: &[Belief]) {
@@ -118,20 +177,11 @@ impl BeliefSet {
         beliefs: &[Belief],
         expires_on_tick: Option<GameTickNumber>,
     ) {
-        if beliefs.is_empty() {
-            return;
-        }
-
-        match self.sourced_beliefs.entry(source_id) {
-            Entry::Occupied(mut entry) => {
-                for belief in beliefs {
-                    let existing_beliefs = entry.get_mut();
-                    existing_beliefs.push(ExpiringBelief::new(belief.to_owned(), expires_on_tick));
-                }
-            },
-            Entry::Vacant(empty) => {
-                empty.insert(ExpiringBelief::from_beliefs(beliefs, expires_on_tick));
-            }
+        for belief in beliefs {
+            self.upsert_unique_sourced_belief(
+                ExpiringBelief::new(belief.to_owned(), expires_on_tick),
+                source_id,
+            );
         }
     }
 
