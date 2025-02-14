@@ -5,6 +5,7 @@ pub struct SimulationConfig {
     ball_charge_decay_per_tick: f32,
     ball_charge_maximum: f32,
     ball_charge_initial: f32,
+    game_conclusion_score: u16,
 }
 
 impl Default for SimulationConfig {
@@ -15,6 +16,7 @@ impl Default for SimulationConfig {
             ball_charge_decay_per_tick: 2.0,
             ball_charge_maximum: 100.0,
             ball_charge_initial: 70.0,
+            game_conclusion_score: 150,
         }
     }
 }
@@ -27,4 +29,5 @@ impl SimulationConfig {
     pub fn ball_charge_decay_per_tick(&self) -> f32 { self.ball_charge_decay_per_tick }
     pub fn ball_charge_maximum(&self) -> f32 { self.ball_charge_maximum }
     pub fn ball_charge_initial(&self) -> f32 { self.ball_charge_initial }
+    pub fn game_conclusion_score(&self) -> u16 { self.game_conclusion_score }
 }

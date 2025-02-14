@@ -40,9 +40,12 @@ struct HomeTeamScoreText;
 #[derive(Component)]
 struct AwayTeamScoreText;
 
+#[derive(Component)]
+struct PostgameScoreboard;
+
 #[derive(Clone, Debug)]
 enum VisualizationMode {
-    /// THe visualization will not progress
+    /// The visualization will not progress
     Paused,
 
     /// The visualization will progress only when the viewer instructs it to
@@ -59,6 +62,7 @@ struct VisualizationState {
     last_update_time: Instant,
     home_score: u16,
     away_score: u16,
+    end_of_game: bool,
     mode: VisualizationMode,
 }
 
@@ -124,6 +128,7 @@ pub fn initialize_with_canvas(
             last_update_time: Instant::now(),
             home_score: 0,
             away_score: 0,
+            end_of_game: false,
             mode: VisualizationMode::Paused,
         })
         .add_systems(Startup, setup)
@@ -134,6 +139,7 @@ pub fn initialize_with_canvas(
             display_current_score,
             handle_keyboard_input,
             update_explosion_visualizers,
+            update_postgame_scoreboard,
             try_reload_vis_state.before(update),
         ))
         .run();
@@ -164,6 +170,7 @@ pub fn load_game_log(
         last_update_time: Instant::now(),
         home_score: 0,
         away_score: 0,
+        end_of_game: false,
         mode: visualization_mode,
     });
 }
@@ -228,6 +235,7 @@ fn setup(
 
     commands.spawn((
         Text2d(String::from("H")),
+        TextColor(Color::WHITE),
         TextFont {
             font_size: 60.0,
             ..default()
@@ -247,6 +255,7 @@ fn setup(
 
     commands.spawn((
         Text2d(String::from("A")),
+        TextColor(Color::WHITE),
         TextFont {
             font_size: 60.0,
             ..default()
@@ -281,6 +290,25 @@ fn setup(
             ..Default::default()
         },
         MatchTimerText
+    ));
+
+    commands.spawn((
+        Text2d(String::from("")),
+        TextFont {
+            font_size: 120.0,
+            ..default()
+        },
+        Node {
+            position_type: PositionType::Relative,
+            top: Val::Px(50.0),
+            left: Val::Px(50.0),
+            ..default()
+        },
+        Transform {
+            scale: Vec3::splat(0.07),
+            ..Default::default()
+        },
+        PostgameScoreboard
     ));
 }
 
@@ -467,7 +495,7 @@ fn update(
         return;
     }
 
-    if matches!(vis_state.mode, VisualizationMode::Play) {
+    if matches!(vis_state.mode, VisualizationMode::Play) && !vis_state.end_of_game {
         vis_state.current_tick += 1;
     }
 
@@ -478,8 +506,15 @@ fn update(
     {
         let events_this_tick = {
             let game_log = vis_state.game_log.as_ref().unwrap();
-            game_log.ticks().iter().nth(current_tick as usize).unwrap()
+            game_log.ticks().iter().nth(current_tick as usize)
         };
+
+        if events_this_tick.is_none() {
+            vis_state.end_of_game = true;
+            return;
+        }
+
+        let events_this_tick = events_this_tick.unwrap();
 
         for event in &events_this_tick.simulation_events {
             match event {
@@ -600,8 +635,8 @@ fn display_mouse_hover(
 
 fn display_current_score(
     mut set: ParamSet<(
-        Query<&mut Text2d, With<HomeTeamScoreText>>,
-        Query<&mut Text2d, With<AwayTeamScoreText>>,
+        Query<(&mut Text2d, &mut TextColor), With<HomeTeamScoreText>>,
+        Query<(&mut Text2d, &mut TextColor), With<AwayTeamScoreText>>,
         Query<&mut Text2d, With<MatchTimerText>>,
     )>,
     vis_state: Res<VisualizationState>,
@@ -609,14 +644,32 @@ fn display_current_score(
     const TICKS_PER_SECOND: u32 = 10;
     {
         let mut home_text_query = set.p0();
-        let mut home_text = home_text_query.get_single_mut().expect("failed to get home score text component");
+        let (mut home_text, mut color) = home_text_query.get_single_mut().expect("failed to get home score text component");
         home_text.0 = format!("{}", vis_state.home_score);
+        if vis_state.end_of_game {
+            if vis_state.home_score >= vis_state.away_score {
+                color.0 = Color::srgb(0.0, 1.0, 0.0);
+            } else {
+                color.0 = Color::srgb(1.0, 0.0, 0.0);
+            }
+        } else {
+            color.0 = Color::WHITE;
+        }
     }
 
     {
         let mut away_text_query = set.p1();
-        let mut away_text = away_text_query.get_single_mut().expect("failed to get away score text component");
+        let (mut away_text, mut color) = away_text_query.get_single_mut().expect("failed to get away score text component");
         away_text.0 = format!("{}", vis_state.away_score);
+        if vis_state.end_of_game {
+            if vis_state.away_score >= vis_state.home_score {
+                color.0 = Color::srgb(0.0, 1.0, 0.0);
+            } else {
+                color.0 = Color::srgb(1.0, 0.0, 0.0);
+            }
+        } else {
+            color.0 = Color::WHITE;
+        }
     }
 
     {
@@ -678,5 +731,18 @@ fn handle_keyboard_input(
 
     if keyboard_input.just_pressed(KeyCode::KeyR) {
         restart_with_local_game_log();
+    }
+}
+
+fn update_postgame_scoreboard(
+    mut scoreboard_query: Query<&mut Text2d, With<PostgameScoreboard>>,
+    mut vis_state: ResMut<VisualizationState>,
+) {
+    if vis_state.end_of_game {
+        let mut scoreboard_text = scoreboard_query.single_mut();
+        scoreboard_text.0 = String::from("GAME OVER!");
+    } else {
+        let mut scoreboard_text = scoreboard_query.single_mut();
+        scoreboard_text.0 = String::new();
     }
 }
