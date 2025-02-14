@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use crate::{ai::goals::goals, game_state::GameState};
-use crate::ai::belief::{BeliefSet, BeliefTest};
+use crate::ai::belief::{Belief, BeliefSet, BeliefTest, SatisfiableBelief};
 use super::{action::Action, actions::actions, agent::Agent, goal::Goal};
 
 #[tracing::instrument(
@@ -28,12 +28,8 @@ fn make_plan(
 ) -> Vec<Action> {
     tracing::debug!("Planning for combatant {} with beliefs {:?}", agent.combatant().id, agent.beliefs());
 
-    #[cfg(debug_assertions)]
-    {
-        // Useful for debugging, but unnecessary in shipping builds
-        let combatant_id = agent.combatant().id;
-        let current_tick = game_state.lock().unwrap().current_tick.to_owned();
-    }
+    let combatant_id = agent.combatant().id;
+    let current_tick = game_state.lock().unwrap().current_tick.to_owned();
 
     for goal in next_best_goal(agent, game_state, goals) {
         tracing::debug!("Considering goal {}", goal.name());
@@ -60,6 +56,24 @@ fn make_plan(
 
         if !desired_beliefs_remaining.is_empty() && action_plan.is_empty() {
             tracing::debug!("failed to get action plan for goal {}; trying next goal", goal.name());
+            continue;
+        }
+
+        // Validate the plan we've just created
+        let mut agent_beliefs = agent.beliefs();
+        let mut can_perform = true;
+        for action in action_plan.iter().rev() {
+            if !action.can_perform(&agent_beliefs) {
+                tracing::info!("Failed to perform action {} in new plan; trying next goal", action.name());
+                can_perform = false;
+                break;
+            }
+
+            agent_beliefs = beliefs_if_completed(action.to_owned(), agent_beliefs);
+        }
+
+        if !can_perform {
+            action_plan.clear();
             continue;
         }
 
@@ -115,6 +129,28 @@ fn next_best_goal<'a>(
     tracing::debug!("Prioritized goals: {:?}", goals);
 
     goals.into_iter()
+}
+
+fn beliefs_if_completed(action: Action, mut beliefs: BeliefSet) -> BeliefSet {
+    for prerequisite_belief in action.prerequisite_beliefs() {
+        if !beliefs.can_satisfy(prerequisite_belief.to_owned()) {
+            return beliefs;
+        }
+    }
+
+    for prohibited_belief in action.prohibited_beliefs() {
+        if beliefs.can_satisfy(prohibited_belief.to_owned()) {
+            return beliefs;
+        }
+    }
+
+    beliefs.add_beliefs(action.completion_beliefs());
+    beliefs.add_beliefs(action.promised_beliefs());
+    for consumed_belief in action.consumed_beliefs() {
+        beliefs.remove_beliefs_by_test(consumed_belief.to_owned());
+    }
+
+    beliefs
 }
 
 #[cfg(test)]

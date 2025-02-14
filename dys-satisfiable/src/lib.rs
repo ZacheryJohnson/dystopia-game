@@ -1,6 +1,7 @@
 use std::fmt::Formatter;
 use std::rc::Rc;
 pub use dyn_clone;
+pub use ahash;
 
 #[derive(Clone, Default)]
 pub enum SatisfiableField<
@@ -69,6 +70,21 @@ impl<
 
 pub trait SatisfiabilityTest: dyn_clone::DynClone {
     type ConcreteT;
+    /// Is this variant the same as the other variant?
     fn is_same_variant(&self, concrete: &Self::ConcreteT) -> bool;
+
+    /// Can this test be satisfied by the concrete value?
     fn satisfied_by(&self, concrete: Self::ConcreteT) -> bool;
+}
+
+pub trait Uniqueness: dyn_clone::DynClone {
+    fn unique_key(&self) -> u64;
+
+    fn has_same_unique_key(&self, other: &Self) -> bool {
+        if self.unique_key() == 0 || other.unique_key() == 0 {
+            return false;
+        }
+
+        self.unique_key() == other.unique_key()
+    }
 }

@@ -224,7 +224,7 @@ impl Agent for CombatantObject {
             current_tick = game_state.lock().unwrap().current_tick,
         ),
         skip_all,
-        level = "trace")]
+        level = "info")]
     fn tick(
         &mut self,
         game_state: Arc<Mutex<GameState>>,
@@ -295,7 +295,7 @@ impl Agent for CombatantObject {
         };
 
         if !action.can_perform(&self.beliefs()) {
-            tracing::info!("Can no longer perform action; setting to None to replan next tick");
+            tracing::info!("Can no longer perform action {}; setting to None to replan next tick", action.name());
             return vec![];
         }
 
