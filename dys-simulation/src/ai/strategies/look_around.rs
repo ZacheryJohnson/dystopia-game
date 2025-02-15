@@ -1,9 +1,6 @@
 use std::f32::consts::FRAC_PI_2;
-use std::ops::Add;
 use std::sync::{Arc, Mutex};
-use rapier3d::math::Rotation;
-use rapier3d::prelude::*;
-use rapier3d::na::{vector, Rotation3, Vector3};
+use rapier3d::na::{Rotation3, Vector3};
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
 
@@ -111,7 +108,6 @@ mod tests {
             physics_sim.tick();
 
             let mut active_colliders = CollidersMapT::new();
-            let combatant_1_collider_handle = combatant_1.collider_handle.clone();
             active_colliders.insert(combatant_1.collider_handle, Combatant(combatant_1.id));
 
             let mut combatants = CombatantsMapT::new();

@@ -2,7 +2,7 @@ use std::any::Any;
 
 use rapier3d::{dynamics::RigidBody, geometry::{Collider, SharedShape}, na::{Quaternion, Vector3}};
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum NavmeshPathingType {
     /// Generate new navmesh nodes to allow pathing over this object
     Generate,

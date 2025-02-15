@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use dys_satisfiable::SatisfiableField;
 use dys_world::attribute::attribute_type::AttributeType;
 use crate::{ai::goal::GoalBuilder, game_objects::combatant::CombatantObject, game_state::GameState};
-use crate::ai::belief::{Belief, SatisfiableBelief};
+use crate::ai::belief::SatisfiableBelief;
 use super::goal::Goal;
 
 pub fn idle_goal() -> Goal {

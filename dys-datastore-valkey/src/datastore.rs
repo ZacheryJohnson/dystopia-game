@@ -1,6 +1,5 @@
 pub use redis::aio::MultiplexedConnection;
 pub use redis::AsyncCommands;
-use tokio;
 use redis::{Client, ConnectionAddr, ConnectionInfo, IntoConnectionInfo, RedisConnectionInfo, RedisResult};
 use dys_datastore::datastore::Datastore;
 

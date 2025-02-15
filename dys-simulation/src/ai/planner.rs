@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use crate::{ai::goals::goals, game_state::GameState};
-use crate::ai::belief::{Belief, BeliefSet, BeliefTest, SatisfiableBelief};
+use crate::ai::belief::{BeliefSet, BeliefTest};
 use super::{action::Action, actions::actions, agent::Agent, goal::Goal};
 
 #[tracing::instrument(
@@ -27,9 +27,6 @@ fn make_plan(
     actions: Vec<Action>,
 ) -> Vec<Action> {
     tracing::debug!("Planning for combatant {} with beliefs {:?}", agent.combatant().id, agent.beliefs());
-
-    let combatant_id = agent.combatant().id;
-    let current_tick = game_state.lock().unwrap().current_tick.to_owned();
 
     for goal in next_best_goal(agent, game_state, goals) {
         tracing::debug!("Considering goal {}", goal.name());
@@ -64,7 +61,7 @@ fn make_plan(
         let mut can_perform = true;
         for action in action_plan.iter().rev() {
             if !action.can_perform(&agent_beliefs) {
-                tracing::info!("Failed to perform action {} in new plan; trying next goal", action.name());
+                tracing::debug!("Failed to perform action {} in new plan; trying next goal", action.name());
                 can_perform = false;
                 break;
             }
@@ -155,19 +152,13 @@ fn beliefs_if_completed(action: Action, mut beliefs: BeliefSet) -> BeliefSet {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, sync::{Arc, Mutex}};
-
-    use dys_world::{arena::{navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, Arena}, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}, team::instance::TeamInstance};
-    use rand::SeedableRng;
-    use rand_pcg::Pcg64;
     use dys_satisfiable::SatisfiableField;
-    use crate::{ai::{belief::Belief, goal::GoalBuilder, planner::next_best_goal, test_utils::{self, TestAgent}}, game::Game, game_state::GameState, physics_sim::PhysicsSim, simulation::config::SimulationConfig};
+    use crate::{ai::{belief::Belief, goal::GoalBuilder, planner::next_best_goal, test_utils::TestAgent}};
     use crate::ai::agent::Agent;
     use crate::ai::belief::SatisfiableBelief;
-    use crate::game_state::{BallsMapT, CollidersMapT, CombatantsMapT, PlatesMapT};
 
     fn make_test_agent() -> TestAgent {
-        test_utils::TestAgent::new()
+        TestAgent::new()
     }
 
     mod next_best_goal {

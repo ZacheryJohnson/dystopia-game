@@ -1,3 +1,5 @@
+#![cfg(test)]
+
 use std::sync::{Arc, Mutex};
 use rand::SeedableRng;
 use rand_pcg::Pcg64;
@@ -23,9 +25,6 @@ pub struct TestAgent {
 
 #[derive(Default)]
 pub struct TestAgentSettings {
-    /// If set, `combatant_override` and `combatant_state_override` will be ignored
-    combatant_object_override: Option<CombatantObject>,
-
     combatant_object_id_override: Option<CombatantId>,
     combatant_override: Option<CombatantInstance>,
     combatant_state_override: Option<CombatantState>,

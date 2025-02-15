@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use rapier3d::{na::vector, prelude::*};
 
-use crate::{game_objects::{ball::{BallObject, BallState}, game_object::GameObject, game_object_type::GameObjectType}, game_state::GameState, game_tick::GameTickNumber};
+use crate::{game_objects::{ball::{BallObject, BallState}, game_object::GameObject, game_object_type::GameObjectType}, game_state::GameState};
 use crate::simulation::simulation_stage::SimulationStage;
 use super::{config::SimulationConfig, simulation_event::SimulationEvent};
 
@@ -175,20 +175,4 @@ fn apply_explosion_forces(
 
 fn decrease_charge(ball: &mut BallObject, simulation_config: &SimulationConfig) {
     ball.charge = (ball.charge - simulation_config.ball_charge_decay_per_tick()).clamp(0.0, simulation_config.ball_charge_maximum());
-}
-
-fn try_freeze_slow_moving_ball(current_tick: GameTickNumber, ball_object: &mut BallObject, ball_rb: &mut RigidBody) {
-    if !matches!(ball_object.state, BallState::Idle) {
-        return;
-    }
-
-    const KINETIC_ENERGY_THRESHOLD: f32 = 3.0;
-    if ball_rb.kinetic_energy() >= KINETIC_ENERGY_THRESHOLD {
-        return;
-    }
-
-    // Ball is too slow - set it's velocity to zero to prevent further physics sim work
-    ball_rb.set_linvel(vector![0.0, 0.0, 0.0], true);
-    ball_object.change_state(current_tick, BallState::Idle);
-    ball_object.is_dirty = false; // ZJ-TODO: handle this case in change_state; need to derive PartialEq
 }

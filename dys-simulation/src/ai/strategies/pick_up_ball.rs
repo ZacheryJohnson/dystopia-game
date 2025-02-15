@@ -8,7 +8,6 @@ use crate::game_objects::combatant::CombatantId;
 
 pub struct PickUpBallStrategy {
     self_combatant_id: CombatantId,
-    self_combatant_position: Vector3<f32>,
     ball_id: BallId,
     believed_ball_position: Vector3<f32>,
     is_complete: bool,
@@ -17,13 +16,11 @@ pub struct PickUpBallStrategy {
 impl PickUpBallStrategy {
     pub fn new(
         self_id: CombatantId,
-        self_position: Vector3<f32>,
         target_ball: BallId,
         believed_ball_position: Vector3<f32>
     ) -> PickUpBallStrategy {
         PickUpBallStrategy {
             self_combatant_id: self_id,
-            self_combatant_position: self_position,
             ball_id: target_ball,
             believed_ball_position,
             is_complete: false,

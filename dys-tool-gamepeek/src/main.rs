@@ -79,10 +79,9 @@ impl eframe::App for GamePeekApp {
                 self.tick();
             }
 
-            let make_collapseable = |header: String, tick_number: GameTickNumber| {
+            let make_collapseable = |header: String, _: GameTickNumber| {
                 egui::CollapsingHeader::new(header)
                     .default_open(self.combatant_filter.is_some())
-                    .id_salt(tick_number)
             };
 
             egui::ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
@@ -152,7 +151,7 @@ impl eframe::App for GamePeekApp {
                                         make_collapseable("Beliefs".to_string(), tick.tick_number).show(ui, |ui| {
                                             for (source, beliefs) in &combatant_state.beliefs.sourced_beliefs() {
                                                 for belief in beliefs {
-                                                    ui.label(format!("({source}) {:?}", belief));
+                                                    ui.label(format!("({source}) {:?} (t {:?})", belief.belief, belief.expires_on_tick));
                                                 }
                                             }
                                         });

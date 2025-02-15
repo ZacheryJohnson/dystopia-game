@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use crate::{ai::{agent::Agent, sensor::Sensor}, game_state::GameState};
+use crate::ai::agent::Agent;
+use crate::game_state::GameState;
 use crate::simulation::simulation_event::SimulationEvent;
 use crate::simulation::simulation_stage::SimulationStage;
 

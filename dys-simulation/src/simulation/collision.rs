@@ -24,6 +24,7 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
         let maybe_collider_1 = active_colliders.get(&evt.collider1());
         let maybe_collider_2 = active_colliders.get(&evt.collider2());
         if maybe_collider_1.is_none() || maybe_collider_2.is_none() {
+            tracing::warn!("why tho");
             continue;
         }
 

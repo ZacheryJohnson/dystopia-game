@@ -114,7 +114,7 @@ pub fn actions(
         actions.push(
             ActionBuilder::new()
                 .name(format!("Pick Up Ball {ball_id}"))
-                .strategy(PickUpBallStrategy::new(combatant.id, combatant_pos, ball_id, ball_location.to_owned()))
+                .strategy(PickUpBallStrategy::new(combatant.id, ball_id, ball_location.to_owned()))
                 .cost(1.0)
                 .prerequisites(vec![
                     SatisfiableBelief::InBallPickupRange()

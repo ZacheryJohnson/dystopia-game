@@ -246,7 +246,8 @@ impl Agent for CombatantObject {
                 let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
                 rigid_body_set.get_mut(self.rigid_body_handle).unwrap().set_linvel(
                     Vector3::zeros(),
-                    true);
+                    true
+                );
             } else {
                 return events;
             }
@@ -294,15 +295,10 @@ impl Agent for CombatantObject {
             combatant_state.current_action.take().expect("failed to get current action")
         };
 
-        if !action.can_perform(&self.beliefs()) {
-            tracing::info!("Can no longer perform action {}; setting to None to replan next tick", action.name());
-            return vec![];
-        }
-
         tracing::debug!("Combatant {} - executing action {}", self.id, action.name());
 
         let Some(action_result_events) = action.tick(self, game_state.clone()) else {
-            tracing::debug!("Failed to execute action (the world state may have changed) - setting current action to None to replan next tick");
+            tracing::debug!("Failed to execute action {} (the world state may have changed) - setting current action to None to replan next tick", action.name());
             return vec![];
         };
 

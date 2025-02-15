@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use dys_simulation::{game, game_log::GameLog, game_objects::{ball::BallId, combatant::CombatantId}, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
+use dys_simulation::{game_log::GameLog, game_objects::{ball::BallId, combatant::CombatantId}, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 
 use bevy::{math::{bounding::{Aabb2d, IntersectsVolume}, vec2}, prelude::*, sprite::{MeshMaterial2d}, window::PrimaryWindow};
 use bevy::prelude::Color::Srgba;
@@ -9,7 +9,6 @@ use bevy::sprite::AlphaMode2d;
 use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_time::{Duration, Instant};
-use dys_simulation::game_objects::combatant::TeamAlignment::Home;
 
 fn main() {
     // Set the static memory to None for Option<VisualizationState>,
@@ -736,7 +735,7 @@ fn handle_keyboard_input(
 
 fn update_postgame_scoreboard(
     mut scoreboard_query: Query<&mut Text2d, With<PostgameScoreboard>>,
-    mut vis_state: ResMut<VisualizationState>,
+    vis_state: ResMut<VisualizationState>,
 ) {
     if vis_state.end_of_game {
         let mut scoreboard_text = scoreboard_query.single_mut();

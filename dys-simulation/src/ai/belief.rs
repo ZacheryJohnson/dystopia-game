@@ -3,7 +3,6 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use rand_distr::Exp;
 use rapier3d::na::Vector3;
 use dys_satisfiable::*;
 use dys_satisfiable_macros::{Satisfiable, UniqueKey};
@@ -75,9 +74,9 @@ pub enum Belief {
 }
 
 #[derive(Clone, Debug)]
-struct ExpiringBelief {
-    belief: Belief,
-    expires_on_tick: Option<GameTickNumber>,
+pub struct ExpiringBelief {
+    pub belief: Belief,
+    pub expires_on_tick: Option<GameTickNumber>,
 }
 
 impl ExpiringBelief {
@@ -216,20 +215,10 @@ impl BeliefSet {
             .collect::<Vec<Belief>>()
     }
 
-    pub fn sourced_beliefs(&self) -> HashMap<u32, Vec<Belief>> {
+    pub fn sourced_beliefs(&self) -> HashMap<u32, Vec<ExpiringBelief>> {
         let mut sourced_expiring_beliefs = self.sourced_beliefs.clone();
         sourced_expiring_beliefs.insert(0, self.unsourced_beliefs.clone());
-        let mut sourced_beliefs = HashMap::new();
-        for (source, expiring_beliefs) in sourced_expiring_beliefs {
-            let mut beliefs = vec![];
-            for expiring_belief in expiring_beliefs {
-                beliefs.push(expiring_belief.into());
-            }
-
-            sourced_beliefs.insert(source, beliefs);
-        }
-
-        sourced_beliefs
+        sourced_expiring_beliefs
     }
 
     #[tracing::instrument(

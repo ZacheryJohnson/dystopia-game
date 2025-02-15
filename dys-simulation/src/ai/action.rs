@@ -167,12 +167,13 @@ impl ActionBuilder {
         }
     }
 
-    pub fn build(self) -> Action {
-        self.action
-    }
-
+    #[cfg(test)]
     pub fn empty() -> Action {
         ActionBuilder::new().build()
+    }
+
+    pub fn build(self) -> Action {
+        self.action
     }
 
     pub fn name(mut self, name: impl Into<String>) -> ActionBuilder {

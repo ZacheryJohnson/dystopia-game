@@ -1,10 +1,9 @@
 use std::{sync::{Arc, Mutex}, time::Duration};
-use rand::prelude::StdRng;
 use dys_observability::logger::LoggerOptions;
 use dys_simulation::{game::Game, game_log::GameLog, generator::Generator};
 use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}};
 use tracing::Level;
-use rand::{random, SeedableRng};
+use rand::SeedableRng;
 use rand_pcg::Pcg64;
 
 #[tokio::main]

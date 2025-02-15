@@ -108,7 +108,7 @@ impl Strategy for ThrowBallAtTargetStrategy {
         {
             let mut game_state = game_state.lock().unwrap();
             let current_tick = game_state.current_tick;
-            let mut ball_object = game_state.balls.get_mut(&ball_id).unwrap();
+            let ball_object = game_state.balls.get_mut(&ball_id).unwrap();
             ball_object.change_state(current_tick, BallState::ThrownAtTarget {
                 direction: ball_impulse_vector,
                 thrower_id: self.self_id,

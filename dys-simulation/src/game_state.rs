@@ -2,6 +2,7 @@ use indexmap::IndexMap;
 use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, combatant_start::ArenaCombatantStart, feature::ArenaFeature, navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, plate::{ArenaPlate, PlateId}}};
 use rand::{random, SeedableRng};
 use rand_pcg::Pcg64;
+use rapier3d::na::Isometry3;
 use rapier3d::prelude::*;
 
 use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType, plate::PlateObject}, game_tick::GameTickNumber, physics_sim::PhysicsSim, simulation::config::SimulationConfig};
@@ -73,6 +74,7 @@ impl GameState {
                 if let Some(rigid_body) = feature.build_rigid_body() {
                     let rigid_body_handle = rigid_body_set.insert(rigid_body);
                     if let Some(collider) = feature.build_collider() {
+                        tracing::warn!("Feature: {:?} AABB: {:?}", feature.pathing_type(), collider.shape().compute_aabb(&Isometry3::new(feature.origin().to_owned(), vector![0.0, 0.0, 0.0])));
                         let collider_handle = collider_set.insert_with_parent(collider, rigid_body_handle, rigid_body_set);
                         let game_object_type = get_game_object_type_from_feature(feature);
                         if let GameObjectType::Plate(plate_id) = game_object_type {

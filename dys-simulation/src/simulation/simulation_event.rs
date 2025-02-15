@@ -232,11 +232,11 @@ impl SimulationEvent {
 
                 // ZJ-TODO: apply damage to limbs, etc
                 {
-                    let mut combatant_object = game_state.combatants.get_mut(&combatant_id).unwrap();
+                    let combatant_object = game_state.combatants.get_mut(&combatant_id).unwrap();
                     combatant_object.set_stunned(true);
                 }
             }
-            SimulationEvent::PointsScoredByCombatant { plate_id, combatant_id, points } => {
+            SimulationEvent::PointsScoredByCombatant { plate_id: _, combatant_id, points } => {
                 // ZJ-TODO: double points if no other combatants are on the plate
 
                 let mut game_state = game_state.lock().unwrap();

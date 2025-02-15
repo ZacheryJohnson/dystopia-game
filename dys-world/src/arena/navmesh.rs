@@ -324,7 +324,7 @@ mod tests {
         let (test_arena, test_config) = test_defaults();
         let unit_resolution = test_config.unit_resolution;
 
-        let mut navmesh = ArenaNavmesh::new_from(test_arena, test_config);
+        let navmesh = ArenaNavmesh::new_from(test_arena, test_config);
 
         let start_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.0, 0.0, 1.0], unit_resolution).expect("failed to get start node");
         let end_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.0, 0.0, 5.0], unit_resolution).expect("failed to get end node");
@@ -341,7 +341,7 @@ mod tests {
         let (test_arena, test_config) = test_defaults();
         let unit_resolution = test_config.unit_resolution;
 
-        let mut navmesh = ArenaNavmesh::new_from(test_arena, test_config);
+        let navmesh = ArenaNavmesh::new_from(test_arena, test_config);
 
         let start_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.0, 0.0, 1.0], unit_resolution).expect("failed to get start node");
         let end_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![2.0, 0.0, 2.0], unit_resolution).expect("failed to get end node");
@@ -362,7 +362,7 @@ mod tests {
         test_config.unit_resolution = 0.5;
         let unit_resolution = test_config.unit_resolution;
 
-        let mut navmesh = ArenaNavmesh::new_from(test_arena, test_config);
+        let navmesh = ArenaNavmesh::new_from(test_arena, test_config);
 
         let start_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.0, 0.0, 1.0], unit_resolution).expect("failed to get start node");
         let end_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.0, 0.0, 5.0], unit_resolution).expect("failed to get end node");
