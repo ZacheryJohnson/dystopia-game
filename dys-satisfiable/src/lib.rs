@@ -1,4 +1,4 @@
-use std::fmt::Formatter;
+use std::fmt::{Debug, Formatter, Result};
 use std::rc::Rc;
 pub use dyn_clone;
 pub use ahash;
@@ -40,11 +40,19 @@ pub enum SatisfiableField<
     Lambda(Rc<dyn Fn(ValueT) -> bool>)
 }
 
-impl<ValueT: Clone + PartialEq + PartialOrd> std::fmt::Debug for SatisfiableField<ValueT> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl<ValueT: Clone + PartialEq + PartialOrd + Debug> Debug for SatisfiableField<ValueT> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
             SatisfiableField::Lambda(_) => write!(f, "<lambda fn>"),
-            _ => write!(f, "{:?}", self)
+            SatisfiableField::Ignore => write!(f, "<ignore>"),
+            SatisfiableField::Exactly(val) => write!(f, "{val:?}"),
+            SatisfiableField::NotExactly(val) => write!(f, "{val:?}"),
+            SatisfiableField::In(val) => write!(f, "{val:?}"),
+            SatisfiableField::NotIn(val) => write!(f, "{val:?}"),
+            SatisfiableField::GreaterThan(val) => write!(f, "{val:?}"),
+            SatisfiableField::GreaterThanOrEqual(val) => write!(f, "{val:?}"),
+            SatisfiableField::LessThan(val) => write!(f, "{val:?}"),
+            SatisfiableField::LessThanOrEqual(val) => write!(f, "{val:?}"),
         }
     }
 }

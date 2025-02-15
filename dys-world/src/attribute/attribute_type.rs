@@ -39,6 +39,6 @@ pub enum AttributeType {
     /// Survival at any cost.
     SelfPreservation,
 
-    ///
+    /// Ability to warn and collaborate.
     Communication,
 }

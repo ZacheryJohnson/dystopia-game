@@ -3,9 +3,10 @@ use rand::RngCore;
 use dys_world::{arena::plate::PlateId, combatant::instance::CombatantInstance};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 use rapier3d::na::Isometry3;
+use dys_satisfiable::SatisfiableField;
 use dys_world::attribute::attribute_type::AttributeType;
 use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
-use crate::ai::belief::BeliefSet;
+use crate::ai::belief::{BeliefSet, SatisfiableBelief};
 use crate::ai::sensor::Sensor;
 use crate::ai::sensors::field_of_view::FieldOfViewSensor;
 use crate::ai::sensors::proximity::ProximitySensor;
@@ -13,7 +14,7 @@ use super::{ball::BallId, game_object::GameObject};
 
 pub type CombatantId = u64;
 
-const COMBATANT_HALF_HEIGHT: f32 = 2.0; // ZJ-TODO: this should be derived from the character's limbs
+const COMBATANT_HALF_HEIGHT: f32 = 1.0; // ZJ-TODO: this should be derived from the character's limbs
 const COMBATANT_RADIUS: f32 = 0.5; // ZJ-TODO: this should be derived from the character's limbs
 const COMBATANT_MASS: f32 = 100.0;
 
@@ -114,6 +115,11 @@ impl CombatantObject {
             rigid_body.translation().to_owned(),
             rigid_body.rotation().scaled_axis()
         )
+    }
+
+    pub fn radius(&self) -> f32 {
+        // ZJ-TODO: read from combatant object
+        COMBATANT_RADIUS
     }
 
     pub fn set_on_plate(&mut self, plate_id: PlateId) {
@@ -314,7 +320,7 @@ impl Agent for CombatantObject {
 
             let mut combatant_state = self.combatant_state.lock().unwrap();
             combatant_state.completed_action = Some(action.to_owned());
-            combatant_state.beliefs.add_beliefs(&mut action.completion_beliefs().to_owned());
+            combatant_state.beliefs.add_beliefs(action.completion_beliefs());
 
             for consumed_belief in action.consumed_beliefs() {
                 tracing::debug!("Consuming beliefs satisfying {consumed_belief:?}");

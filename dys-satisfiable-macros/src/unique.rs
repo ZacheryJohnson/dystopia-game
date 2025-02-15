@@ -36,7 +36,7 @@ pub fn unique_impl(input: TokenStream) -> TokenStream {
                 variant_to_unique_idents.get_mut(variant_ident).unwrap().push(field.ident.to_owned().unwrap().into_token_stream());
                 variant_to_hasher_token_streams.get_mut(variant_ident).unwrap().push(quote! {
                     hasher.write_u64(#ident.to_owned() as u64);
-                }.into());
+                });
             }
         }
     }
@@ -51,7 +51,7 @@ pub fn unique_impl(input: TokenStream) -> TokenStream {
                 #(#hasher_tokens)*
                 hasher.finish()
             }
-        }.into());
+        });
     }
 
     let gen = quote!{

@@ -62,7 +62,7 @@ impl Sensor for ProximitySensor {
         query_pipeline.intersections_with_shape(
             rigid_body_set,
             collider_set,
-            &combatant_isometry,
+            combatant_isometry,
             &self.shape,
             query_filter,
             |collider_handle| {

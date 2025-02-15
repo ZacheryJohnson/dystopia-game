@@ -26,7 +26,7 @@ impl CombatantInstance {
     pub fn move_speed(&self) -> f32 {
         let dexterity = self
             .get_attribute_value(&AttributeType::Dexterity)
-            .unwrap_or(AttributeValueT::default());
+            .unwrap_or_default();
 
         // ZJ-TODO: tune this value
         // ZJ-TODO: factor in weight

@@ -116,7 +116,7 @@ pub struct BeliefSet {
 
 impl BeliefSet {
     pub fn empty() -> BeliefSet {
-        BeliefSet::from(&vec![])
+        BeliefSet::from(&[])
     }
 
     pub fn from(beliefs: &[Belief]) -> BeliefSet {
@@ -195,7 +195,7 @@ impl BeliefSet {
         };
 
         self.unsourced_beliefs.retain(retain_fn);
-        for (_, beliefs) in &mut self.sourced_beliefs  {
+        for beliefs in self.sourced_beliefs.values_mut() {
             beliefs.retain(retain_fn);
         }
     }

@@ -91,6 +91,8 @@ struct BallVisualizer {
     pub id: BallId,
     pub desired_location: Vec3,
     pub last_position: Vec3,
+    pub desired_scale: Vec3,
+    pub last_scale: Vec3,
 }
 
 #[derive(Component)]
@@ -364,7 +366,7 @@ fn setup_after_reload_game_log(
                 };
                 let translation = Vec3::new(position.x, position.z, z_index);
                 let transform = Transform {
-                    translation: translation.clone(),
+                    translation,
                     rotation: Quat::from_xyzw(rotation.i, rotation.k, rotation.j, rotation.w),
                     scale: Vec3::new(1.0, 1.0, 1.0), // ZJ-TODO
                 };
@@ -395,14 +397,20 @@ fn setup_after_reload_game_log(
                 //          otherwise the ball can "hide" under combatants
                 let translation = Vec3::new(position.x, position.z, position.y + 10.0);
                 let transform = Transform {
-                    translation: translation.clone(),
+                    translation,
                     rotation: Quat::default(),
-                    scale: Vec3::ONE, // ZJ-TODO
+                    scale: Vec3::ONE,
                 };
                 commands.spawn((
                     VisualizationObject,
-                    BallVisualizer { id: *ball_id, desired_location: translation, last_position: translation },
-                    Mesh2d(meshes.add(Circle { radius: 1.0 })), // ZJ-TODO: read radius from ball object
+                    BallVisualizer {
+                        id: *ball_id,
+                        desired_location: translation,
+                        last_position: translation,
+                        desired_scale: Vec3::ONE,
+                        last_scale: Vec3::ONE
+                    },
+                    Mesh2d(meshes.add(Circle { radius: 0.5 })), // ZJ-TODO: read radius from ball object
                     MeshMaterial2d(materials.add(Color::linear_rgb(0.75, 0.75, 0.0))),
                     transform,
                 ));
@@ -410,24 +418,24 @@ fn setup_after_reload_game_log(
             SimulationEvent::CombatantPositionUpdate { combatant_id, position } => {
                 let translation = Vec3::new(position.x, position.z, position.y);
                 let transform = Transform {
-                    translation: translation.clone(),
+                    translation,
                     rotation: Quat::default(),
                     scale: Vec3::ONE, // ZJ-TODO
                 };
 
                 // ZJ-TODO: don't assume team by position
-                let home_team = if position.x < 50.0 { true } else { false };
+                let home_team = position.x < 50.0;
 
                 commands.spawn((
                     VisualizationObject,
                     CombatantVisualizer { id: *combatant_id, desired_location: translation, last_position: translation },
-                    Mesh2d(meshes.add(Capsule2d::new(1.0, 2.0))), // ZJ-TODO: read radius
+                    Mesh2d(meshes.add(Capsule2d::new(0.75, 1.75))), // ZJ-TODO: read radius
                     MeshMaterial2d(materials.add(Color::linear_rgb(
                         0.0,
                         if home_team { 1.0 } else { 0.0 },
                         if home_team { 0.0 } else { 1.0 },
                     ))),
-                    transform.clone(),
+                    transform,
                 )).with_children(|builder| {
                     // We'll inherit the x and y coords from the parent,
                     // but we want this text to always be on top, and to be smooth
@@ -477,7 +485,8 @@ fn update(
     for (mut combatant_vis, mut combatant_transform) in combatants_query.iter_mut() {
         combatant_transform.translation = combatant_vis.last_position.lerp(
             combatant_vis.desired_location,
-            lerp_progress);
+            lerp_progress
+        );
 
         combatant_vis.last_position = combatant_transform.translation;
     }
@@ -485,9 +494,17 @@ fn update(
     for (mut ball_vis, mut ball_transform) in balls_query.iter_mut() {
         ball_transform.translation = ball_vis.last_position.lerp(
             ball_vis.desired_location,
-            lerp_progress);
+            lerp_progress
+        );
 
         ball_vis.last_position = ball_transform.translation;
+
+        ball_transform.scale = ball_vis.last_scale.lerp(
+            ball_vis.desired_scale,
+            lerp_progress
+        );
+
+        ball_vis.last_scale = ball_transform.scale;
     }
 
     if time_since_last_update < TIME_BETWEEN_TICKS {
@@ -505,7 +522,7 @@ fn update(
     {
         let events_this_tick = {
             let game_log = vis_state.game_log.as_ref().unwrap();
-            game_log.ticks().iter().nth(current_tick as usize)
+            game_log.ticks().get(current_tick as usize)
         };
 
         if events_this_tick.is_none() {
@@ -520,16 +537,17 @@ fn update(
                 SimulationEvent::ArenaObjectPositionUpdate { .. } => { /* no-op, nothing to move with arena objects currently - this may change if plates start moving */},
                 SimulationEvent::BallPositionUpdate { ball_id, position } => {
                     let (mut ball_vis, _) = balls_query.iter_mut()
-                        .filter(|(ball_vis, _)| ball_vis.id == *ball_id)
-                        .next()
+                        .find(|(ball_vis, _)| ball_vis.id == *ball_id)
                         .unwrap();
 
                     ball_vis.desired_location = Vec3::new(position.x, position.z, position.y);
+                    // Every 3 units vertically, make the ball twice as big
+                    let scale_modifier = (1.0 + (position.y / 3.0)).max(1.0);
+                    ball_vis.desired_scale = Vec3::ONE * scale_modifier;
                 },
                 SimulationEvent::CombatantPositionUpdate { combatant_id, position } => {
                     let (mut combatant_vis, _) = combatants_query.iter_mut()
-                        .filter(|(combatant_vis, _)| combatant_vis.id == *combatant_id)
-                        .next()
+                        .find(|(combatant_vis, _)| combatant_vis.id == *combatant_id)
                         .unwrap();
 
                     combatant_vis.desired_location = Vec3::new(position.x, position.z, position.y);
@@ -537,15 +555,14 @@ fn update(
                 SimulationEvent::PointsScoredByCombatant { plate_id: _, combatant_id, points } => {
                     let is_home_team = *combatant_id <= 5;
                     if is_home_team {
-                        new_home_score = new_home_score + (*points as u16);
+                        new_home_score += *points as u16;
                     } else {
-                        new_away_score = new_away_score + (*points as u16);
+                        new_away_score += *points as u16;
                     }
                 },
                 SimulationEvent::BallExplosion { ball_id, charge } => {
                     let (_, ball_pos) = balls_query.iter()
-                        .filter(|(ball_vis, _)| ball_vis.id == *ball_id)
-                        .next()
+                        .find(|(ball_vis, _)| ball_vis.id == *ball_id)
                         .unwrap();
 
                     let explosion_radius = charge * 0.3;

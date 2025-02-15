@@ -18,10 +18,14 @@ impl From<AttributeInstance> for (AttributeType, AttributeValueT) {
     }
 }
 
-impl Into<AttributeType> for AttributeInstance {
-    fn into(self) -> AttributeType { self.0 }
+impl From<AttributeInstance> for AttributeType {
+    fn from(value: AttributeInstance) -> Self {
+        value.0.to_owned()
+    }
 }
 
-impl Into<f32> for AttributeInstance {
-    fn into(self) -> AttributeValueT { self.1 }
+impl From<AttributeInstance> for f32 {
+    fn from(value: AttributeInstance) -> Self {
+        value.1
+    }
 }

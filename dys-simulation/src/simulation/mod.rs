@@ -39,9 +39,12 @@ pub fn simulate_tick(game_state: Arc<Mutex<GameState>>) -> GameTick {
 
     let mut pending_simulation_events = vec![];
 
-    let collision_stage = handle_collision_events(game_state.clone());
     let balls_stage = simulate_balls(game_state.clone());
     let combatants_stage = simulate_combatants(game_state.clone());
+
+    // Anything that may cause movement **must** occur before simulating collisions
+    // Otherwise, we may have collisions that happen instantly, but we've already processed collisions this tick
+    let collision_stage = handle_collision_events(game_state.clone());
     let scoring_stage = if is_scoring_tick {
         simulate_scoring(game_state.clone())
     } else {
@@ -57,7 +60,6 @@ pub fn simulate_tick(game_state: Arc<Mutex<GameState>>) -> GameTick {
 
     for pending_event in pending_simulation_events {
         if !SimulationEvent::simulate_event(game_state.clone(), &pending_event) {
-            tracing::warn!("failed to simulate pending event: {:?}", pending_event);
             continue;
         }
 

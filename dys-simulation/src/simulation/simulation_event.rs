@@ -38,6 +38,9 @@ pub enum SimulationEvent {
     /// A combatant has picked up a ball that was on the ground.
     CombatantPickedUpBall { combatant_id: CombatantId, ball_id: BallId },
 
+    /// A combatant has dropped a ball without throwing it.
+    CombatantDroppedBall { combatant_id: CombatantId, ball_id: BallId },
+
     /// A ball has been thrown targeting an enemy
     BallThrownAtEnemy {
         thrower_id: CombatantId,
@@ -132,6 +135,10 @@ impl SimulationEvent {
                         .get_mut(&combatant_id)
                         .unwrap();
 
+                    // Our combatant may have been stunned since initially trying this
+                    if combatant_object.combatant_state.lock().unwrap().stunned_by_explosion {
+                        return false;
+                    }
                     combatant_object.pickup_ball(ball_id);
                 }
 
@@ -141,6 +148,32 @@ impl SimulationEvent {
                         .get_mut(&ball_id)
                         .unwrap();
                     ball_object.set_held_by(Some(combatant_id), current_tick);
+                }
+            }
+            SimulationEvent::CombatantDroppedBall { combatant_id, ball_id } => {
+                let mut game_state = game_state.lock().unwrap();
+                let current_tick = game_state.current_tick.to_owned();
+
+                {
+                    let combatant_object = game_state
+                        .combatants
+                        .get_mut(&combatant_id)
+                        .unwrap();
+
+                    // Our combatant may have been stunned since initially trying this
+                    if combatant_object.combatant_state.lock().unwrap().stunned_by_explosion {
+                        return false;
+                    }
+
+                    combatant_object.drop_ball();
+                }
+
+                {
+                    let ball_object = game_state
+                        .balls
+                        .get_mut(&ball_id)
+                        .unwrap();
+                    ball_object.set_held_by(None, current_tick);
                 }
             }
             SimulationEvent::BallThrownAtEnemy { thrower_id, enemy_id: _, ball_id, ball_impulse_vector } => {

@@ -93,7 +93,7 @@ pub fn actions(
                 .name(format!("Move to Ball {ball_id}"))
                 .strategy(MoveToLocationStrategy::new(
                     combatant_pos.into(),
-                    ball_location.clone().into(),
+                    ball_location.into(),
                     game_state.clone())
                 )
                 .cost(MOVE_TO_BALL_WEIGHT_HARDCODE_HACK * (ball_location - combatant_pos).magnitude() / combatant_move_speed)

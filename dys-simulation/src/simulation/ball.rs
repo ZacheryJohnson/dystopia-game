@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use rapier3d::{na::vector, prelude::*};
-
+use rapier3d::na::Vector3;
 use crate::{game_objects::{ball::{BallObject, BallState}, game_object::GameObject, game_object_type::GameObjectType}, game_state::GameState};
 use crate::simulation::simulation_stage::SimulationStage;
 use super::{config::SimulationConfig, simulation_event::SimulationEvent};
@@ -23,9 +23,7 @@ pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationSta
 
         if let Some(event) = try_move_if_held(&ball_object, game_state.clone()) {
             events.push(event);
-        }
-
-        if ball_object.is_dirty() {
+        } else {
             let mut game_state = game_state.lock().unwrap();
             let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
             let ball_rb = rigid_body_set.get_mut(ball_object.rigid_body_handle().unwrap()).unwrap();
@@ -61,7 +59,7 @@ fn try_move_if_held(
     // Don't love setting the ball's position to exactly the combatant's position but it works for now
     // Would love to actually figure out parenting one rigid body to another (joints?)
 
-    let combatant_pos = {
+    let held_by_combatant_pos = {
         let game_state = game_state.lock().unwrap();
         let (rigid_body_set, _, _) = game_state.physics_sim.sets();
 
@@ -70,14 +68,13 @@ fn try_move_if_held(
             .get(&holder_id)
             .expect("failed to finding holder combatant object");
 
-        rigid_body_set
-            .get(holding_combatant_object.rigid_body_handle().unwrap())
-            .unwrap()
-            .translation()
-            .to_owned()
+        let forward_isometry = holding_combatant_object.forward_isometry(rigid_body_set);
+        let outside_of_geometry_dist = holding_combatant_object.radius() + ball.radius();
+        let new_ball_position_offset = Vector3::z() * outside_of_geometry_dist;
+        forward_isometry.translation.vector + forward_isometry.transform_vector(&new_ball_position_offset)
     };
 
-    Some(SimulationEvent::BallPositionUpdate { ball_id: ball.id, position: combatant_pos })
+    Some(SimulationEvent::BallPositionUpdate { ball_id: ball.id, position: held_by_combatant_pos })
 }
 
 fn explode(

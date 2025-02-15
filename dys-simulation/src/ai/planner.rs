@@ -93,8 +93,7 @@ fn get_action_for_belief<'a>(
 ) -> Option<&'a Action> {
     actions
         .iter()
-        .filter(|action| action.can_satisfy(desired_belief.clone()))
-        .next()
+        .find(|action| action.can_satisfy(desired_belief.clone()))
 }
 
 /// The best goal is the highest priority goal where the agent doesn't already have all of the desired beliefs.

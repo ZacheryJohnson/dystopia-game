@@ -68,6 +68,10 @@ impl BallObject {
         }
     }
 
+    pub fn radius(&self) -> f32 {
+        BALL_RADIUS
+    }
+
     pub fn set_held_by(&mut self, combatant_id: Option<CombatantId>, current_tick: GameTickNumber) {
         self.held_by = combatant_id;
 

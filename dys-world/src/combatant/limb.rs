@@ -99,13 +99,13 @@ impl AttributeSource for Limb {
             .modifiers
             .iter()
             .filter_map(|modifier| modifier.attribute_total(attribute_type))
-            .fold(None, |acc, modifier| Some(acc.unwrap_or(AttributeValueT::default()) + modifier));
+            .fold(None, |acc, modifier| Some(acc.unwrap_or_default() + modifier));
 
         let child_attribute_value = self
             .child_limbs
             .iter()
-            .filter_map(|child_limb| child_limb.attribute_total(&attribute_type))
-            .fold(None, |acc, modifier| Some(acc.unwrap_or(AttributeValueT::default()) + modifier));
+            .filter_map(|child_limb| child_limb.attribute_total(attribute_type))
+            .fold(None, |acc, modifier| Some(acc.unwrap_or_default() + modifier));
 
         match (self_attribute_value, child_attribute_value) {
             (Some(self_attribute_value), Some(child_attribute_value)) => Some(self_attribute_value + child_attribute_value),
