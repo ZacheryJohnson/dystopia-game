@@ -74,7 +74,6 @@ impl GameState {
                 if let Some(rigid_body) = feature.build_rigid_body() {
                     let rigid_body_handle = rigid_body_set.insert(rigid_body);
                     if let Some(collider) = feature.build_collider() {
-                        tracing::warn!("Feature: {:?} AABB: {:?}", feature.pathing_type(), collider.shape().compute_aabb(&Isometry3::new(feature.origin().to_owned(), vector![0.0, 0.0, 0.0])));
                         let collider_handle = collider_set.insert_with_parent(collider, rigid_body_handle, rigid_body_set);
                         let game_object_type = get_game_object_type_from_feature(feature);
                         if let GameObjectType::Plate(plate_id) = game_object_type {
@@ -99,7 +98,7 @@ impl GameState {
 
             for ball_spawn in arena.features::<ArenaBallSpawn>() {
                 ball_id += 1;
-                let ball_object = BallObject::new(ball_id, current_tick, *ball_spawn.origin() + vector![0.0, 1.0, 0.0], rigid_body_set, collider_set);
+                let ball_object = BallObject::new(ball_id, current_tick, *ball_spawn.origin(), rigid_body_set, collider_set);
 
                 active_colliders.insert(ball_object.collider_handle().expect("ball game objects must have collider handles"), GameObjectType::Ball(ball_id));
 
