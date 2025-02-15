@@ -2,7 +2,6 @@ use indexmap::IndexMap;
 use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, combatant_start::ArenaCombatantStart, feature::ArenaFeature, navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, plate::{ArenaPlate, PlateId}}};
 use rand::{random, SeedableRng};
 use rand_pcg::Pcg64;
-use rapier3d::na::Isometry3;
 use rapier3d::prelude::*;
 
 use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType, plate::PlateObject}, game_tick::GameTickNumber, physics_sim::PhysicsSim, simulation::config::SimulationConfig};

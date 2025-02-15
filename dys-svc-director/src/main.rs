@@ -1,9 +1,11 @@
+use std::convert::Infallible;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
 
-use axum::http::HeaderValue;
+use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::{extract::State, routing::get, Router};
+use axum::extract::Request;
 use dys_observability::logger::LoggerOptions;
 use dys_observability::middleware::{make_span, map_trace_context, record_trace_id};
 use dys_simulation::game::Game;
@@ -41,6 +43,10 @@ struct CombatantTeamMember {
 struct WorldState {
     game_world: Arc<Mutex<World>>,
     match_results: Arc<RwLock<Vec<MatchResult>>>,
+}
+
+async fn health_check(_: Request) -> Result<impl IntoResponse, Infallible> {
+    Ok(StatusCode::OK)
 }
 
 #[tokio::main]
@@ -83,6 +89,7 @@ async fn main() {
     let app = Router::new()
         .route("/latest_games", get(latest_games))
         .route("/combatants", get(combatants))
+        .route("/health", get(health_check))
         .layer(trace_middleware_layer)
         .with_state(world_state);
 

@@ -65,6 +65,10 @@ async fn query_combatants(_: Request) -> Result<Response, Infallible> {
     Ok(json.into_response())
 }
 
+async fn health_check(_: Request) -> Result<impl IntoResponse, Infallible> {
+    Ok(StatusCode::OK)
+}
+
 #[tokio::main]
 async fn main() {
     let logger_options = LoggerOptions {
@@ -106,6 +110,11 @@ async fn main() {
             ServiceBuilder::new()
                 .layer(middleware::from_fn(static_cache_control))
                 .service(ServeDir::new(format!("{dist_path}/")))
+        )
+        .nest_service(
+            "/health",
+            ServiceBuilder::new()
+                .service_fn(health_check)
         )
         .fallback_service(
             ServiceBuilder::new()
