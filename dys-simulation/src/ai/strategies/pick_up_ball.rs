@@ -41,7 +41,7 @@ impl Strategy for PickUpBallStrategy {
         );
 
         let self_can_reach_ball = owned_beliefs.can_satisfy(
-            SatisfiableBelief::InBallPickupRange()
+            &SatisfiableBelief::InBallPickupRange()
                 .ball_id(SatisfiableField::Exactly(self.ball_id))
                 .combatant_id(SatisfiableField::Exactly(self.self_combatant_id))
         );
@@ -52,20 +52,20 @@ impl Strategy for PickUpBallStrategy {
     fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool {
         // If someone picks up the ball we're targeting, interrupt
         let other_combatant_holding_target_ball = owned_beliefs.can_satisfy(
-            SatisfiableBelief::HeldBall()
+            &SatisfiableBelief::HeldBall()
                 .ball_id(SatisfiableField::Exactly(self.ball_id))
         );
 
         // If we don't know where the ball we're targeting is, interrupt
         let target_ball_now_unknown = !owned_beliefs.can_satisfy(
-            SatisfiableBelief::BallPosition()
+            &SatisfiableBelief::BallPosition()
                 .ball_id(SatisfiableField::Exactly(self.ball_id))
         );
 
         // If the ball has moved significantly from where we initially planned, interrupt
         let believed_ball_pos = self.believed_ball_position.to_owned();
         let target_ball_moved_significantly = !owned_beliefs.can_satisfy(
-            SatisfiableBelief::BallPosition()
+            &SatisfiableBelief::BallPosition()
                 .ball_id(SatisfiableField::Exactly(self.ball_id))
                 .position(SatisfiableField::Lambda(Rc::new(move |pos| {
                     (believed_ball_pos - pos).magnitude() <= 1.0

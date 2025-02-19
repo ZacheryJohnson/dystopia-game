@@ -3,11 +3,12 @@ use rapier3d::geometry::{ColliderHandle, ColliderSet};
 use rapier3d::na::Isometry3;
 use rapier3d::pipeline::{QueryFilter, QueryPipeline};
 use rapier3d::prelude::Cylinder;
-use crate::ai::belief::Belief;
+use crate::ai::belief::{Belief, ExpiringBelief};
 use crate::ai::sensor::Sensor;
 use crate::game_objects::combatant::CombatantId;
 use crate::game_objects::game_object_type::GameObjectType;
 use crate::game_state::{BallsMapT, CollidersMapT, CombatantsMapT};
+use crate::game_tick::GameTickNumber;
 
 #[derive(Clone, Debug)]
 pub struct ProximitySensor {
@@ -53,7 +54,8 @@ impl Sensor for ProximitySensor {
         active_colliders: &CollidersMapT,
         _: &CombatantsMapT,
         _: &BallsMapT,
-    ) -> Vec<Belief> {
+        current_tick: GameTickNumber
+    ) -> Vec<ExpiringBelief> {
         let mut beliefs = vec![];
 
         let query_filter = QueryFilter::default()
@@ -69,10 +71,10 @@ impl Sensor for ProximitySensor {
                 let game_object = active_colliders.get(&collider_handle).unwrap();
                 match game_object {
                     GameObjectType::Ball(ball_id) => {
-                        beliefs.push(Belief::InBallPickupRange {
+                        beliefs.push(ExpiringBelief::new(Belief::InBallPickupRange {
                             ball_id: *ball_id,
                             combatant_id: self.owner_combatant_id,
-                        });
+                        }, Some(current_tick + 12)));
                     },
                     _ => {} // we can ignore all other game object types
                 }

@@ -28,10 +28,18 @@ impl Strategy for ThrowBallAtTargetStrategy {
     }
 
     fn can_perform(&self, owned_beliefs: &BeliefSet) -> bool {
-        owned_beliefs.can_satisfy(
-            SatisfiableBelief::HeldBall()
+        let has_ball = owned_beliefs.can_satisfy(
+            &SatisfiableBelief::HeldBall()
                 .combatant_id(SatisfiableField::Exactly(self.self_id))
-        )
+        );
+
+        let can_see_target = owned_beliefs.can_satisfy(
+            &SatisfiableBelief::DirectLineOfSightToCombatant()
+                .self_combatant_id(SatisfiableField::Exactly(self.self_id))
+                .other_combatant_id(SatisfiableField::Exactly(self.target))
+        );
+
+        has_ball && can_see_target
     }
 
     fn should_interrupt(&self, _: &BeliefSet) -> bool {
