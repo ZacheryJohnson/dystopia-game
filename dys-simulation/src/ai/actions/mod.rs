@@ -31,18 +31,6 @@ pub fn actions(
 
     let combatant_move_speed = combatant.combatant.lock().unwrap().move_speed();
 
-    actions.push(
-        ActionBuilder::new()
-            .name("Look Around")
-            .strategy(LookAroundStrategy::new())
-            .cost(100.0)
-            .completion(vec![
-                Belief::ScannedEnvironment { tick: current_tick },
-            ])
-            .consumes(SatisfiableBelief::ScannedEnvironment())
-            .build()
-    );
-
     let (plates, balls, combatants) = {
         let game_state = game_state.lock().unwrap();
         (game_state.plates.clone(), game_state.balls.clone(), game_state.combatants.clone())
@@ -68,16 +56,49 @@ pub fn actions(
                     game_state.clone())
                 )
                 .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (plate_location - combatant_pos).magnitude() / combatant_move_speed)
-                .promised(vec![Belief::OnPlate { combatant_id: combatant.id, plate_id }])
+                .promises(Belief::OnPlate { combatant_id: combatant.id, plate_id })
+                .build()
+        );
+    }
+
+    for (other_combatant_id, other_combatant_object) in &combatants {
+        // Don't add actions that refer to ourselves
+        if combatant.id == *other_combatant_id {
+            continue;
+        }
+
+        let other_combatant_location = {
+            let game_state = game_state.lock().unwrap();
+            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+            rigid_body_set
+                .get(other_combatant_object.rigid_body_handle().unwrap())
+                .unwrap()
+                .translation()
+                .to_owned()
+        };
+
+        actions.push(
+            ActionBuilder::new()
+                .name(format!("Look For Combatant {}", other_combatant_id))
+                .strategy(MoveToLocationStrategy::new(
+                    combatant_pos.into(),
+                    other_combatant_location.into(),
+                    game_state.clone())
+                )
+                .cost(40.0) // ZJ-TODO
+                .completion(vec![
+                    Belief::ScannedEnvironment { tick: current_tick },
+                ])
+                .promises(Belief::DirectLineOfSightToCombatant {
+                    self_combatant_id: combatant.id,
+                    other_combatant_id: *other_combatant_id,
+                })
+                .consumes(SatisfiableBelief::ScannedEnvironment())
                 .build()
         );
     }
 
     for (ball_id, ball_object) in balls {
-        if ball_object.held_by.is_some() {
-            continue;
-        }
-
         let ball_location = {
             let game_state = game_state.lock().unwrap();
             let (rigid_body_set, _, _) = game_state.physics_sim.sets();
@@ -97,17 +118,15 @@ pub fn actions(
                     game_state.clone())
                 )
                 .cost(MOVE_TO_BALL_WEIGHT_HARDCODE_HACK * (ball_location - combatant_pos).magnitude() / combatant_move_speed)
-                .prerequisites(vec![
+                .requires(
                     SatisfiableBelief::BallPosition()
                         .ball_id(SatisfiableField::Exactly(ball_id))
-                ])
+                )
                 .prohibits(
                     SatisfiableBelief::HeldBall()
                         .combatant_id(SatisfiableField::Exactly(combatant.id))
                 )
-                .promised(vec![
-                    Belief::InBallPickupRange { ball_id, combatant_id: combatant.id },
-                ])
+                .promises(Belief::InBallPickupRange { ball_id, combatant_id: combatant.id })
                 .build()
         );
 
@@ -116,11 +135,11 @@ pub fn actions(
                 .name(format!("Pick Up Ball {ball_id}"))
                 .strategy(PickUpBallStrategy::new(combatant.id, ball_id, ball_location.to_owned()))
                 .cost(1.0)
-                .prerequisites(vec![
+                .requires(
                     SatisfiableBelief::InBallPickupRange()
                         .combatant_id(SatisfiableField::Exactly(combatant.id))
                         .ball_id(SatisfiableField::Exactly(ball_id))
-                ])
+                )
                 .prohibits(
                     SatisfiableBelief::HeldBall()
                         .combatant_id(SatisfiableField::Exactly(combatant.id))
@@ -146,10 +165,16 @@ pub fn actions(
                     .name(format!("Throw Ball {} at/to Combatant {}", ball_id, target_combatant_id))
                     .strategy(ThrowBallAtTargetStrategy::new(combatant.id, target_combatant_id))
                     .cost(10.0_f32 /* ZJ-TODO */)
-                    .prerequisites(vec![
+                    .requires(
                         SatisfiableBelief::HeldBall()
                             .combatant_id(SatisfiableField::Exactly(combatant.id))
-                    ])
+                            .ball_id(SatisfiableField::Exactly(ball_id))
+                    )
+                    .requires(
+                        SatisfiableBelief::DirectLineOfSightToCombatant()
+                            .self_combatant_id(SatisfiableField::Exactly(combatant.id))
+                            .other_combatant_id(SatisfiableField::Exactly(target_combatant_id))
+                    )
                     .completion(vec![
                         Belief::BallThrownAtCombatant {
                             ball_id,
@@ -160,6 +185,7 @@ pub fn actions(
                     .consumes(
                         SatisfiableBelief::HeldBall()
                             .combatant_id(SatisfiableField::Exactly(combatant.id))
+                            .ball_id(SatisfiableField::Exactly(ball_id))
                     )
                     .consumes(
                         SatisfiableBelief::BallThrownAtCombatant()

@@ -54,12 +54,12 @@ impl Action {
         let all_prereqs = self
             .prerequisite_beliefs
             .iter()
-            .all(|belief| owned_beliefs.can_satisfy(belief.to_owned())); // ZJ-TODO: allow passing a reference instead of cloning
+            .all(|belief| owned_beliefs.can_satisfy(belief));
 
         let none_prohibited = self
             .prohibited_beliefs
             .iter()
-            .all(|belief| !owned_beliefs.can_satisfy(belief.to_owned())); // ZJ-TODO: allow passing a reference instead of cloning
+            .all(|belief| !owned_beliefs.can_satisfy(belief));
 
         let can_perform_strategy = self
             .strategy
@@ -92,7 +92,7 @@ impl Action {
             self
                 .promised_beliefs
                 .iter()
-                .all(|promised_belief| agent_beliefs.can_satisfy(*promised_belief))
+                .all(|promised_belief| agent_beliefs.can_satisfy(promised_belief))
         };
 
         strategy_is_complete || all_promised_beliefs_satisfied
@@ -191,14 +191,11 @@ impl ActionBuilder {
         self
     }
 
-    pub fn prerequisites(
+    pub fn requires(
         mut self,
-        beliefs: impl IntoIterator<Item = (impl BeliefSatisfiabilityTest + 'static)>,
+        belief: impl BeliefSatisfiabilityTest + 'static,
     ) -> ActionBuilder {
-        self.action.prerequisite_beliefs = beliefs
-            .into_iter()
-            .map(|test| BeliefTest::new(test))
-            .collect();
+        self.action.prerequisite_beliefs.push(BeliefTest::new(belief));
         self
     }
 
@@ -215,8 +212,8 @@ impl ActionBuilder {
         self
     }
 
-    pub fn promised(mut self, beliefs: impl IntoIterator<Item = Belief>) -> Self {
-        self.action.promised_beliefs = beliefs.into_iter().collect();
+    pub fn promises(mut self, belief: Belief) -> Self {
+        self.action.promised_beliefs.push(belief);
         self
     }
 
@@ -323,10 +320,10 @@ mod tests {
         #[test]
         fn some_prereqs_no_prohibited_no_beliefs_disallowed() {
             let action = ActionBuilder::new()
-                .prerequisites(vec![
+                .requires(
                     SatisfiableBelief::HeldBall()
                         .combatant_id(SatisfiableField::Exactly(1))
-                ])
+                )
                 .build();
             let result = action.can_perform(&BeliefSet::empty());
             assert!(!result);
@@ -335,10 +332,10 @@ mod tests {
         #[test]
         fn some_prereqs_no_prohibited_different_types_disallowed() {
             let action = ActionBuilder::new()
-                .prerequisites(vec![
+                .requires(
                     SatisfiableBelief::HeldBall()
                         .combatant_id(SatisfiableField::Exactly(1))
-                ])
+                )
                 .build();
 
             let belief_set = BeliefSet::from(&[
@@ -354,10 +351,10 @@ mod tests {
             let prereq_id = 1;
             let combatant_id = 2;
             let action = ActionBuilder::new()
-                .prerequisites(vec![
+                .requires(
                     SatisfiableBelief::HeldBall()
                         .combatant_id(SatisfiableField::Exactly(prereq_id))
-                ])
+                )
                 .build();
 
             let belief_set = BeliefSet::from(&[
@@ -372,10 +369,10 @@ mod tests {
         fn some_prereqs_no_prohibited_some_beliefs_some_matching_allowed() {
             let combatant_id = 1;
             let action = ActionBuilder::new()
-                .prerequisites(vec![
+                .requires(
                     SatisfiableBelief::OnPlate()
                         .combatant_id(SatisfiableField::Exactly(combatant_id))
-                ])
+                )
                 .build();
 
             let belief_set = BeliefSet::from(&[
@@ -420,7 +417,7 @@ mod tests {
             let combatant_id = 1;
             let ball_id = 1;
             let action = ActionBuilder::new()
-                .promised(vec![Belief::HeldBall { combatant_id, ball_id }])
+                .promises(Belief::HeldBall { combatant_id, ball_id })
                 .build();
 
             assert!(action.can_satisfy(SatisfiableBelief::HeldBall()
@@ -503,7 +500,7 @@ mod tests {
 
             let action = ActionBuilder::new()
                 .strategy(StrategyNeverIsComplete)
-                .promised(vec![on_plate_belief.clone()])
+                .promises(on_plate_belief.clone())
                 .build();
 
             let belief_set = BeliefSet::from(&[
@@ -520,7 +517,7 @@ mod tests {
 
             let action = ActionBuilder::new()
                 .strategy(StrategyNeverIsComplete)
-                .promised(vec![Belief::OnPlate { plate_id, combatant_id }])
+                .promises(Belief::OnPlate { plate_id, combatant_id })
                 .build();
 
             let belief_set = BeliefSet::from(&[

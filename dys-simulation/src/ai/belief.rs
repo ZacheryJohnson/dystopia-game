@@ -70,6 +70,12 @@ pub enum Belief {
     BallIsFlying {
         #[unique]
         ball_id: BallId,
+    },
+    DirectLineOfSightToCombatant {
+        #[unique]
+        self_combatant_id: CombatantId,
+        #[unique]
+        other_combatant_id: CombatantId,
     }
 }
 
@@ -167,18 +173,18 @@ impl BeliefSet {
     }
 
     pub fn add_beliefs_from_source(&mut self, source_id: u32, beliefs: &[Belief]) {
-        self.add_expiring_beliefs_from_source(source_id, beliefs, None)
+        let expiring_beliefs = beliefs.iter().map(|belief| ExpiringBelief::new(belief.to_owned(), None)).collect::<Vec<_>>();
+        self.add_expiring_beliefs_from_source(source_id, &expiring_beliefs)
     }
 
     pub fn add_expiring_beliefs_from_source(
         &mut self,
         source_id: u32,
-        beliefs: &[Belief],
-        expires_on_tick: Option<GameTickNumber>,
+        beliefs: &[ExpiringBelief],
     ) {
         for belief in beliefs {
             self.upsert_unique_sourced_belief(
-                ExpiringBelief::new(belief.to_owned(), expires_on_tick),
+                belief.to_owned(),
                 source_id,
             );
         }
@@ -231,7 +237,7 @@ impl BeliefSet {
     /// Beliefs of different variants are ignored.
     /// If no beliefs of the satisfiable belief's variant exist in the belief set,
     /// returns false.
-    pub fn can_satisfy(&self, satisfiable: impl SatisfiabilityTest<ConcreteT=Belief> + Debug + Clone) -> bool {
+    pub fn can_satisfy(&self, satisfiable: &(impl SatisfiabilityTest<ConcreteT=Belief> + Debug + Clone)) -> bool {
         self
             .beliefs()
             .iter()
@@ -268,7 +274,7 @@ mod tests {
 
         let satisfiable = SatisfiableBelief::OnPlate();
 
-        assert!(belief_set.can_satisfy(satisfiable));
+        assert!(belief_set.can_satisfy(&satisfiable));
     }
 
     #[test]
@@ -277,7 +283,7 @@ mod tests {
 
         let satisfiable = SatisfiableBelief::OnPlate();
 
-        assert!(!belief_set.can_satisfy(satisfiable));
+        assert!(!belief_set.can_satisfy(&satisfiable));
     }
 
     #[test]
@@ -287,7 +293,7 @@ mod tests {
         let satisfiable = SatisfiableBelief::OnPlate()
             .plate_id(SatisfiableField::Exactly(1));
 
-        assert!(belief_set.can_satisfy(satisfiable));
+        assert!(belief_set.can_satisfy(&satisfiable));
     }
 
     #[test]
@@ -297,7 +303,7 @@ mod tests {
         let satisfiable = SatisfiableBelief::OnPlate()
             .combatant_id(SatisfiableField::Exactly(1));
 
-        assert!(belief_set.can_satisfy(satisfiable));
+        assert!(belief_set.can_satisfy(&satisfiable));
     }
 
     #[test]
@@ -308,7 +314,7 @@ mod tests {
             .plate_id(SatisfiableField::Exactly(1))
             .combatant_id(SatisfiableField::Exactly(1));
 
-        assert!(belief_set.can_satisfy(satisfiable));
+        assert!(belief_set.can_satisfy(&satisfiable));
     }
 
     #[test]
@@ -319,7 +325,7 @@ mod tests {
             .plate_id(SatisfiableField::Exactly(2))
             .combatant_id(SatisfiableField::Exactly(1));
 
-        assert!(!belief_set.can_satisfy(satisfiable));
+        assert!(!belief_set.can_satisfy(&satisfiable));
     }
 
     #[test]

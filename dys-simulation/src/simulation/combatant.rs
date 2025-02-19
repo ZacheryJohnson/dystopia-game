@@ -49,13 +49,13 @@ pub(crate) fn simulate_combatants(
                     collider_set,
                     &active_colliders,
                     &combatants,
-                    &balls);
+                    &balls,
+                    current_tick);
 
                 let mut combatant_state = combatant_object.combatant_state.lock().unwrap();
                 combatant_state.beliefs.add_expiring_beliefs_from_source(
                     sensor_id,
                     &new_beliefs,
-                    Some(current_tick + 12) // ZJ-TODO: sensors should define their own "memory" length
                 );
             }
         }

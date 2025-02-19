@@ -3,10 +3,9 @@ use rand::RngCore;
 use dys_world::{arena::plate::PlateId, combatant::instance::CombatantInstance};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 use rapier3d::na::Isometry3;
-use dys_satisfiable::SatisfiableField;
 use dys_world::attribute::attribute_type::AttributeType;
 use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
-use crate::ai::belief::{BeliefSet, SatisfiableBelief};
+use crate::ai::belief::BeliefSet;
 use crate::ai::sensor::Sensor;
 use crate::ai::sensors::field_of_view::FieldOfViewSensor;
 use crate::ai::sensors::proximity::ProximitySensor;
@@ -74,7 +73,7 @@ impl CombatantObject {
 
         const SIGHT_DISTANCE: f32 = 70.0;
         let field_of_view_sensor = FieldOfViewSensor::new(
-            SIGHT_DISTANCE, collider_handle
+            SIGHT_DISTANCE, id, collider_handle
         );
 
         // ZJ-TODO: determine this based on limbs

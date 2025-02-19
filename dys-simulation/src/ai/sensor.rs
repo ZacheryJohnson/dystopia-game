@@ -2,8 +2,9 @@ use std::fmt::Debug;
 use dyn_clone::DynClone;
 use rapier3d::na::Isometry3;
 use rapier3d::prelude::*;
-use crate::ai::belief::Belief;
+use crate::ai::belief::ExpiringBelief;
 use crate::game_state::{BallsMapT, CollidersMapT, CombatantsMapT};
+use crate::game_tick::GameTickNumber;
 
 pub trait Sensor: DynClone + Debug {
     fn set_enabled(&mut self, enabled: bool);
@@ -17,7 +18,8 @@ pub trait Sensor: DynClone + Debug {
         active_colliders: &CollidersMapT,
         combatants: &CombatantsMapT,
         balls: &BallsMapT,
-    ) -> Vec<Belief>;
+        current_tick: GameTickNumber,
+    ) -> Vec<ExpiringBelief>;
 }
 
 dyn_clone::clone_trait_object!(Sensor);
