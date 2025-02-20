@@ -167,6 +167,12 @@ fn apply_explosion_forces(
         force_direction
     });
 
+    // ZJ-TODO: this should be handled elsewhere
+    events.push(SimulationEvent::CombatantStunned {
+        combatant_id: *combatant_id,
+        start: true
+    });
+
     events
 }
 

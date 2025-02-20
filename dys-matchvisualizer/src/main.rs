@@ -6,6 +6,7 @@ use bevy::{math::{bounding::{Aabb2d, IntersectsVolume}, vec2}, prelude::*, sprit
 use bevy::prelude::Color::Srgba;
 use bevy::render::camera::ScalingMode;
 use bevy::sprite::AlphaMode2d;
+use bevy::window::WindowResolution;
 use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_time::{Duration, Instant};
@@ -41,6 +42,12 @@ struct AwayTeamScoreText;
 
 #[derive(Component)]
 struct PostgameScoreboard;
+
+#[derive(Component)]
+struct CombatantIdText {
+    combatant_id: CombatantId,
+    is_stunned: bool,
+}
 
 #[derive(Clone, Debug)]
 enum VisualizationMode {
@@ -84,6 +91,7 @@ struct CombatantVisualizer {
     pub id: CombatantId,
     pub desired_location: Vec3,
     pub last_position: Vec3,
+
 }
 
 #[derive(Component)]
@@ -118,6 +126,7 @@ pub fn initialize_with_canvas(
                     name: Some(String::from("Match Visualizer")),
                     canvas,
                     fit_canvas_to_parent: true,
+                    resolution: WindowResolution::new(1600.0, 900.0),
                     ..default()
                 }),
                 ..default()
@@ -141,6 +150,7 @@ pub fn initialize_with_canvas(
             handle_keyboard_input,
             update_explosion_visualizers,
             update_postgame_scoreboard,
+            update_combatant_id_text,
             try_reload_vis_state.before(update),
         ))
         .run();
@@ -451,7 +461,11 @@ fn setup_after_reload_game_log(
                         },
                         TextColor(if home_team { Color::BLACK } else { Color::WHITE }),
                         new_transform,
-                        VisualizationObject
+                        VisualizationObject,
+                        CombatantIdText {
+                            combatant_id: *combatant_id,
+                            is_stunned: false,
+                        },
                     ));
                 });
             },
@@ -464,6 +478,7 @@ fn update(
     mut commands: Commands,
     mut vis_state: ResMut<VisualizationState>,
     mut combatants_query: Query<(&mut CombatantVisualizer, &mut Transform), Without<BallVisualizer>>,
+    mut combatant_id_text_query: Query<&mut CombatantIdText>,
     mut balls_query: Query<(&mut BallVisualizer, &mut Transform), Without<CombatantVisualizer>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
@@ -575,6 +590,15 @@ fn update(
                         MeshMaterial2d(materials.add(color_material)),
                         ball_pos.to_owned(),
                     ));
+                },
+                SimulationEvent::CombatantStunned { combatant_id, start } => {
+                    for mut combatant_id_text in combatant_id_text_query.iter_mut() {
+                        if combatant_id_text.combatant_id != *combatant_id {
+                            continue;
+                        }
+
+                        combatant_id_text.is_stunned = *start;
+                    }
                 },
                 _ => {}
             }
@@ -760,5 +784,22 @@ fn update_postgame_scoreboard(
     } else {
         let mut scoreboard_text = scoreboard_query.single_mut();
         scoreboard_text.0 = String::new();
+    }
+}
+
+fn update_combatant_id_text(
+    mut combatants_query: Query<(&mut TextColor, &CombatantIdText)>,
+) {
+    for (mut text_color, combatant_id_text) in combatants_query.iter_mut() {
+        if combatant_id_text.is_stunned {
+            *text_color = TextColor(Color::srgb(1.0, 0.0, 0.0));
+        } else {
+            if combatant_id_text.combatant_id <= 5 {
+                // home team
+                *text_color = TextColor(Color::BLACK);
+            } else {
+                *text_color = TextColor(Color::WHITE);
+            }
+        }
     }
 }

@@ -194,7 +194,7 @@ impl BeliefSet {
         self.unsourced_beliefs.retain(|b| b.belief != belief)
     }
 
-    pub fn remove_beliefs_by_test(&mut self, belief_test: impl SatisfiabilityTest<ConcreteT=Belief> + Debug) {
+    pub fn remove_beliefs_by_test(&mut self, belief_test: &(impl SatisfiabilityTest<ConcreteT=Belief> + Debug)) {
         let retain_fn = |expiring_belief: &ExpiringBelief| {
             let belief = expiring_belief.to_owned().belief;
             !(belief_test.is_same_variant(&belief) && belief_test.satisfied_by(belief))

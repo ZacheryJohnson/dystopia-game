@@ -71,6 +71,9 @@ pub enum SimulationEvent {
 
     /// Points have been scored this tick by a combatant on a plate
     PointsScoredByCombatant { plate_id: PlateId, combatant_id: CombatantId, points: u8 },
+
+    // ZJ-TODO: refactor this into a StatusEffect enum
+    CombatantStunned { combatant_id: CombatantId, start: bool }
 }
 
 impl SimulationEvent {
@@ -81,9 +84,28 @@ impl SimulationEvent {
         match *event {
             SimulationEvent::ArenaObjectPositionUpdate { .. } => {}
 
-            // handled by physics
-            SimulationEvent::BallPositionUpdate { .. } => {}
+            SimulationEvent::BallPositionUpdate { ball_id, position } => {
+                let mut game_state = game_state.lock().unwrap();
 
+                let ball_object = game_state
+                    .balls
+                    .get(&ball_id)
+                    .unwrap()
+                    .to_owned();
+
+                // The physics sim will handle ball updates in most cases
+                // However, when we're being held by a combatant, we're currently (hackily)
+                // teleporting the ball around to match
+                // Fix that, but until then, we need to update our transform manually
+                if matches!(ball_object.state, BallState::Held {..} ) {
+                    let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+                    let combatant_rb = rigid_body_set
+                        .get_mut(ball_object.rigid_body_handle().unwrap())
+                        .unwrap();
+
+                    combatant_rb.set_translation(position, true);
+                }
+            }
             SimulationEvent::CombatantPositionUpdate { combatant_id, position } => {
                 let mut game_state = game_state.lock().unwrap();
 
@@ -282,6 +304,9 @@ impl SimulationEvent {
                 } else {
                     game_state.away_points += points as u16;
                 }
+            }
+            SimulationEvent::CombatantStunned { .. } => {
+                // This is only important for the match visualizer, which seems to me like this should be refactored
             }
         };
 

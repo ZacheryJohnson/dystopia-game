@@ -253,6 +253,11 @@ impl Agent for CombatantObject {
                     Vector3::zeros(),
                     true
                 );
+                
+                events.push(SimulationEvent::CombatantStunned {
+                    combatant_id: self.id,
+                    start: false,
+                });
             } else {
                 return events;
             }
@@ -323,7 +328,7 @@ impl Agent for CombatantObject {
 
             for consumed_belief in action.consumed_beliefs() {
                 tracing::debug!("Consuming beliefs satisfying {consumed_belief:?}");
-                combatant_state.beliefs.remove_beliefs_by_test(consumed_belief.to_owned());
+                combatant_state.beliefs.remove_beliefs_by_test(consumed_belief);
             }
         }
 
