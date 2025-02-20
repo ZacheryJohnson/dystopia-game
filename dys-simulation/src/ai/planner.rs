@@ -131,7 +131,7 @@ impl Debug for Plan {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct PlannerState<'a> {
     lifetime: u8,
     pub actions: &'a Vec<Action>,
@@ -196,7 +196,7 @@ impl<'a> PlannerState<'a> {
         }
 
         for consumed_belief in action.consumed_beliefs() {
-            new_planner_state.belief_set.remove_beliefs_by_test(consumed_belief.to_owned());
+            new_planner_state.belief_set.remove_beliefs_by_test(consumed_belief);
         }
 
         new_planner_state.belief_set.add_beliefs(action.completion_beliefs());
@@ -213,9 +213,6 @@ fn make_plan(
     goals: Vec<Goal>,
     actions: Vec<Action>,
 ) -> Plan {
-    let combatant_id = agent.combatant().id;
-    let current_tick = game_state.lock().unwrap().current_tick.to_owned();
-
     for goal in next_best_goal(agent, game_state, goals) {
         let mut desired_beliefs_remaining = goal.desired_beliefs();
         let Some(next_desired_belief) = desired_beliefs_remaining.pop() else {
@@ -224,11 +221,46 @@ fn make_plan(
         };
 
         let planner_state = PlannerState::new(5, &actions, agent.beliefs(), next_desired_belief, desired_beliefs_remaining);
-        let mut potential_plans = make_potential_plans(planner_state);
+        let potential_plans = make_potential_plans(planner_state);
+
+        // Validate our potential plans from front to back
+        let retain_fn = |plan: &Plan| -> bool {
+            let mut plan = plan.plan();
+            plan.reverse();
+
+            let mut beliefs = agent.beliefs();
+            for action in plan {
+                for prohibited_belief in action.prohibited_beliefs() {
+                    if beliefs.can_satisfy(prohibited_belief) {
+                        return false;
+                    }
+                }
+
+                for prerequisite_belief in action.prerequisite_beliefs() {
+                    if !beliefs.can_satisfy(prerequisite_belief) {
+                        return false;
+                    }
+                }
+
+                for consumed_belief in action.consumed_beliefs() {
+                    beliefs.remove_beliefs_by_test(consumed_belief);
+                }
+
+                beliefs.add_beliefs(action.completion_beliefs());
+                beliefs.add_beliefs(action.promised_beliefs());
+            }
+
+            true
+        };
+
+        let mut potential_plans = potential_plans
+            .into_iter()
+            .filter(retain_fn)
+            .collect::<Vec<_>>();
+
         if potential_plans.is_empty() {
             continue;
         }
-
         potential_plans.sort_by_key(|potential_plan| {
             // Because floats are not Ord, we'll cast to ints
             // I don't love this, but at worst our chosen plan is <0.5 cost worse than the next best

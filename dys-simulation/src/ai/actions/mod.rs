@@ -145,6 +145,10 @@ pub fn actions(
                         .combatant_id(SatisfiableField::Exactly(combatant.id))
                 )
                 .prohibits(
+                    SatisfiableBelief::HeldBall()
+                        .ball_id(SatisfiableField::Exactly(ball_id))
+                )
+                .prohibits(
                     SatisfiableBelief::BallIsFlying()
                         .ball_id(SatisfiableField::Exactly(ball_id))
                 )
