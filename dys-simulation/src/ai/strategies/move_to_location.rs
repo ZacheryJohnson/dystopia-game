@@ -1,23 +1,29 @@
 use std::sync::{Arc, Mutex};
 use dys_world::arena::navmesh::{ArenaNavmeshNode, ArenaNavmeshPath};
 use rapier3d::na::Point3;
-
+use rapier3d::prelude::*;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
+use crate::game_objects::combatant::CombatantId;
+use crate::game_objects::game_object::GameObject;
+use crate::game_objects::game_object_type::GameObjectType;
 
 pub struct MoveToLocationStrategy {
     is_complete: bool,
     path: ArenaNavmeshPath,
     next_node: Option<ArenaNavmeshNode>,
+    self_combatant_id: CombatantId,
     start_location: Point3<f32>,
+    target_game_object: Option<GameObjectType>,
     target_location: Point3<f32>,
+    max_ticks: u16,
 }
 
 impl MoveToLocationStrategy {
     pub fn new(
-        start_location: Point3<f32>,
+        self_combatant_id: CombatantId,
         target_location: Point3<f32>,
-        _: Arc<Mutex<GameState>>,
+        max_ticks: u16,
     ) -> MoveToLocationStrategy {
         // Rather than immediately construct a path, we'll wait until actually executing the strategy
         // Otherwise, we'd be making many paths, the majority of which we'd never use
@@ -26,8 +32,28 @@ impl MoveToLocationStrategy {
             is_complete: false,
             path: ArenaNavmeshPath::empty(),
             next_node: None,
-            start_location,
+            self_combatant_id,
+            start_location: point![0.0, 0.0, 0.0],
+            target_game_object: None,
             target_location,
+            max_ticks: u16::MAX,
+        }
+    }
+
+    pub fn new_with_target_object(
+        self_combatant_id: CombatantId,
+        target_object: GameObjectType,
+        max_ticks: u16,
+    ) -> MoveToLocationStrategy {
+        MoveToLocationStrategy {
+            is_complete: false,
+            path: ArenaNavmeshPath::empty(),
+            next_node: None,
+            self_combatant_id,
+            start_location: point![0.0, 0.0, 0.0],
+            target_game_object: Some(target_object),
+            target_location: point![0.0, 0.0, 0.0],
+            max_ticks
         }
     }
 }
@@ -47,7 +73,7 @@ impl Strategy for MoveToLocationStrategy {
     }
 
     fn should_interrupt(&self, _: &BeliefSet) -> bool {
-        false
+        self.max_ticks == 0
     }
 
     fn is_complete(&self) -> bool {
@@ -66,10 +92,46 @@ impl Strategy for MoveToLocationStrategy {
         game_state: Arc<Mutex<GameState>>,
     ) -> Option<Vec<SimulationEvent>> {
         let mut events = vec![];
+        self.max_ticks -= 1;
 
         if self.path.is_empty() && self.next_node.is_none() {
             self.path = {
                 let game_state = game_state.lock().unwrap();
+                let start_location = {
+                    let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                    let combatant_object = game_state
+                        .combatants
+                        .get(&self.self_combatant_id)
+                        .unwrap();
+                    rigid_body_set.get(combatant_object.rigid_body_handle).unwrap().translation()
+                };
+
+                self.start_location = (*start_location).into();
+
+                if let Some(target_game_object) = &self.target_game_object {
+                    self.target_location = match target_game_object {
+                        GameObjectType::Ball(ball_id) => {
+                            let ball_object = game_state.balls.get(ball_id).unwrap();
+                            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                            Point3::from(rigid_body_set
+                                .get(ball_object.rigid_body_handle().unwrap())
+                                .unwrap()
+                                .translation()
+                                .to_owned())
+                        },
+                        GameObjectType::Combatant(combatant_id) => {
+                            let combatant_object = game_state.combatants.get(combatant_id).unwrap();
+                            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                            Point3::from(rigid_body_set
+                                .get(combatant_object.rigid_body_handle().unwrap())
+                                .unwrap()
+                                .translation()
+                                .to_owned())
+                        },
+                        _ => panic!("unsupported game object type for MoveToLocation strategy"),
+                    };
+                }
+
                 game_state
                     .arena_navmesh
                     .create_path(self.start_location, self.target_location)

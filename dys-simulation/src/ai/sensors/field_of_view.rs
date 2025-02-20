@@ -3,6 +3,7 @@ use rapier3d::geometry::{ColliderHandle, ColliderSet, Cuboid};
 use rapier3d::prelude::*;
 use rapier3d::na::{vector, Isometry3};
 use rapier3d::pipeline::{QueryFilter, QueryPipeline};
+use dys_world::arena::barrier::ArenaBarrier;
 use crate::ai::belief::{Belief, ExpiringBelief};
 use crate::ai::sensor::Sensor;
 use crate::game_objects::ball::BallState;
@@ -65,7 +66,7 @@ impl Sensor for FieldOfViewSensor {
     ) -> Vec<ExpiringBelief> {
         let mut beliefs = vec![];
 
-        let query_filter = QueryFilter::default()
+        let shape_query_filter = QueryFilter::default()
             .exclude_collider(self.owner_collider_handle);
 
         let mut new_isometry = self.isometry_offset.to_owned();
@@ -77,7 +78,7 @@ impl Sensor for FieldOfViewSensor {
             collider_set,
             &new_isometry,
             &self.shape,
-            query_filter,
+            shape_query_filter,
             |collider_handle| {
                 let game_object = active_colliders.get(&collider_handle).unwrap();
 
@@ -90,24 +91,22 @@ impl Sensor for FieldOfViewSensor {
                     let collision_pos = collider_set
                         .get(collider_handle)
                         .unwrap()
-                        .position()
-                        .translation;
+                        .translation();
 
-                    let raycast_dir = collision_pos.vector - new_isometry.translation.vector;
+                    let raycast_query_filter = QueryFilter::default()
+                        .exclude_collider(self.owner_collider_handle)
+                        .groups(ArenaBarrier::interaction_groups());
+                    let raycast_dir = collision_pos - combatant_isometry.translation.vector;
                     let raycast = query_pipeline.cast_ray(
                         rigid_body_set,
                         collider_set,
                         &Ray::new(new_isometry.translation.vector.into(), raycast_dir),
                         self.shape.half_extents.z * 2.0,
                         false,
-                        query_filter
+                        raycast_query_filter
                     );
 
-                    if let Some((hit_collider, _)) = raycast {
-                        hit_collider == collider_handle
-                    } else {
-                        true
-                    }
+                    raycast.is_none()
                 };
 
                 match game_object {

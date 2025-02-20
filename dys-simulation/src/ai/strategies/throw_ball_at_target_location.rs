@@ -55,9 +55,6 @@ impl Strategy for ThrowBallAtTargetStrategy {
         agent: &dyn Agent,
         game_state: Arc<Mutex<GameState>>,
     ) -> Option<Vec<SimulationEvent>> {
-        let current_tick = game_state.lock().unwrap().current_tick.to_owned();
-        let combatant_id = agent.combatant().id;
-
         // Agents may believe that they're holding a ball, but not actually holding a ball per the simulation
         // If the authoritative game state says they're not holding a ball, consider this strategy complete
         // ZJ-TODO: delay first?
