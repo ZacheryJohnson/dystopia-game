@@ -37,39 +37,25 @@ pub fn simulate_tick(game_state: Arc<Mutex<GameState>>) -> GameTick {
     let is_end_of_game = current_tick == simulation_config.ticks_per_game() || highest_score >= simulation_config.game_conclusion_score();
     let is_scoring_tick = current_tick % simulation_config.ticks_per_second() == 0;
 
-    let mut pending_simulation_events = vec![];
+    let mut committed_simulation_events = vec![];
 
     let balls_stage = simulate_balls(game_state.clone());
+    committed_simulation_events.extend(commit_simulation_events(game_state.clone(), balls_stage.pending_events));
+
     let combatants_stage = simulate_combatants(game_state.clone());
+    committed_simulation_events.extend(commit_simulation_events(game_state.clone(), combatants_stage.pending_events));
 
     // Anything that may cause movement **must** occur before simulating collisions
     // Otherwise, we may have collisions that happen instantly, but we've already processed collisions this tick
     let collision_stage = handle_collision_events(game_state.clone());
+    committed_simulation_events.extend(commit_simulation_events(game_state.clone(), collision_stage.pending_events));
+
     let scoring_stage = if is_scoring_tick {
         simulate_scoring(game_state.clone())
     } else {
         SimulationStage { execution_duration: Duration::new(0, 0), pending_events: vec![] }
     };
-
-    pending_simulation_events.extend(collision_stage.pending_events);
-    pending_simulation_events.extend(balls_stage.pending_events);
-    pending_simulation_events.extend(combatants_stage.pending_events);
-    pending_simulation_events.extend(scoring_stage.pending_events);
-
-    let mut simulation_events = vec![];
-
-    for pending_event in pending_simulation_events {
-        let (successful_simulation, new_events) = SimulationEvent::simulate_event(
-            game_state.clone(),
-            &pending_event
-        );
-
-        if !successful_simulation {
-            continue;
-        }
-
-        simulation_events.push(pending_event);
-    }
+    committed_simulation_events.extend(commit_simulation_events(game_state.clone(), scoring_stage.pending_events));
 
     let post_tick_timestamp = Instant::now();
 
@@ -82,8 +68,29 @@ pub fn simulate_tick(game_state: Arc<Mutex<GameState>>) -> GameTick {
             scoring_stage.execution_duration,
             post_tick_timestamp - pre_tick_timestamp
         ),
-        simulation_events,
+        simulation_events: committed_simulation_events,
         is_halftime,
         is_end_of_game
     }
+}
+
+fn commit_simulation_events(
+    game_state: Arc<Mutex<GameState>>,
+    pending_events: Vec<SimulationEvent>
+) -> Vec<SimulationEvent> {
+    let mut committed_simulation_events = vec![];
+    for pending_event in pending_events {
+        let (successful_simulation, new_events) = SimulationEvent::simulate_event(
+            game_state.clone(),
+            &pending_event
+        );
+
+        if !successful_simulation {
+            continue;
+        }
+
+        committed_simulation_events.push(pending_event);
+    }
+
+    committed_simulation_events
 }
