@@ -62,11 +62,21 @@ pub fn actions(
         );
     }
 
-    for (other_combatant_id, _) in &combatants {
+    for (other_combatant_id, other_combatant_object) in &combatants {
         // Don't add actions that refer to ourselves
         if combatant.id == *other_combatant_id {
             continue;
         }
+
+        let target_pos = {
+            let game_state = game_state.lock().unwrap();
+            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+            rigid_body_set
+                .get(other_combatant_object.rigid_body_handle)
+                .unwrap()
+                .translation()
+                .to_owned()
+        };
 
         actions.push(
             ActionBuilder::new()
@@ -76,7 +86,7 @@ pub fn actions(
                     GameObjectType::Combatant(*other_combatant_id),
                     4)
                 )
-                .cost(5.0) // ZJ-TODO
+                .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (target_pos - combatant_pos).magnitude() / combatant_move_speed)
                 .completion(vec![
                     Belief::ScannedEnvironment { tick: current_tick },
                 ])
@@ -96,7 +106,7 @@ pub fn actions(
                     GameObjectType::Combatant(*other_combatant_id),
                     8,
                 ))
-                .cost(15.0)
+                .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (target_pos - combatant_pos).magnitude() / combatant_move_speed)
                 .promises(Belief::CanReachCombatant {
                     self_combatant_id: combatant.id,
                     target_combatant_id: *other_combatant_id,
@@ -111,11 +121,15 @@ pub fn actions(
                     combatant.id,
                     *other_combatant_id
                 ))
-                .cost(5.0)
+                .cost(5.0) // ZJ-TODO
                 .requires(
                     SatisfiableBelief::CanReachCombatant()
                         .self_combatant_id(SatisfiableField::Exactly(combatant.id))
                         .target_combatant_id(SatisfiableField::Exactly(*other_combatant_id)),
+                )
+                .prohibits(
+                    SatisfiableBelief::HeldBall()
+                        .combatant_id(SatisfiableField::Exactly(combatant.id))
                 )
                 .promises(Belief::CombatantShoved {
                     combatant_id: *other_combatant_id,
@@ -187,17 +201,29 @@ pub fn actions(
                 .build()
         );
 
-        for (target_combatant_id, _) in combatants.clone() {
+        for (target_combatant_id, target_combatant_object) in combatants.clone() {
             // Don't try to throw a ball at ourselves
             if target_combatant_id == combatant.id {
                 continue;
             }
 
+            let target_pos = {
+                let game_state = game_state.lock().unwrap();
+                let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                rigid_body_set
+                    .get(target_combatant_object.rigid_body_handle)
+                    .unwrap()
+                    .translation()
+                    .to_owned()
+            };
+
             actions.push(
                 ActionBuilder::new()
                     .name(format!("Throw Ball {} at/to Combatant {}", ball_id, target_combatant_id))
                     .strategy(ThrowBallAtTargetStrategy::new(combatant.id, target_combatant_id))
-                    .cost(10.0) // ZJ-TODO
+                    // ZJ-TODO: ideally this is an inverse bell curve
+                    //          for now, just penalize close throws and reward far throws
+                    .cost(10.0 + 5.0 / (target_pos - combatant_pos).magnitude())
                     .requires(
                         SatisfiableBelief::HeldBall()
                             .combatant_id(SatisfiableField::Exactly(combatant.id))

@@ -206,8 +206,8 @@ impl BeliefSet {
 
     pub fn remove_beliefs_by_test(&mut self, belief_test: &(impl SatisfiabilityTest<ConcreteT=Belief> + Debug)) {
         let retain_fn = |expiring_belief: &ExpiringBelief| {
-            let belief = expiring_belief.to_owned().belief;
-            !(belief_test.is_same_variant(&belief) && belief_test.satisfied_by(belief))
+            let belief = &expiring_belief.belief;
+            !(belief_test.is_same_variant(belief) && belief_test.satisfied_by(belief.to_owned()))
         };
 
         self.unsourced_beliefs.retain(retain_fn);
@@ -401,5 +401,21 @@ mod tests {
 
         let beliefs = belief_set.beliefs();
         assert_eq!(beliefs.len(), 2);
+    }
+
+    #[test]
+    fn consumed_beliefs_correctly_removed() {
+        let mut belief_set = BeliefSet::from(&vec![
+            Belief::HeldBall { ball_id: 1, combatant_id: 1 },
+        ]);
+
+        assert_eq!(belief_set.beliefs().len(), 1);
+
+        belief_set.remove_beliefs_by_test(&SatisfiableBelief::HeldBall()
+            .ball_id(SatisfiableField::Exactly(1))
+            .combatant_id(SatisfiableField::Exactly(1))
+        );
+
+        assert_eq!(belief_set.beliefs().len(), 0);
     }
 }

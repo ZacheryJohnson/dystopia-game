@@ -3,6 +3,8 @@ use dys_world::arena::plate::PlateId;
 use rapier3d::prelude::*;
 use rapier3d::na::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
+use dys_satisfiable::SatisfiableField;
+use crate::ai::belief::SatisfiableBelief;
 use crate::game_objects::{ball::BallId, combatant::CombatantId};
 use crate::game_objects::ball::BallState;
 use crate::game_objects::combatant::TeamAlignment;
@@ -87,7 +89,7 @@ impl SimulationEvent {
     pub fn simulate_event(
         game_state: Arc<Mutex<GameState>>,
         event: &SimulationEvent,
-    ) -> bool {
+    ) -> (bool, Vec<SimulationEvent>) {
         match *event {
             SimulationEvent::ArenaObjectPositionUpdate { .. } => {}
 
@@ -166,7 +168,7 @@ impl SimulationEvent {
 
                     // Our combatant may have been stunned since initially trying this
                     if combatant_object.combatant_state.lock().unwrap().stunned_by_explosion {
-                        return false;
+                        return (false, vec![]);
                     }
                     combatant_object.pickup_ball(ball_id);
                 }
@@ -191,7 +193,7 @@ impl SimulationEvent {
 
                     // Our combatant may have been stunned since initially trying this
                     if combatant_object.combatant_state.lock().unwrap().stunned_by_explosion {
-                        return false;
+                        return (false, vec![]);
                     }
 
                     combatant_object.drop_ball();
@@ -312,8 +314,30 @@ impl SimulationEvent {
                     game_state.away_points += points as u16;
                 }
             }
-            SimulationEvent::CombatantStunned { .. } => {
-                // This is only important for the match visualizer, which seems to me like this should be refactored
+            SimulationEvent::CombatantStunned { combatant_id, start: _ } => {
+                let mut game_state = game_state.lock().unwrap();
+                let current_tick = game_state.current_tick.to_owned();
+
+                let mut dropped_ball = false;
+                {
+                    let combatant_object = game_state.combatants.get_mut(&combatant_id).unwrap();
+
+                    if let Some(ball_id) = combatant_object.ball() {
+                        dropped_ball = true;
+                        combatant_object.drop_ball();
+                        let ball_object = game_state.balls.get_mut(&ball_id).unwrap();
+                        ball_object.set_held_by(None, current_tick);
+                    }
+                }
+
+                if dropped_ball {
+                    let combatant_object = game_state.combatants.get_mut(&combatant_id).unwrap();
+                    let mut combatant_state = combatant_object.combatant_state.lock().unwrap();
+                    combatant_state.beliefs.remove_beliefs_by_test(
+                        &SatisfiableBelief::HeldBall()
+                            .combatant_id(SatisfiableField::Exactly(combatant_id))
+                    );
+                }
             }
             SimulationEvent::CombatantShoveForceApplied { shover_combatant_id: _, recipient_target_id, force_magnitude, force_direction } => {
                 let mut game_state = game_state.lock().unwrap();
@@ -334,6 +358,6 @@ impl SimulationEvent {
             }
         };
 
-        true
+        (true, vec![])
     }
 }

@@ -9,11 +9,12 @@ pub struct LookAroundStrategy {
 }
 
 impl LookAroundStrategy {
-    pub fn new() -> LookAroundStrategy {
-        LookAroundStrategy {
-            is_complete: false,
-        }
-    }
+    // ZJ-TODO: reinstate
+    // pub fn new() -> LookAroundStrategy {
+    //     LookAroundStrategy {
+    //         is_complete: false,
+    //     }
+    // }
 }
 
 impl Strategy for LookAroundStrategy {

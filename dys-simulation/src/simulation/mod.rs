@@ -59,7 +59,12 @@ pub fn simulate_tick(game_state: Arc<Mutex<GameState>>) -> GameTick {
     let mut simulation_events = vec![];
 
     for pending_event in pending_simulation_events {
-        if !SimulationEvent::simulate_event(game_state.clone(), &pending_event) {
+        let (successful_simulation, new_events) = SimulationEvent::simulate_event(
+            game_state.clone(),
+            &pending_event
+        );
+
+        if !successful_simulation {
             continue;
         }
 
