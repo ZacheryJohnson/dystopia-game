@@ -3,6 +3,7 @@ use dys_satisfiable::SatisfiableField;
 use crate::{ai::{action::ActionBuilder, belief::Belief, strategies::move_to_location::MoveToLocationStrategy}, game_objects::{combatant::CombatantObject, game_object::GameObject}, game_state::GameState};
 use crate::ai::belief::SatisfiableBelief;
 use crate::ai::strategies::look_around::LookAroundStrategy;
+use crate::game_objects::game_object_type::GameObjectType;
 use super::{action::Action, strategies::{pick_up_ball::PickUpBallStrategy, throw_ball_at_target_location::ThrowBallAtTargetStrategy}};
 
 /// ZJ-TODO: HACK: this value should be passed in through simulation settings.
@@ -51,9 +52,9 @@ pub fn actions(
             ActionBuilder::new()
                 .name(format!("Move to Plate {plate_id}"))
                 .strategy(MoveToLocationStrategy::new(
-                    combatant_pos.into(),
+                    combatant.id,
                     plate_location.into(),
-                    game_state.clone())
+                    4)
                 )
                 .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (plate_location - combatant_pos).magnitude() / combatant_move_speed)
                 .promises(Belief::OnPlate { combatant_id: combatant.id, plate_id })
@@ -61,29 +62,19 @@ pub fn actions(
         );
     }
 
-    for (other_combatant_id, other_combatant_object) in &combatants {
+    for (other_combatant_id, _) in &combatants {
         // Don't add actions that refer to ourselves
         if combatant.id == *other_combatant_id {
             continue;
         }
 
-        let other_combatant_location = {
-            let game_state = game_state.lock().unwrap();
-            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
-            rigid_body_set
-                .get(other_combatant_object.rigid_body_handle().unwrap())
-                .unwrap()
-                .translation()
-                .to_owned()
-        };
-
         actions.push(
             ActionBuilder::new()
                 .name(format!("Look For Combatant {}", other_combatant_id))
-                .strategy(MoveToLocationStrategy::new(
-                    combatant_pos.into(),
-                    other_combatant_location.into(),
-                    game_state.clone())
+                .strategy(MoveToLocationStrategy::new_with_target_object(
+                    combatant.id,
+                    GameObjectType::Combatant(*other_combatant_id),
+                    4)
                 )
                 .cost(40.0) // ZJ-TODO
                 .completion(vec![
@@ -113,9 +104,9 @@ pub fn actions(
             ActionBuilder::new()
                 .name(format!("Move to Ball {ball_id}"))
                 .strategy(MoveToLocationStrategy::new(
-                    combatant_pos.into(),
+                    combatant.id,
                     ball_location.into(),
-                    game_state.clone())
+                    4)
                 )
                 .cost(MOVE_TO_BALL_WEIGHT_HARDCODE_HACK * (ball_location - combatant_pos).magnitude() / combatant_move_speed)
                 .requires(
