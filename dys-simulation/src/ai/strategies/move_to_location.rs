@@ -36,7 +36,7 @@ impl MoveToLocationStrategy {
             start_location: point![0.0, 0.0, 0.0],
             target_game_object: None,
             target_location,
-            max_ticks: u16::MAX,
+            max_ticks,
         }
     }
 

@@ -71,6 +71,7 @@ impl Strategy for LookAroundStrategy {
 mod tests {
     use rand::prelude::StdRng;
     use rand::SeedableRng;
+    use rand_distr::num_traits::Zero;
     use rapier3d::prelude::*;
     use rapier3d::na::{vector, UnitQuaternion, Vector3};
     use crate::ai::agent::Agent;
@@ -100,6 +101,7 @@ mod tests {
                 1,
                 combatant_1_instance,
                 vector![0.0, 0.0, 0.0],
+                Vector3::zero(),
                 TeamAlignment::Home,
                 rigid_body_set,
                 collider_set,

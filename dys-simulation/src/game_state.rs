@@ -1,3 +1,4 @@
+use std::f32::consts::FRAC_PI_2;
 use indexmap::IndexMap;
 use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, combatant_start::ArenaCombatantStart, feature::ArenaFeature, navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, plate::{ArenaPlate, PlateId}}};
 use rand::{random, SeedableRng};
@@ -125,7 +126,14 @@ impl GameState {
 
                 let team_alignment = if player_start.is_home_team { TeamAlignment::Home } else { TeamAlignment::Away };
 
-                let combatant_object = CombatantObject::new(combatant_id, combatant, *player_start.origin(), team_alignment, rigid_body_set, collider_set);
+                let combatant_object = CombatantObject::new(
+                    combatant_id,
+                    combatant,
+                    *player_start.origin(),
+                    AngVector::new(0.0, if team_alignment == TeamAlignment::Home { FRAC_PI_2 } else { -FRAC_PI_2 }, 0.0),
+                    team_alignment,
+                    rigid_body_set,
+                    collider_set);
                 active_colliders.insert(combatant_object.collider_handle().expect("combatant game objects must have collider handles"), GameObjectType::Combatant(combatant_id));
                 combatants.insert(combatant_id, combatant_object);
             }

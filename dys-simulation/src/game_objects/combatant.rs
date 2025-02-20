@@ -3,6 +3,7 @@ use rand::RngCore;
 use dys_world::{arena::plate::PlateId, combatant::instance::CombatantInstance};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 use rapier3d::na::Isometry3;
+use rapier3d::prelude::AngVector;
 use dys_world::attribute::attribute_type::AttributeType;
 use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
@@ -51,12 +52,14 @@ impl CombatantObject {
         id: CombatantId,
         combatant: Arc<Mutex<CombatantInstance>>,
         position: Vector3<f32>,
+        rotation: Vector3<f32>,
         team: TeamAlignment,
         rigid_body_set: &mut RigidBodySet,
         collider_set: &mut ColliderSet
     ) -> CombatantObject {
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation(position)
+            .rotation(rotation)
             .enabled_rotations(false, true, false)
             .ccd_enabled(true) // enable CCD to ensure we don't phase through walls
             .build();
@@ -119,6 +122,10 @@ impl CombatantObject {
     pub fn radius(&self) -> f32 {
         // ZJ-TODO: read from combatant object
         COMBATANT_RADIUS
+    }
+
+    pub fn weight(&self) -> f32 {
+        COMBATANT_MASS
     }
 
     pub fn set_on_plate(&mut self, plate_id: PlateId) {

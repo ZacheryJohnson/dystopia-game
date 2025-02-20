@@ -179,7 +179,8 @@ impl Sensor for FieldOfViewSensor {
 mod tests {
     use rand::prelude::StdRng;
     use rand::SeedableRng;
-    use rapier3d::na::vector;
+    use rand_distr::num_traits::Zero;
+    use rapier3d::na::{vector, Vector3};
     use rapier3d::prelude::*;
     use dys_satisfiable::{SatisfiabilityTest, SatisfiableField};
     use GameObjectType::Combatant;
@@ -218,6 +219,7 @@ mod tests {
                 1,
                 combatant_1_instance,
                 combatant_1_position.clone(),
+                Vector3::zero(),
                 TeamAlignment::Home,
                 rigid_body_set,
                 collider_set,
@@ -227,6 +229,7 @@ mod tests {
                 2,
                 combatant_2_instance,
                 combatant_2_position.clone(),
+                Vector3::zero(),
                 TeamAlignment::Home,
                 rigid_body_set,
                 collider_set,
@@ -236,6 +239,7 @@ mod tests {
                 3,
                 combatant_3_instance,
                 combatant_3_position.clone_owned(),
+                Vector3::zero(),
                 TeamAlignment::Away,
                 rigid_body_set,
                 collider_set,

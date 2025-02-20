@@ -73,7 +73,14 @@ pub enum SimulationEvent {
     PointsScoredByCombatant { plate_id: PlateId, combatant_id: CombatantId, points: u8 },
 
     // ZJ-TODO: refactor this into a StatusEffect enum
-    CombatantStunned { combatant_id: CombatantId, start: bool }
+    CombatantStunned { combatant_id: CombatantId, start: bool },
+
+    CombatantShoveForceApplied {
+        shover_combatant_id: CombatantId,
+        recipient_target_id: CombatantId,
+        force_magnitude: f32,
+        force_direction: Vector3<f32>
+    },
 }
 
 impl SimulationEvent {
@@ -307,6 +314,23 @@ impl SimulationEvent {
             }
             SimulationEvent::CombatantStunned { .. } => {
                 // This is only important for the match visualizer, which seems to me like this should be refactored
+            }
+            SimulationEvent::CombatantShoveForceApplied { shover_combatant_id: _, recipient_target_id, force_magnitude, force_direction } => {
+                let mut game_state = game_state.lock().unwrap();
+
+                let combatant_rigid_body_handle = {
+                    let combatant_object = game_state.combatants.get_mut(&recipient_target_id).unwrap();
+                    combatant_object.set_stunned(true);
+                    combatant_object.rigid_body_handle
+                };
+
+                let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+
+                let combatant_rb = rigid_body_set
+                    .get_mut(combatant_rigid_body_handle)
+                    .unwrap();
+                let impulse = force_direction.normalize() * force_magnitude;
+                combatant_rb.apply_impulse(impulse, true);
             }
         };
 

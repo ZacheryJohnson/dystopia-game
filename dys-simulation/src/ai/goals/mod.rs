@@ -23,6 +23,11 @@ pub fn goals(
         combatant_instance.get_attribute_value(&attribute_type).unwrap_or_default().floor() as u32
     };
 
+    let teammate_ids = game_state.lock().unwrap().team_combatants(combatant_object.team)
+        .iter()
+        .map(|combatant_object| combatant_object.id)
+        .collect::<Vec<_>>();
+
     // ZJ-TODO: refactor, goodness
     vec![
         GoalBuilder::new()
@@ -37,14 +42,17 @@ pub fn goals(
             .name("Throw Ball At Enemies")
             .desired_beliefs(vec![
                 SatisfiableBelief::BallThrownAtCombatant()
-                    .target_id(SatisfiableField::NotIn(
-                        game_state.lock().unwrap().team_combatants(combatant_object.team)
-                            .iter()
-                            .map(|combatant_object| combatant_object.id)
-                            .collect()
-                    ))
+                    .target_id(SatisfiableField::NotIn(teammate_ids.clone()))
             ])
             .priority(attr(AttributeType::Coordination) + attr(AttributeType::Strength))
+            .build(),
+        GoalBuilder::new()
+            .name("Shove Combatants")
+            .desired_belief(
+                SatisfiableBelief::CombatantShoved()
+                    .combatant_id(SatisfiableField::NotIn(teammate_ids.clone()))
+            )
+            .priority(attr(AttributeType::Constitution) + attr(AttributeType::Presence))
             .build(),
         // ZJ-TODO: goal: recover from explosion / self is cogent
         idle_goal()

@@ -2,15 +2,15 @@ use std::sync::{Arc, Mutex};
 use dys_satisfiable::SatisfiableField;
 use crate::{ai::{action::ActionBuilder, belief::Belief, strategies::move_to_location::MoveToLocationStrategy}, game_objects::{combatant::CombatantObject, game_object::GameObject}, game_state::GameState};
 use crate::ai::belief::SatisfiableBelief;
-use crate::ai::strategies::look_around::LookAroundStrategy;
+use crate::ai::strategies::shove_combatant::ShoveCombatantStrategy;
 use crate::game_objects::game_object_type::GameObjectType;
 use super::{action::Action, strategies::{pick_up_ball::PickUpBallStrategy, throw_ball_at_target_location::ThrowBallAtTargetStrategy}};
 
 /// ZJ-TODO: HACK: this value should be passed in through simulation settings.
 /// This value allows us to make all movement actions cheaper/more expensive,
 /// as other actions may have lower/higher absolute costs.
-const MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK: f32 = 0.2_f32;
-const MOVE_TO_BALL_WEIGHT_HARDCODE_HACK: f32 = 0.2_f32;
+const MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK: f32 = 0.8_f32;
+const MOVE_TO_BALL_WEIGHT_HARDCODE_HACK: f32 = 0.4_f32;
 
 #[tracing::instrument(fields(combatant_id = combatant.id), skip_all, level = "trace")]
 pub fn actions(
@@ -76,7 +76,7 @@ pub fn actions(
                     GameObjectType::Combatant(*other_combatant_id),
                     4)
                 )
-                .cost(40.0) // ZJ-TODO
+                .cost(5.0) // ZJ-TODO
                 .completion(vec![
                     Belief::ScannedEnvironment { tick: current_tick },
                 ])
@@ -87,6 +87,44 @@ pub fn actions(
                 .consumes(SatisfiableBelief::ScannedEnvironment())
                 .build()
         );
+
+        actions.push(
+            ActionBuilder::new()
+                .name(format!("Move to Combatant {}", other_combatant_id))
+                .strategy(MoveToLocationStrategy::new_with_target_object(
+                    combatant.id,
+                    GameObjectType::Combatant(*other_combatant_id),
+                    8,
+                ))
+                .cost(15.0)
+                .promises(Belief::CanReachCombatant {
+                    self_combatant_id: combatant.id,
+                    target_combatant_id: *other_combatant_id,
+                })
+                .build()
+        );
+
+        actions.push(
+            ActionBuilder::new()
+                .name(format!("Shove Combatant {}", other_combatant_id))
+                .strategy(ShoveCombatantStrategy::new(
+                    combatant.id,
+                    *other_combatant_id
+                ))
+                .cost(5.0)
+                .requires(
+                    SatisfiableBelief::CanReachCombatant()
+                        .self_combatant_id(SatisfiableField::Exactly(combatant.id))
+                        .target_combatant_id(SatisfiableField::Exactly(*other_combatant_id)),
+                )
+                .promises(Belief::CombatantShoved {
+                    combatant_id: *other_combatant_id,
+                })
+                .consumes(SatisfiableBelief::CombatantShoved()
+                    .combatant_id(SatisfiableField::Exactly(*other_combatant_id)),
+                )
+                .build()
+        )
     }
 
     for (ball_id, ball_object) in balls {
@@ -159,7 +197,7 @@ pub fn actions(
                 ActionBuilder::new()
                     .name(format!("Throw Ball {} at/to Combatant {}", ball_id, target_combatant_id))
                     .strategy(ThrowBallAtTargetStrategy::new(combatant.id, target_combatant_id))
-                    .cost(10.0_f32 /* ZJ-TODO */)
+                    .cost(10.0) // ZJ-TODO
                     .requires(
                         SatisfiableBelief::HeldBall()
                             .combatant_id(SatisfiableField::Exactly(combatant.id))

@@ -59,6 +59,12 @@ pub enum Belief {
         #[unique]
         combatant_id: CombatantId,
     },
+    CanReachCombatant {
+        #[unique]
+        self_combatant_id: CombatantId,
+        #[unique]
+        target_combatant_id: CombatantId,
+    },
     BallThrownAtCombatant {
         #[unique]
         ball_id: BallId,
@@ -76,7 +82,11 @@ pub enum Belief {
         self_combatant_id: CombatantId,
         #[unique]
         other_combatant_id: CombatantId,
-    }
+    },
+    CombatantShoved {
+        #[unique]
+        combatant_id: CombatantId,
+    },
 }
 
 #[derive(Clone, Debug)]

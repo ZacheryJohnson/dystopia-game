@@ -76,6 +76,12 @@ impl Sensor for ProximitySensor {
                             combatant_id: self.owner_combatant_id,
                         }, Some(current_tick + 12)));
                     },
+                    GameObjectType::Combatant(combatant_id) => {
+                        beliefs.push(ExpiringBelief::new(Belief::CanReachCombatant {
+                            self_combatant_id: self.owner_combatant_id,
+                            target_combatant_id: *combatant_id,
+                        }, Some(current_tick + 1)));
+                    }
                     _ => {} // we can ignore all other game object types
                 }
 
