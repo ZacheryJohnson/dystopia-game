@@ -25,19 +25,19 @@ impl Arena {
             all_features: vec![
                 // West Wall
                 Box::new(
-                    ArenaBarrier::new(vector![0.0, 0.0, 50.0], vector![3.0, 20.0, 100.0], Quaternion::identity(), BarrierPathing::Disabled)
+                    ArenaBarrier::new(vector![0.0, 0.0, 50.0], vector![3.0, 60.0, 100.0], Quaternion::identity(), BarrierPathing::Disabled)
                 ),
                 // East Wall
                 Box::new(
-                    ArenaBarrier::new(vector![100.0, 0.0, 50.0], vector![3.0, 20.0, 100.0], Quaternion::identity(), BarrierPathing::Disabled)
+                    ArenaBarrier::new(vector![100.0, 0.0, 50.0], vector![3.0, 60.0, 100.0], Quaternion::identity(), BarrierPathing::Disabled)
                 ),
                 // South Wall
                 Box::new(
-                    ArenaBarrier::new(vector![50.0, 0.0, 0.0], vector![100.0, 20.0, 3.0], Quaternion::identity(), BarrierPathing::Disabled)
+                    ArenaBarrier::new(vector![50.0, 0.0, 0.0], vector![100.0, 60.0, 3.0], Quaternion::identity(), BarrierPathing::Disabled)
                 ),
                 // North Wall
                 Box::new(
-                    ArenaBarrier::new(vector![50.0, 0.0, 100.0], vector![100.0, 20.0, 3.0], Quaternion::identity(), BarrierPathing::Disabled)
+                    ArenaBarrier::new(vector![50.0, 0.0, 100.0], vector![100.0, 60.0, 3.0], Quaternion::identity(), BarrierPathing::Disabled)
                 ),
                 // Floor
                 Box::new(
