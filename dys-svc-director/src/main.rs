@@ -166,17 +166,11 @@ async fn run_simulation(world_state: WorldState) {
         let game = Game { schedule_game: scheduled_game };
         let game_log = game.simulate();
 
-        let fake_away_team_score = thread_rng().next_u32() % 200;
-        let mut fake_home_team_score = thread_rng().next_u32() % 200;
-        if fake_home_team_score == fake_away_team_score {
-            fake_home_team_score += 1;
-        }
-
         match_results.push(MatchResult {
             away_team_name,
             home_team_name,
-            away_team_score: fake_away_team_score,
-            home_team_score: fake_home_team_score,
+            away_team_score: game_log.away_score() as u32,
+            home_team_score: game_log.home_score() as u32,
             game_log_serialized: postcard::to_allocvec(&game_log).expect("failed to serialize game log"),
         });
     }

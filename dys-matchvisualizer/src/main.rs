@@ -213,7 +213,6 @@ fn setup(
     commands.spawn((
         Text2d(String::new()),
         TextFont {
-            font: asset_server.load("fonts/Quicksand-Medium.ttf"),
             font_size: 50.0,
             ..default()
         },
@@ -234,7 +233,6 @@ fn setup(
     commands.spawn((
         Text2d(String::new()),
         TextFont {
-            font: asset_server.load("fonts/Quicksand-Medium.ttf"),
             font_size: 30.0,
             ..default()
         },
@@ -255,7 +253,6 @@ fn setup(
         Text2d(String::from("H")),
         TextColor(Color::WHITE),
         TextFont {
-            font: asset_server.load("fonts/Quicksand-Medium.ttf"),
             font_size: 60.0,
             ..default()
         },
@@ -276,7 +273,6 @@ fn setup(
         Text2d(String::from("A")),
         TextColor(Color::WHITE),
         TextFont {
-            font: asset_server.load("fonts/Quicksand-Medium.ttf"),
             font_size: 60.0,
             ..default()
         },
@@ -296,7 +292,6 @@ fn setup(
     commands.spawn((
         Text2d(String::from("0:00")),
         TextFont {
-            font: asset_server.load("fonts/Quicksand-Medium.ttf"),
             font_size: 60.0,
             ..default()
         },
@@ -320,7 +315,7 @@ fn try_reload_vis_state(
     meshes: ResMut<Assets<Mesh>>,
     materials: ResMut<Assets<ColorMaterial>>,
     mut vis_state: ResMut<VisualizationState>,
-    entity_query: Query<Entity, With<VisualizationObject>>,
+    entity_query: Query<Entity, Or<(With<VisualizationObject>, With<Text>)>>,
 ) {
     // If we don't have pending updated game state from WASM, abort early
     let Some(updated_vis_state) = UPDATED_VIS_STATE.get() else {
@@ -449,7 +444,6 @@ fn setup_after_reload_game_log(
                     builder.spawn((
                         Text2d(combatant_id.to_string()),
                         TextFont {
-                            font: asset_server.load("fonts/Quicksand-Medium.ttf"),
                             font_size: 64.0,
                             ..Default::default()
                         },
@@ -507,8 +501,7 @@ fn setup_after_reload_game_log(
                 )).with_child((
                     Text::new(stat_category),
                     TextFont {
-                        font: asset_server.load("fonts/Quicksand-Medium.ttf"),
-                        font_size: 36.0,
+                        font_size: 32.0,
                         ..default()
                     },
                     TextColor(Color::WHITE),
@@ -541,8 +534,7 @@ fn setup_after_reload_game_log(
                     )).with_child((
                         Text::new(stat_str),
                         TextFont {
-                            font: asset_server.load("fonts/Quicksand-Medium.ttf"),
-                            font_size: 48.0,
+                            font_size: 36.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -886,7 +878,9 @@ fn update_postgame_scoreboard(
     mut query: Query<&mut Visibility, With<PostgameScoreboard>>,
     vis_state: Res<VisualizationState>,
 ) {
-    let mut visibility = query.single_mut();
+    let Ok(mut visibility) = query.get_single_mut() else {
+        return;
+    };
 
     if vis_state.end_of_game {
         *visibility = Visibility::Visible;
