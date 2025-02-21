@@ -92,7 +92,7 @@ impl Strategy for MoveToLocationStrategy {
         game_state: Arc<Mutex<GameState>>,
     ) -> Option<Vec<SimulationEvent>> {
         let mut events = vec![];
-        self.max_ticks -= 1;
+        self.max_ticks = self.max_ticks.checked_sub(1).unwrap_or(0);
 
         if self.path.is_empty() && self.next_node.is_none() {
             self.path = {

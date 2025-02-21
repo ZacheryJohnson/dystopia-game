@@ -6,7 +6,9 @@ use bevy::{math::{bounding::{Aabb2d, IntersectsVolume}, vec2}, prelude::*, sprit
 use bevy::prelude::Color::Srgba;
 use bevy::render::camera::ScalingMode;
 use bevy::sprite::AlphaMode2d;
+use bevy::text::{FontSmoothing, TextBounds};
 use bevy::window::WindowResolution;
+use bevy_ui_debug_overlay::{UiDebugOverlay, UiDebugOverlayPlugin};
 use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_time::{Duration, Instant};
@@ -73,10 +75,10 @@ struct VisualizationState {
 }
 
 /// This is quite the hack.
-/// 
+///
 /// Once we start the Bevy app, we don't have a handle to the running process any more,
 /// and can't update the VisualizationState resource in the standard Bevy ways.
-/// 
+///
 /// To get around this, we have this static OnceCell, that holds an Arc<Mutex<Option<VisualizationState>>>.
 /// It is initialized in [initialize_with_canvas()] to hold a None value for the Option.
 static UPDATED_VIS_STATE: OnceCell<Arc<Mutex<Option<VisualizationState>>>> = OnceCell::new();
@@ -91,7 +93,6 @@ struct CombatantVisualizer {
     pub id: CombatantId,
     pub desired_location: Vec3,
     pub last_position: Vec3,
-
 }
 
 #[derive(Component)]
@@ -120,18 +121,20 @@ pub fn initialize_with_canvas(
     let canvas: Option<String> = if canvas_id.is_empty() { None } else { Some(canvas_id) };
 
     App::new()
-        .add_plugins(DefaultPlugins
-            .set(WindowPlugin {
-                primary_window: Some(Window {
-                    name: Some(String::from("Match Visualizer")),
-                    canvas,
-                    fit_canvas_to_parent: true,
-                    resolution: WindowResolution::new(1600.0, 900.0),
+        .add_plugins((
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        name: Some(String::from("Match Visualizer")),
+                        canvas,
+                        fit_canvas_to_parent: true,
+                        resolution: WindowResolution::new(1600.0, 900.0),
+                        ..default()
+                    }),
                     ..default()
                 }),
-                ..default()
-            })
-        )
+            UiDebugOverlayPlugin::start_disabled().with_line_width(2.0),
+        ))
         .insert_resource(VisualizationState {
             game_log: None,
             current_tick: 0,
@@ -149,9 +152,10 @@ pub fn initialize_with_canvas(
             display_current_score,
             handle_keyboard_input,
             update_explosion_visualizers,
-            update_postgame_scoreboard,
             update_combatant_id_text,
+            debug_ui,
             try_reload_vis_state.before(update),
+            update_postgame_scoreboard.after(try_reload_vis_state),
         ))
         .run();
 }
@@ -188,6 +192,7 @@ pub fn load_game_log(
 
 fn setup(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
 ) {
     commands.spawn((
         Camera2d,
@@ -208,6 +213,7 @@ fn setup(
     commands.spawn((
         Text2d(String::new()),
         TextFont {
+            font: asset_server.load("fonts/Quicksand-Medium.ttf"),
             font_size: 50.0,
             ..default()
         },
@@ -228,12 +234,13 @@ fn setup(
     commands.spawn((
         Text2d(String::new()),
         TextFont {
+            font: asset_server.load("fonts/Quicksand-Medium.ttf"),
             font_size: 30.0,
             ..default()
         },
         Node {
-            position_type: PositionType::Relative,
-            bottom: Val::Px(4.0),
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(8.0),
             left: Val::Px(50.0),
             ..default()
         },
@@ -248,11 +255,12 @@ fn setup(
         Text2d(String::from("H")),
         TextColor(Color::WHITE),
         TextFont {
+            font: asset_server.load("fonts/Quicksand-Medium.ttf"),
             font_size: 60.0,
             ..default()
         },
         Node {
-            position_type: PositionType::Relative,
+            position_type: PositionType::Absolute,
             top: Val::Px(107.0),
             left: Val::Px(30.0),
             ..default()
@@ -268,11 +276,12 @@ fn setup(
         Text2d(String::from("A")),
         TextColor(Color::WHITE),
         TextFont {
+            font: asset_server.load("fonts/Quicksand-Medium.ttf"),
             font_size: 60.0,
             ..default()
         },
         Node {
-            position_type: PositionType::Relative,
+            position_type: PositionType::Absolute,
             top: Val::Px(107.0),
             left: Val::Px(70.0),
             ..default()
@@ -287,11 +296,12 @@ fn setup(
     commands.spawn((
         Text2d(String::from("0:00")),
         TextFont {
+            font: asset_server.load("fonts/Quicksand-Medium.ttf"),
             font_size: 60.0,
             ..default()
         },
         Node {
-            position_type: PositionType::Relative,
+            position_type: PositionType::Absolute,
             top: Val::Px(107.0),
             left: Val::Px(50.0),
             ..default()
@@ -302,29 +312,11 @@ fn setup(
         },
         MatchTimerText
     ));
-
-    commands.spawn((
-        Text2d(String::from("")),
-        TextFont {
-            font_size: 120.0,
-            ..default()
-        },
-        Node {
-            position_type: PositionType::Relative,
-            top: Val::Px(50.0),
-            left: Val::Px(50.0),
-            ..default()
-        },
-        Transform {
-            scale: Vec3::splat(0.07),
-            ..Default::default()
-        },
-        PostgameScoreboard
-    ));
 }
 
 fn try_reload_vis_state(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     meshes: ResMut<Assets<Mesh>>,
     materials: ResMut<Assets<ColorMaterial>>,
     mut vis_state: ResMut<VisualizationState>,
@@ -346,11 +338,12 @@ fn try_reload_vis_state(
 
     *vis_state = new_vis_state;
 
-    setup_after_reload_game_log(commands, meshes, materials, vis_state);
+    setup_after_reload_game_log(commands, asset_server, meshes, materials, vis_state);
 }
 
 fn setup_after_reload_game_log(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     vis_state: ResMut<VisualizationState>
@@ -441,8 +434,8 @@ fn setup_after_reload_game_log(
                     CombatantVisualizer { id: *combatant_id, desired_location: translation, last_position: translation },
                     Mesh2d(meshes.add(Capsule2d::new(0.75, 1.75))), // ZJ-TODO: read radius
                     MeshMaterial2d(materials.add(Color::linear_rgb(
-                        0.0,
-                        if home_team { 1.0 } else { 0.0 },
+                        if home_team { 0.0 } else { 0.0 },
+                        if home_team { 0.4 } else { 0.0 },
                         if home_team { 0.0 } else { 1.0 },
                     ))),
                     transform,
@@ -451,15 +444,16 @@ fn setup_after_reload_game_log(
                     // but we want this text to always be on top, and to be smooth
                     let mut new_transform = Transform::default();
                     new_transform.translation.z = 30.0;
-                    new_transform.scale *= 0.07;
+                    new_transform.scale *= 0.05;
 
                     builder.spawn((
                         Text2d(combatant_id.to_string()),
                         TextFont {
-                                font_size: 64.0,
-                                ..Default::default()
+                            font: asset_server.load("fonts/Quicksand-Medium.ttf"),
+                            font_size: 64.0,
+                            ..Default::default()
                         },
-                        TextColor(if home_team { Color::BLACK } else { Color::WHITE }),
+                        TextColor(Color::WHITE),
                         new_transform,
                         VisualizationObject,
                         CombatantIdText {
@@ -472,6 +466,91 @@ fn setup_after_reload_game_log(
             _ => {}, // ZJ-TODO: we should assert if we have any unexpected events
         }
     }
+
+    let combatant_statlines = game_log.combatant_statlines().to_owned();
+    commands.spawn((
+        Node {
+            top: Val::Percent(10.0),
+            left: Val::Percent(10.0),
+            height: Val::Percent(80.0),
+            width: Val::Percent(80.0),
+            flex_wrap: FlexWrap::Wrap,
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.85)),
+        VisualizationObject,
+        PostgameScoreboard,
+    )).with_children(|parent| {
+        parent.spawn((
+            Node {
+                width: Val::Percent(100.0),
+                min_width: Val::Percent(100.0),
+                height: Val::Percent(9.0),
+                min_height: Val::Percent(9.0),
+                ..default()
+            },
+        )).with_children(|parent| {
+            for stat_category in vec![
+                "Combatant",
+                "Points",
+                "Throws",
+                "Hits",
+                "Shoves",
+            ] {
+                parent.spawn((
+                    Node {
+                        width: Val::Percent(100.0),
+                        ..default()
+                    }
+                )).with_child((
+                    Text::new(stat_category),
+                    TextFont {
+                        font: asset_server.load("fonts/Quicksand-Medium.ttf"),
+                        font_size: 36.0,
+                        ..default()
+                    },
+                    TextColor(Color::WHITE),
+                ));
+            }
+        });
+
+        for statline in combatant_statlines {
+            parent.spawn((
+                Node {
+                    width: Val::Percent(100.0),
+                    min_width: Val::Percent(100.0),
+                    height: Val::Percent(9.0),
+                    min_height: Val::Percent(9.0),
+                    ..default()
+                },
+            )).with_children(|parent| {
+                for stat_str in vec![
+                    statline.combatant_id.to_string(),
+                    statline.points_scored.to_string(),
+                    statline.balls_thrown.to_string(),
+                    statline.throws_hit.to_string(),
+                    statline.combatants_shoved.to_string(),
+                ] {
+                    parent.spawn((
+                        Node {
+                            width: Val::Percent(100.0),
+                            ..default()
+                        }
+                    )).with_child((
+                        Text::new(stat_str),
+                        TextFont {
+                            font: asset_server.load("fonts/Quicksand-Medium.ttf"),
+                            font_size: 48.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                    ));
+                }
+            });
+        }
+    });
 }
 
 fn update(
@@ -774,19 +853,6 @@ fn handle_keyboard_input(
     }
 }
 
-fn update_postgame_scoreboard(
-    mut scoreboard_query: Query<&mut Text2d, With<PostgameScoreboard>>,
-    vis_state: ResMut<VisualizationState>,
-) {
-    if vis_state.end_of_game {
-        let mut scoreboard_text = scoreboard_query.single_mut();
-        scoreboard_text.0 = String::from("GAME OVER!");
-    } else {
-        let mut scoreboard_text = scoreboard_query.single_mut();
-        scoreboard_text.0 = String::new();
-    }
-}
-
 fn update_combatant_id_text(
     mut combatants_query: Query<(&mut TextColor, &CombatantIdText)>,
 ) {
@@ -794,12 +860,37 @@ fn update_combatant_id_text(
         if combatant_id_text.is_stunned {
             *text_color = TextColor(Color::srgb(1.0, 0.0, 0.0));
         } else {
-            if combatant_id_text.combatant_id <= 5 {
-                // home team
-                *text_color = TextColor(Color::BLACK);
-            } else {
-                *text_color = TextColor(Color::WHITE);
-            }
+            *text_color = TextColor(Color::WHITE);
         }
+    }
+}
+
+fn debug_ui(
+    input: Res<ButtonInput<KeyCode>>,
+    mut ui_debug_overlay: ResMut<UiDebugOverlay>,
+) {
+    if input.just_pressed(KeyCode::KeyO) {
+        ui_debug_overlay.toggle();
+    }
+
+    if input.just_pressed(KeyCode::KeyC) {
+        ui_debug_overlay.show_clipped = !ui_debug_overlay.show_clipped;
+    }
+
+    if input.just_pressed(KeyCode::KeyV) {
+        ui_debug_overlay.show_hidden = !ui_debug_overlay.show_hidden;
+    }
+}
+
+fn update_postgame_scoreboard(
+    mut query: Query<&mut Visibility, With<PostgameScoreboard>>,
+    vis_state: Res<VisualizationState>,
+) {
+    let mut visibility = query.single_mut();
+
+    if vis_state.end_of_game {
+        *visibility = Visibility::Visible;
+    } else {
+        *visibility = Visibility::Hidden;
     }
 }

@@ -19,7 +19,7 @@ use crate::game_state::GameState;
 /// such as the last position of a combatant or ball. These will be used in the
 /// [GameLog](crate::game_log::GameLog) to allow clients to visually recreate 
 /// an entire game, whereas just discrete events may be confusing to see.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum SimulationEvent {
     // ZJ-TODO: keep?
     // This is currently only being used for tick zero initial state (eg where are there plates? where are there walls?)

@@ -8,3 +8,4 @@ pub mod simulation;
 pub mod physics_sim;
 
 mod ai;
+mod combatant_statline;
