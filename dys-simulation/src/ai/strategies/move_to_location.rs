@@ -13,10 +13,11 @@ pub struct MoveToLocationStrategy {
     path: ArenaNavmeshPath,
     next_node: Option<ArenaNavmeshNode>,
     self_combatant_id: CombatantId,
-    start_location: Point3<f32>,
+    start_location: Option<Point3<f32>>,
     target_game_object: Option<GameObjectType>,
     target_location: Point3<f32>,
     max_ticks: u16,
+    dynamic_pathing: bool,
 }
 
 impl MoveToLocationStrategy {
@@ -33,10 +34,11 @@ impl MoveToLocationStrategy {
             path: ArenaNavmeshPath::empty(),
             next_node: None,
             self_combatant_id,
-            start_location: point![0.0, 0.0, 0.0],
+            start_location: None,
             target_game_object: None,
             target_location,
             max_ticks,
+            dynamic_pathing: false,
         }
     }
 
@@ -50,11 +52,80 @@ impl MoveToLocationStrategy {
             path: ArenaNavmeshPath::empty(),
             next_node: None,
             self_combatant_id,
-            start_location: point![0.0, 0.0, 0.0],
+            start_location: None,
             target_game_object: Some(target_object),
             target_location: point![0.0, 0.0, 0.0],
-            max_ticks
+            max_ticks,
+            dynamic_pathing: false,
         }
+    }
+
+    pub fn new_with_target_tracking(
+        self_combatant_id: CombatantId,
+        target_object: GameObjectType,
+    ) -> MoveToLocationStrategy {
+        MoveToLocationStrategy {
+            is_complete: false,
+            path: ArenaNavmeshPath::empty(),
+            next_node: None,
+            self_combatant_id,
+            start_location: None,
+            target_game_object: Some(target_object),
+            target_location: point![0.0, 0.0, 0.0],
+            max_ticks: u16::MAX,
+            dynamic_pathing: true,
+        }
+    }
+}
+
+impl MoveToLocationStrategy {
+    fn compute_path(
+        &mut self,
+        game_state: Arc<Mutex<GameState>>,
+    ) -> ArenaNavmeshPath {
+        let game_state = game_state.lock().unwrap();
+
+        if self.start_location.is_none() {
+            let start_location = {
+                let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                let combatant_object = game_state
+                    .combatants
+                    .get(&self.self_combatant_id)
+                    .unwrap();
+                rigid_body_set.get(combatant_object.rigid_body_handle).unwrap().translation()
+            };
+
+            self.start_location = Some((*start_location).into());
+        }
+
+        if let Some(target_game_object) = &self.target_game_object {
+            self.target_location = match target_game_object {
+                GameObjectType::Ball(ball_id) => {
+                    let ball_object = game_state.balls.get(ball_id).unwrap();
+                    let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                    Point3::from(rigid_body_set
+                        .get(ball_object.rigid_body_handle().unwrap())
+                        .unwrap()
+                        .translation()
+                        .to_owned())
+                },
+                GameObjectType::Combatant(combatant_id) => {
+                    let combatant_object = game_state.combatants.get(combatant_id).unwrap();
+                    let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                    Point3::from(rigid_body_set
+                        .get(combatant_object.rigid_body_handle().unwrap())
+                        .unwrap()
+                        .translation()
+                        .to_owned())
+                },
+                _ => panic!("unsupported game object type for MoveToLocation strategy"),
+            };
+        }
+
+        game_state
+            .arena_navmesh
+            .create_path(self.start_location.unwrap(), self.target_location)
+            .unwrap_or(ArenaNavmeshPath::empty())
     }
 }
 
@@ -94,51 +165,21 @@ impl Strategy for MoveToLocationStrategy {
         let mut events = vec![];
         self.max_ticks = self.max_ticks.checked_sub(1).unwrap_or(0);
 
-        if self.path.is_empty() && self.next_node.is_none() {
-            self.path = {
-                let game_state = game_state.lock().unwrap();
-                let start_location = {
-                    let (rigid_body_set, _, _) = game_state.physics_sim.sets();
-                    let combatant_object = game_state
-                        .combatants
-                        .get(&self.self_combatant_id)
-                        .unwrap();
-                    rigid_body_set.get(combatant_object.rigid_body_handle).unwrap().translation()
-                };
+        let self_id = agent.combatant().id;
+        let current_tick = game_state.lock().unwrap().current_tick.to_owned();
 
-                self.start_location = (*start_location).into();
-
-                if let Some(target_game_object) = &self.target_game_object {
-                    self.target_location = match target_game_object {
-                        GameObjectType::Ball(ball_id) => {
-                            let ball_object = game_state.balls.get(ball_id).unwrap();
-                            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
-                            Point3::from(rigid_body_set
-                                .get(ball_object.rigid_body_handle().unwrap())
-                                .unwrap()
-                                .translation()
-                                .to_owned())
-                        },
-                        GameObjectType::Combatant(combatant_id) => {
-                            let combatant_object = game_state.combatants.get(combatant_id).unwrap();
-                            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
-                            Point3::from(rigid_body_set
-                                .get(combatant_object.rigid_body_handle().unwrap())
-                                .unwrap()
-                                .translation()
-                                .to_owned())
-                        },
-                        _ => panic!("unsupported game object type for MoveToLocation strategy"),
-                    };
-                }
-
-                game_state
-                    .arena_navmesh
-                    .create_path(self.start_location, self.target_location)
-                    .unwrap_or(ArenaNavmeshPath::empty())
-            };
-
-            self.next_node = self.path.next_node();
+        if self.dynamic_pathing {
+            // 1. Always finish path to next node if exists
+            if self.next_node.is_none() {
+                self.path = self.compute_path(game_state.clone());
+                self.next_node = self.path.next_node();
+            }
+        }
+        else {
+            if self.path.is_empty() && self.next_node.is_none() {
+                self.path = self.compute_path(game_state.clone());
+                self.next_node = self.path.next_node();
+            }
         }
 
         let (combatant_isometry, unit_resolution) = {
@@ -185,6 +226,14 @@ impl Strategy for MoveToLocationStrategy {
 
             let distance_from_node = (next_node.as_vector() - combatant_position).magnitude();
             if distance_from_node == 0.0 {
+                if self.dynamic_pathing {
+                    self.path = self.compute_path(game_state.clone());
+                    // pop the first node - it's where we're already standing
+                    // ZJ-TODO: fix this
+                    let _ = self.path.next_node();
+                    self.start_location = Some(combatant_position.into());
+                }
+
                 if let Some(next_node) = self.path.next_node() {
                     self.next_node = Some(next_node);
                 } else {

@@ -101,10 +101,9 @@ pub fn actions(
         actions.push(
             ActionBuilder::new()
                 .name(format!("Move to Combatant {}", other_combatant_id))
-                .strategy(MoveToLocationStrategy::new_with_target_object(
+                .strategy(MoveToLocationStrategy::new_with_target_tracking(
                     combatant.id,
                     GameObjectType::Combatant(*other_combatant_id),
-                    8,
                 ))
                 .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (target_pos - combatant_pos).magnitude() / combatant_move_speed)
                 .promises(Belief::CanReachCombatant {

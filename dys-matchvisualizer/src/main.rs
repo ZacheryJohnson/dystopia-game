@@ -212,33 +212,14 @@ fn setup(
 
     commands.spawn((
         Text2d(String::new()),
+        TextColor(Color::WHITE),
         TextFont {
-            font_size: 50.0,
+            font_size: 40.0,
             ..default()
         },
         Node {
             position_type: PositionType::Absolute,
-            bottom: Val::Vw(2.0),
-            left: Val::Vw(50.0),
-            justify_content: JustifyContent::Center,
-            ..default()
-        },
-        Transform {
-            scale: Vec3::splat(0.07),
-            ..Default::default()
-        },
-        DebugPositionText
-    ));
-
-    commands.spawn((
-        Text2d(String::new()),
-        TextFont {
-            font_size: 30.0,
-            ..default()
-        },
-        Node {
-            position_type: PositionType::Absolute,
-            bottom: Val::Px(8.0),
+            top: Val::Px(-4.0),
             left: Val::Px(50.0),
             ..default()
         },
@@ -701,47 +682,49 @@ fn display_mouse_hover(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut text_query: Query<&mut Text2d, With<DebugPositionText>>,
 ) {
-    let mut text = text_query.get_single_mut().expect("failed to get debug position text component");
-    text.0 = String::new();
-
-    let Ok((camera, camera_global_transform)) = camera_query.get_single_mut() else {
-        return;
-    };
-
-    let window = window_query
-        .get_single()
-        .expect("failed to get primary camera");
-
-    let Some(cursor_position) = window.cursor_position() else {
-        return;
-    };
-
-    // use it to convert ndc to world-space coordinates
-    let Ok(world_pos) =
-        camera.viewport_to_world_2d(camera_global_transform, cursor_position)
-    else {
-        // Couldn't convert - mouse likely outside of window
-        // Don't log - this would get spammy
-        return;
-    };
-
-    let world_pos_collider = Aabb2d::new(world_pos, Vec2 { x: 1.0, y: 1.0 });
-    for vis_object_transform in &vis_objects_query {
-        let vis_object_collider = Aabb2d::new(
-            Vec2::new(vis_object_transform.translation.x, vis_object_transform.translation.y),
-            Vec2 { x: vis_object_transform.scale.x, y: vis_object_transform.scale.y });
-        if !world_pos_collider.intersects(&vis_object_collider) {
-            continue;
-        }
-
-        text.0 = format!(
-            "({}, {}, {})",
-            vis_object_transform.translation.x.round(),
-            vis_object_transform.translation.y.round(),
-            vis_object_transform.translation.z.round(),
-        );
-        return;
-    }
+    return;
+    // ZJ-TODO: restore debug position text
+    // let mut text = text_query.get_single_mut().expect("failed to get debug position text component");
+    // text.0 = String::new();
+    //
+    // let Ok((camera, camera_global_transform)) = camera_query.get_single_mut() else {
+    //     return;
+    // };
+    //
+    // let window = window_query
+    //     .get_single()
+    //     .expect("failed to get primary camera");
+    //
+    // let Some(cursor_position) = window.cursor_position() else {
+    //     return;
+    // };
+    //
+    // // use it to convert ndc to world-space coordinates
+    // let Ok(world_pos) =
+    //     camera.viewport_to_world_2d(camera_global_transform, cursor_position)
+    // else {
+    //     // Couldn't convert - mouse likely outside of window
+    //     // Don't log - this would get spammy
+    //     return;
+    // };
+    //
+    // let world_pos_collider = Aabb2d::new(world_pos, Vec2 { x: 1.0, y: 1.0 });
+    // for vis_object_transform in &vis_objects_query {
+    //     let vis_object_collider = Aabb2d::new(
+    //         Vec2::new(vis_object_transform.translation.x, vis_object_transform.translation.y),
+    //         Vec2 { x: vis_object_transform.scale.x, y: vis_object_transform.scale.y });
+    //     if !world_pos_collider.intersects(&vis_object_collider) {
+    //         continue;
+    //     }
+    //
+    //     text.0 = format!(
+    //         "({}, {}, {})",
+    //         vis_object_transform.translation.x.round(),
+    //         vis_object_transform.translation.y.round(),
+    //         vis_object_transform.translation.z.round(),
+    //     );
+    //     return;
+    // }
 }
 
 fn display_current_score(
