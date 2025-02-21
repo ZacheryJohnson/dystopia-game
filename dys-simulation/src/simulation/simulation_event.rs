@@ -160,6 +160,35 @@ impl SimulationEvent {
                 let mut game_state = game_state.lock().unwrap();
                 let current_tick = game_state.current_tick.to_owned();
 
+                // ZJ-TODO: be authoritative here
+                //          combatants may be out of range, despite their beliefs
+                let distance = {
+                    let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                    let combatant_rb_handle = game_state
+                        .combatants
+                        .get(&combatant_id)
+                        .unwrap()
+                        .rigid_body_handle()
+                        .unwrap();
+                    let ball_rb_handle = game_state
+                        .balls
+                        .get(&ball_id)
+                        .unwrap()
+                        .rigid_body_handle()
+                        .unwrap();
+
+                    let combatant_pos = rigid_body_set.get(combatant_rb_handle).unwrap().translation();
+                    let ball_pos = rigid_body_set.get(ball_rb_handle).unwrap().translation();
+
+                    combatant_pos - ball_pos
+                };
+
+                // ZJ-TODO: read this from combatant stats
+                //          might have some long ass arms (if arms at all)
+                if distance.magnitude() > 1.0 {
+                    return (false, vec![]);
+                }
+
                 {
                     let combatant_object = game_state
                         .combatants

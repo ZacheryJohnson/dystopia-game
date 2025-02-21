@@ -1,6 +1,8 @@
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use dys_satisfiable::SatisfiableField;
 use crate::ai::agent::Agent;
+use crate::ai::belief::SatisfiableBelief;
 use crate::game_state::GameState;
 use crate::simulation::simulation_event::SimulationEvent;
 use crate::simulation::simulation_stage::SimulationStage;
@@ -35,11 +37,25 @@ pub(crate) fn simulate_combatants(
 
             let sensors = {
                 let mut combatant_state = combatant_object.combatant_state.lock().unwrap();
-                combatant_state.beliefs.expire_stale_beliefs(current_tick);
+                // ZJ-TODO: refactor yuck
+                if combatant_state.stunned_by_explosion {
+                    vec![]
+                } else {
+                    combatant_state.beliefs.expire_stale_beliefs(current_tick);
 
-                combatant_state.sensors.iter()
-                    .map(|(id, sensor)| (id.to_owned(), sensor.to_owned()))
-                    .collect::<Vec<_>>()
+                    // ZJ-TODO: don't like this, have the simulation be correct elsewhere
+                    if combatant_state.holding_ball.is_none() {
+                        combatant_state.beliefs.remove_beliefs_by_test(
+                            &SatisfiableBelief::HeldBall()
+                                .combatant_id(SatisfiableField::Exactly(combatant_id.to_owned()))
+                        );
+                    }
+
+                    combatant_state.sensors.iter()
+                        .map(|(id, sensor)| (id.to_owned(), sensor.to_owned()))
+                        .collect::<Vec<_>>()
+                }
+
             };
             for (sensor_id, sensor) in sensors {
                 let new_beliefs = sensor.sense(
