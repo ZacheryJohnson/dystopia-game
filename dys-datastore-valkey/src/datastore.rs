@@ -1,12 +1,16 @@
 pub use redis::aio::MultiplexedConnection;
 pub use redis::AsyncCommands;
+pub use redis::ExpireOption;
+
 use redis::{Client, ConnectionAddr, ConnectionInfo, IntoConnectionInfo, RedisConnectionInfo, RedisResult};
 use dys_datastore::datastore::Datastore;
 
+#[derive(Clone)]
 pub struct ValkeyDatastore {
     connection: MultiplexedConnection
 }
 
+#[derive(Debug)]
 pub struct ValkeyConfig {
     user: String,
     pass: String,

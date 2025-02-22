@@ -9,6 +9,9 @@ services:
       - RUST_BACKTRACE=1
     ports:
       - "6081:6081"
+    depends_on:
+      valkey:
+        condition: service_started
   webapp:
     container_name: "webapp"
     build:
@@ -24,6 +27,9 @@ services:
     ports:
       - "6080:6080"
       #- "5173:5173"
+    depends_on:
+      valkey:
+        condition: service_started
   jaeger:
     container_name: "jaeger"
     image: "jaegertracing/all-in-one:1.61.0"

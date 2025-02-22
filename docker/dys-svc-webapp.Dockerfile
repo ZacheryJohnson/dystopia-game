@@ -24,6 +24,8 @@ RUN cargo install -f wasm-opt
 
 WORKDIR /opt/dystopia
 COPY $WORKING_DIR/Cargo.toml /opt/dystopia/Cargo.toml
+COPY $WORKING_DIR/dys-datastore/ /opt/dystopia/dys-datastore/
+COPY $WORKING_DIR/dys-datastore-valkey/ /opt/dystopia/dys-datastore-valkey/
 COPY $WORKING_DIR/dys-satisfiable/ /opt/dystopia/dys-satisfiable/
 COPY $WORKING_DIR/dys-satisfiable-macros/ /opt/dystopia/dys-satisfiable-macros/
 COPY $WORKING_DIR/dys-simulation/ /opt/dystopia/dys-simulation/
