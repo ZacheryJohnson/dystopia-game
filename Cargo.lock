@@ -2489,12 +2489,15 @@ name = "dys-svc-director"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "dys-datastore",
+ "dys-datastore-valkey",
  "dys-observability",
  "dys-simulation",
  "dys-world",
  "postcard",
  "rand",
  "serde",
+ "serde_json",
  "tokio",
  "tower 0.4.13",
  "tower-http",

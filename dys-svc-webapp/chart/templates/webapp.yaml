@@ -34,6 +34,8 @@ spec:
                 fieldPath: status.hostIP
           - name: OTEL_ENDPOINT
             value: "http://$(NODE_IP):4317"
+          - name: VALKEY_HOST
+            value: "http://valkey-primary.valkey"
         livenessProbe:
           httpGet:
             port: http-port

@@ -15,7 +15,7 @@
   const games: Ref<MatchResultT[]> = ref([]);
 
   onMounted(async () => {
-    const match_results = JSON.parse((await (await fetch(`api/latest_games`)).json()))["match_results"];
+    const match_results = JSON.parse((await (await fetch(`api/latest_games`)).json()));
 
     games.value = [];
     let gameId = 1;

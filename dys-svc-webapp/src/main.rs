@@ -36,7 +36,6 @@ async fn query_latest_games(_: Request) -> Result<Response, Infallible> {
         return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get latest_games").into_response());
     };
 
-    tracing::info!("Sending response...");
     let json = axum::Json(response_body);
     Ok(json.into_response())
 }

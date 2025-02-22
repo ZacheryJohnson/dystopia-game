@@ -120,7 +120,7 @@ pub fn actions(
                     combatant.id,
                     *other_combatant_id
                 ))
-                .cost(5.0) // ZJ-TODO
+                .cost(15.0) // ZJ-TODO
                 .requires(
                     SatisfiableBelief::CanReachCombatant()
                         .self_combatant_id(SatisfiableField::Exactly(combatant.id))

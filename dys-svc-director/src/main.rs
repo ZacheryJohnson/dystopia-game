@@ -13,7 +13,7 @@ use dys_world::arena::Arena;
 use dys_world::schedule::calendar::{Date, Month};
 use dys_world::schedule::schedule_game::ScheduleGame;
 use dys_world::world::World;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use rand::{thread_rng, RngCore, SeedableRng};
 use rand::rngs::StdRng;
@@ -21,9 +21,11 @@ use rand::seq::SliceRandom;
 use tokio::signal;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
+use dys_datastore::datastore::Datastore;
+use dys_datastore_valkey::datastore::{AsyncCommands, ExpireOption, ValkeyConfig, ValkeyDatastore};
 
 // ZJ-TODO: this should live in dys-world
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 struct MatchResult {
     away_team_name: String,
     home_team_name: String,
@@ -43,6 +45,7 @@ struct CombatantTeamMember {
 struct WorldState {
     game_world: Arc<Mutex<World>>,
     match_results: Arc<RwLock<Vec<MatchResult>>>,
+    valkey: Box<ValkeyDatastore>,
 }
 
 async fn health_check(_: Request) -> Result<impl IntoResponse, Infallible> {
@@ -61,10 +64,20 @@ async fn main() {
     tracing::info!("Starting server...");
 
     let game_world = Arc::new(Mutex::new(dys_simulation::generator::Generator::new().generate_world(&mut StdRng::from_entropy())));
-    
+
+    let valkey_config = ValkeyConfig::new(
+        std::env::var("VALKEY_USER").unwrap_or(String::from("default")),
+        std::env::var("VALKEY_PASS").unwrap_or(String::from("")),
+        std::env::var("VALKEY_HOST").unwrap_or(String::from("172.18.0.1")),
+        std::env::var("VALKEY_PORT").unwrap_or(String::from("6379")).parse::<u16>().unwrap()
+    );
+
+    tracing::info!("Valkey config: {:?}", valkey_config);
+
     let world_state = WorldState {
         game_world: game_world.clone(),
-        match_results: Arc::new(RwLock::new(vec![]))
+        match_results: Arc::new(RwLock::new(vec![])),
+        valkey: ValkeyDatastore::connect(valkey_config).await.unwrap()
     };
 
     let world_state_thread_copy = world_state.clone();
@@ -74,6 +87,22 @@ async fn main() {
         loop {
             tracing::info!("Executing simulations...");
             run_simulation(world_state_thread_copy.clone()).await;
+
+            let mut world_state = world_state_thread_copy.clone();
+            let mut valkey = world_state.valkey.connection();
+            let world = world_state.game_world.lock().unwrap().to_owned();
+
+            tracing::info!("Saving world state in valkey...");
+            let _: i32 = valkey.hset(
+                "env:dev:world",
+                "data",
+                serde_json::to_string(&world).unwrap(),
+            ).await.unwrap();
+
+            let _: i32 = valkey.expire(
+                "env:dev:world",
+                300,
+            ).await.unwrap();
 
             // Sleep before simulating more matches
             tracing::info!("Sleeping for {} seconds before simulating more matches...", SLEEP_DURATION.as_secs());
@@ -89,6 +118,7 @@ async fn main() {
     let app = Router::new()
         .route("/latest_games", get(latest_games))
         .route("/combatants", get(combatants))
+        .route("/world_state", get(get_world_state))
         .route("/health", get(health_check))
         .layer(trace_middleware_layer)
         .with_state(world_state);
@@ -129,11 +159,9 @@ struct LatestGamesResponse {
     match_results: Vec<MatchResult>,
 }
 
-#[tracing::instrument(skip_all)]
-async fn run_simulation(world_state: WorldState) {              
-    // Generate matches
+fn simulate_matches(world_state: WorldState) -> Vec<MatchResult> {
     let mut scheduled_games = vec![];
-    let mut teams = { 
+    let mut teams = {
         tracing::info!("Acquiring game world lock...");
         let game_world = world_state.game_world.lock().unwrap();
         game_world.teams.clone()
@@ -175,24 +203,28 @@ async fn run_simulation(world_state: WorldState) {
         });
     }
 
-    // Swap simulation results
-    // ZJ-TODO: store these in a datastore
-    tracing::info!("Acquiring game world write-lock...");
-    *world_state.match_results.write().unwrap() = match_results;
+    match_results
 }
 
 #[tracing::instrument(skip_all)]
-async fn latest_games(State(world_state): State<WorldState>) -> Response {
-    tracing::info!("Trying to acquire match results read-lock...");
-    let match_results = world_state.match_results.read().unwrap().to_owned();
-    
-    tracing::info!("Sending response...");
-    let mut response = axum::Json(
-        LatestGamesResponse{
-            match_results,
-        }
-    ).into_response();
-      
+async fn run_simulation(mut world_state: WorldState) {
+    let match_results = simulate_matches(world_state.clone());
+
+    // Swap simulation results
+    let match_result_json = serde_json::to_string(&match_results).unwrap();
+    let mut valkey = world_state.valkey.connection();
+    // ZJ-TODO: latest should be a pointer to a unique ID
+    let _: i32 = valkey.hset("env:dev:match.results:latest", "data", match_result_json).await.unwrap();
+}
+
+#[tracing::instrument(skip_all)]
+async fn latest_games(State(mut world_state): State<WorldState>) -> Response {
+    let mut valkey = world_state.valkey.connection();
+    let response_data: String = valkey.hget("env:dev:match.results:latest", "data").await.unwrap();
+
+    tracing::info!("{response_data}");
+
+    let mut response = response_data.into_response();
     response.headers_mut()
         // ZJ-TODO: not *
         .insert("Access-Control-Allow-Origin", HeaderValue::from_str("*").unwrap());
@@ -221,6 +253,17 @@ async fn combatants(State(world_state): State<WorldState>) -> Response {
 
     tracing::info!("Sending response...");
     let mut response = axum::Json(combatants).into_response();
+    response.headers_mut()
+        // ZJ-TODO: not *
+        .insert("Access-Control-Allow-Origin", HeaderValue::from_str("*").unwrap());
+
+    response
+}
+
+async fn get_world_state(State(mut world_state): State<WorldState>) -> Response {
+    let mut valkey = world_state.valkey.connection();
+    let response_data: String = valkey.hget("env:dev:world", "data").await.unwrap();
+    let mut response = response_data.into_response();
     response.headers_mut()
         // ZJ-TODO: not *
         .insert("Access-Control-Allow-Origin", HeaderValue::from_str("*").unwrap());
