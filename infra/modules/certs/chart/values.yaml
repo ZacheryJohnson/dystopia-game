@@ -1,0 +1,8 @@
+tlsSecret: "dax-tls"
+fqdn: "dax.dev.determinism.dev"
+certRegistrationEmailAddress: "dax@determinism.dev"
+aks:
+  resourceGroupName: "<set by CLI>"
+  subscriptionId: "<set by CLI>"
+  zoneName: "dev.determinism.dev"
+  userClientId: "<set by CLI>"

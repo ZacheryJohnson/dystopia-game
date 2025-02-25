@@ -44,3 +44,7 @@ resource "azurerm_federated_identity_credential" "cert_manager" {
     parent_id           = azurerm_user_assigned_identity.cert_manager[each.key].id
     subject             = "system:serviceaccount:${each.value.cert_manager_namespace}:${each.value.cert_manager_service_account_name}"
 }
+
+output "cert_manager_client_id" {
+    value = values(azurerm_user_assigned_identity.cert_manager)[*].client_id
+}

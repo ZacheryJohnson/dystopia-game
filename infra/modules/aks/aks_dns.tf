@@ -47,7 +47,15 @@ resource "azurerm_public_ip" "lb_ingress_ip" {
     
     lifecycle {
         create_before_destroy = true
+        ignore_changes = [
+            // Managed below
+            domain_name_label,
+        ]
     }
+}
+
+output "lb_public_ip" {
+    value = values(azurerm_public_ip.lb_ingress_ip)[*].ip_address
 }
 
 resource "azurerm_dns_a_record" "webapp_dns" {

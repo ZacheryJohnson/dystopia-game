@@ -8,10 +8,10 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - $FQDN
-    secretName: $TLS_SECRET
+    - {{ .Values.fqdn }}
+    secretName: {{ .Values.tlsSecret }}
   rules:
-  - host: $FQDN
+  - host: {{ .Values.fqdn }}
     http:
       paths:
       - path: /
@@ -33,10 +33,10 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - $FQDN
-    secretName: $TLS_SECRET
+    - {{ .Values.fqdn }}
+    secretName: {{ .Values.tlsSecret }}
   rules:
-  - host: $FQDN
+  - host: {{ .Values.fqdn }}
     http:
       paths:
       - path: /assets

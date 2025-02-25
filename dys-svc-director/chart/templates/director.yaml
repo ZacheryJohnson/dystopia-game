@@ -1,35 +1,37 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: dys-svc-webapp
+  name: dys-svc-director
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: dys-svc-webapp
+      app: dys-svc-director
   template:
     metadata:
       labels:
-        app: dys-svc-webapp
+        app: dys-svc-director
     spec:
       containers:
-      - name: dys-svc-webapp
-        image: dystopiadev.azurecr.io/dys-svc-webapp:latest
+      - name: dys-svc-director
+        image: dystopiadev.azurecr.io/dys-svc-director:latest
         ports:
-        - containerPort: 6080
+        - containerPort: 6081
           name: http-port
         resources:
           requests:
-            cpu: 25m
-            memory: 50Mi
+            cpu: 50m
+            memory: 100Mi
           limits:
             cpu: 75m
-            memory: 128Mi
+            memory: 200Mi
         env:
-          - name: SVC_DIRECTOR_API_BASE_URI
-            value: "http://dys-svc-director"
+          - name: NODE_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
           - name: OTEL_ENDPOINT
-            value: "http://alloy.grafana-alloy:4317"
+            value: "http://$(NODE_IP):4317"
         livenessProbe:
           httpGet:
             port: http-port
@@ -42,16 +44,17 @@ spec:
             path: /health
           failureThreshold: 30
           periodSeconds: 10
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: dys-svc-webapp
+  name: dys-svc-director
 spec:
   type: ClusterIP
   ports:
   - name: http
     port: 80
-    targetPort: 6080
+    targetPort: 6081
   selector:
-    app: dys-svc-webapp
+    app: dys-svc-director

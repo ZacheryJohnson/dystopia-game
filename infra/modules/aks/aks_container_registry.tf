@@ -10,6 +10,10 @@ resource "azurerm_container_registry" "container_registry" {
     location = azurerm_resource_group.rg[each.value.resource_group_name].location
 }
 
+output "acr_url" {
+    value = values(azurerm_container_registry.container_registry)[*].login_server
+}
+
 resource "azurerm_role_assignment" "attach_to_k8s" {
     for_each = {
         for container_registry in var.container_registries:

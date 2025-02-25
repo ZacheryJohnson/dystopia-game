@@ -7,7 +7,7 @@ resource "azurerm_kubernetes_cluster" "k8s" {
     name = each.key
     resource_group_name = each.value.resource_group_name
     location = azurerm_resource_group.rg[each.value.resource_group_name].location
-    dns_prefix = "${each.key}"
+    dns_prefix = each.key
     sku_tier = "Free"
 
     oidc_issuer_enabled = true
@@ -27,10 +27,8 @@ resource "azurerm_kubernetes_cluster" "k8s" {
     identity {
         type = "SystemAssigned"
     }
+}
 
-    lifecycle {
-        ignore_changes = [
-            default_node_pool[0].upgrade_settings
-        ]
-    }
+output "kube_config" {
+    value = values(azurerm_kubernetes_cluster.k8s)[*].kube_config
 }

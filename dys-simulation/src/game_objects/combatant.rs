@@ -235,7 +235,7 @@ impl Agent for CombatantObject {
             current_tick = game_state.lock().unwrap().current_tick,
         ),
         skip_all,
-        level = "info")]
+        level = "trace")]
     fn tick(
         &mut self,
         game_state: Arc<Mutex<GameState>>,
