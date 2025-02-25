@@ -60,3 +60,9 @@ module "certs" {
   aks_cert_manager_client_id = module.aks.cert_manager_client_id[0]
   public_ip                  = module.aks.lb_public_ip[0]
 }
+
+module "valkey" {
+  source = "./modules/valkey"
+
+  kube_config = module.aks.kube_config[0]
+}

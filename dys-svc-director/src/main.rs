@@ -222,8 +222,6 @@ async fn latest_games(State(mut world_state): State<WorldState>) -> Response {
     let mut valkey = world_state.valkey.connection();
     let response_data: String = valkey.hget("env:dev:match.results:latest", "data").await.unwrap();
 
-    tracing::info!("{response_data}");
-
     let mut response = response_data.into_response();
     response.headers_mut()
         // ZJ-TODO: not *

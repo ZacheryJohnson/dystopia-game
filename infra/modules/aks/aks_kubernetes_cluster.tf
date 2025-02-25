@@ -27,6 +27,12 @@ resource "azurerm_kubernetes_cluster" "k8s" {
     identity {
         type = "SystemAssigned"
     }
+
+    lifecycle {
+        ignore_changes = [
+            default_node_pool[0].upgrade_settings
+        ]
+    }
 }
 
 output "kube_config" {
