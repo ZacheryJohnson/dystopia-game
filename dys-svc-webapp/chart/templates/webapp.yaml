@@ -35,7 +35,12 @@ spec:
           - name: OTEL_ENDPOINT
             value: "http://$(NODE_IP):4317"
           - name: VALKEY_HOST
-            value: "http://valkey-primary.valkey"
+            value: "valkey-primary.valkey"
+          - name: VALKEY_PASS
+            valueFrom:
+              secretKeyRef:
+                name: "valkeypass"
+                key: default_password
         livenessProbe:
           httpGet:
             port: http-port
