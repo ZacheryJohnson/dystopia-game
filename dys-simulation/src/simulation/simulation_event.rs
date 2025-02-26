@@ -185,7 +185,7 @@ impl SimulationEvent {
 
                 // ZJ-TODO: read this from combatant stats
                 //          might have some long ass arms (if arms at all)
-                if distance.magnitude() > 1.0 {
+                if distance.magnitude() > 2.0 {
                     return (false, vec![]);
                 }
 
@@ -220,11 +220,6 @@ impl SimulationEvent {
                         .get_mut(&combatant_id)
                         .unwrap();
 
-                    // Our combatant may have been stunned since initially trying this
-                    if combatant_object.combatant_state.lock().unwrap().stunned_by_explosion {
-                        return (false, vec![]);
-                    }
-
                     combatant_object.drop_ball();
                 }
 
@@ -234,6 +229,7 @@ impl SimulationEvent {
                         .get_mut(&ball_id)
                         .unwrap();
                     ball_object.set_held_by(None, current_tick);
+                    ball_object.change_state(current_tick, BallState::Idle);
                 }
             }
             SimulationEvent::BallThrownAtEnemy { thrower_id, enemy_id: _, ball_id, ball_impulse_vector } => {
@@ -347,25 +343,33 @@ impl SimulationEvent {
                 let mut game_state = game_state.lock().unwrap();
                 let current_tick = game_state.current_tick.to_owned();
 
-                let mut dropped_ball = false;
-                {
+                let maybe_ball_id = {
                     let combatant_object = game_state.combatants.get_mut(&combatant_id).unwrap();
 
                     if let Some(ball_id) = combatant_object.ball() {
-                        dropped_ball = true;
                         combatant_object.drop_ball();
                         let ball_object = game_state.balls.get_mut(&ball_id).unwrap();
                         ball_object.set_held_by(None, current_tick);
+                        Some(ball_id)
+                    } else {
+                        None
                     }
-                }
+                };
 
-                if dropped_ball {
+                if let Some(ball_id) = maybe_ball_id {
                     let combatant_object = game_state.combatants.get_mut(&combatant_id).unwrap();
                     let mut combatant_state = combatant_object.combatant_state.lock().unwrap();
                     combatant_state.beliefs.remove_beliefs_by_test(
                         &SatisfiableBelief::HeldBall()
                             .combatant_id(SatisfiableField::Exactly(combatant_id))
                     );
+
+                    return (true, vec![
+                        SimulationEvent::CombatantDroppedBall {
+                            combatant_id,
+                            ball_id,
+                        }
+                    ])
                 }
             }
             SimulationEvent::CombatantShoveForceApplied { shover_combatant_id: _, recipient_target_id, force_magnitude, force_direction } => {

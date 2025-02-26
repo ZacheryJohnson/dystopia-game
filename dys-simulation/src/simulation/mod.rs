@@ -90,6 +90,11 @@ fn commit_simulation_events(
         }
 
         committed_simulation_events.push(pending_event);
+
+        // Attempt to commit the new events we just generated
+        committed_simulation_events.extend(
+            commit_simulation_events(game_state.clone(), new_events)
+        );
     }
 
     committed_simulation_events
