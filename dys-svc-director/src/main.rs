@@ -1,5 +1,5 @@
 use std::convert::Infallible;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use axum::http::{HeaderValue, StatusCode};
@@ -15,14 +15,14 @@ use dys_world::schedule::schedule_game::ScheduleGame;
 use dys_world::world::World;
 use serde::{Deserialize, Serialize};
 
-use rand::{thread_rng, RngCore, SeedableRng};
+use rand::{thread_rng, SeedableRng};
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use tokio::signal;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use dys_datastore::datastore::Datastore;
-use dys_datastore_valkey::datastore::{AsyncCommands, ExpireOption, ValkeyConfig, ValkeyDatastore};
+use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
 
 // ZJ-TODO: this should live in dys-world
 #[derive(Clone, Serialize, Deserialize)]
@@ -44,7 +44,6 @@ struct CombatantTeamMember {
 #[derive(Clone)]
 struct WorldState {
     game_world: Arc<Mutex<World>>,
-    match_results: Arc<RwLock<Vec<MatchResult>>>,
     valkey: Box<ValkeyDatastore>,
 }
 
@@ -76,7 +75,6 @@ async fn main() {
 
     let world_state = WorldState {
         game_world: game_world.clone(),
-        match_results: Arc::new(RwLock::new(vec![])),
         valkey: ValkeyDatastore::connect(valkey_config).await.unwrap()
     };
 
@@ -152,11 +150,6 @@ async fn shutdown_signal() {
         _ = ctrl_c => { tracing::warn!("received ctrl+c...") },
         _ = terminate => { tracing::warn!("received terminate...") },
     }
-}
-
-#[derive(Serialize)]
-struct LatestGamesResponse {
-    match_results: Vec<MatchResult>,
 }
 
 fn simulate_matches(world_state: WorldState) -> Vec<MatchResult> {

@@ -165,9 +165,6 @@ impl Strategy for MoveToLocationStrategy {
         let mut events = vec![];
         self.max_ticks = self.max_ticks.checked_sub(1).unwrap_or(0);
 
-        let self_id = agent.combatant().id;
-        let current_tick = game_state.lock().unwrap().current_tick.to_owned();
-
         if self.dynamic_pathing {
             // 1. Always finish path to next node if exists
             if self.next_node.is_none() {

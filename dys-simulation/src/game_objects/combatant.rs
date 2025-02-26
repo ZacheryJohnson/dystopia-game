@@ -3,6 +3,7 @@ use rand::RngCore;
 use dys_world::{arena::plate::PlateId, combatant::instance::CombatantInstance};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 use rapier3d::na::Isometry3;
+use rapier3d::prelude::*;
 use dys_world::attribute::attribute_type::AttributeType;
 use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
@@ -113,7 +114,7 @@ impl CombatantObject {
             .unwrap();
 
         Isometry3::new(
-            rigid_body.translation().to_owned(),
+            rigid_body.translation().to_owned() + vector![0.0, COMBATANT_HALF_HEIGHT, 0.0],
             rigid_body.rotation().scaled_axis()
         )
     }

@@ -15,6 +15,10 @@ pub struct Goal {
     /// As an example, a combatant might have a "ScorePoints" goal.
     /// This would require the combatant to have a "StandingOnPlate" belief.
     desired_beliefs: Vec<BeliefTest>,
+
+    /// Can this goal be completed multiple times in a row?
+    /// By default, false.
+    repeatable: bool,
 }
 
 impl Goal {
@@ -29,6 +33,10 @@ impl Goal {
     pub fn desired_beliefs(&self) -> Vec<BeliefTest> {
         self.desired_beliefs.clone()
     }
+
+    pub fn repeatable(&self) -> bool {
+        self.repeatable
+    }
 }
 
 pub(super) struct GoalBuilder {
@@ -41,7 +49,8 @@ impl GoalBuilder {
             goal: Goal {
                 name: String::new(),
                 priority: 0_u32,
-                desired_beliefs: vec![]
+                desired_beliefs: vec![],
+                repeatable: false,
             },  
         }
     }
@@ -60,8 +69,13 @@ impl GoalBuilder {
         self
     }
 
+    pub(super) fn repeatable(mut self, repeatable: bool) -> GoalBuilder {
+        self.goal.repeatable = repeatable;
+        self
+    }
+
     pub(super) fn desired_belief(mut self, desired_belief: impl BeliefSatisfiabilityTest + 'static) -> GoalBuilder {
-        self.goal.desired_beliefs = vec![desired_belief.into()];
+        self.goal.desired_beliefs.push(desired_belief.into());
         self
     }
 

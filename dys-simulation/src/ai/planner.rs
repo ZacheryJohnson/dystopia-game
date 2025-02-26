@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 use dys_satisfiable::SatisfiabilityTest;
@@ -21,71 +22,6 @@ pub fn plan(
     let actions = actions(agent.combatant(), game_state.clone());
     make_plan(agent, game_state, goals, actions).plan()
 }
-
-// fn make_plan(
-//     agent: &impl Agent,
-//     game_state: Arc<Mutex<GameState>>,
-//     goals: Vec<Goal>,
-//     actions: Vec<Action>,
-// ) -> Vec<Action> {
-//     tracing::debug!("Planning for combatant {} with beliefs {:?}", agent.combatant().id, agent.beliefs());
-//
-//     for goal in next_best_goal(agent, game_state, goals) {
-//         tracing::debug!("Considering goal {}", goal.name());
-//
-//         let mut action_plan: Vec<Action> = vec![];
-//         let mut desired_beliefs_remaining = goal.desired_beliefs();
-//
-//         while let Some(desired_belief) = desired_beliefs_remaining.pop() {
-//             let Some(action) = get_action_for_belief(&desired_belief, &agent.beliefs(), &actions) else {
-//                 action_plan.clear();
-//                 desired_beliefs_remaining.push(desired_belief);
-//                 break;
-//             };
-//
-//             tracing::debug!("Selecting action {}", action.name());
-//             for newly_desired_belief in action.prerequisite_beliefs() {
-//                 if !agent.beliefs().can_satisfy(newly_desired_belief) {
-//                     desired_beliefs_remaining.push(newly_desired_belief.to_owned());
-//                     tracing::debug!("Adding new desired belief {:?}", newly_desired_belief);
-//                 }
-//             }
-//             action_plan.push(action.to_owned());
-//         }
-//
-//         if !desired_beliefs_remaining.is_empty() && action_plan.is_empty() {
-//             tracing::debug!("failed to get action plan for goal {}; trying next goal", goal.name());
-//             continue;
-//         }
-//
-//         // Validate the plan we've just created
-//         let mut agent_beliefs = agent.beliefs();
-//         let mut can_perform = true;
-//         for action in action_plan.iter().rev() {
-//             if !action.can_perform(&agent_beliefs) {
-//                 tracing::debug!("Failed to perform action {} in new plan; trying next goal", action.name());
-//                 can_perform = false;
-//                 break;
-//             }
-//
-//             agent_beliefs = beliefs_if_completed(&action, agent_beliefs);
-//         }
-//
-//         if !can_perform {
-//             action_plan.clear();
-//             continue;
-//         }
-//
-//         tracing::debug!("Returning action plan: {:?}", action_plan);
-//
-//         return action_plan
-//             .into_iter()
-//             .map(|action| action.to_owned())
-//             .collect();
-//     }
-//
-//     vec![]
-// }
 
 #[derive(Clone)]
 struct Plan {
@@ -116,6 +52,14 @@ impl Plan {
 
     pub fn plan(&self) -> Vec<Action> {
         self.actions.clone()
+    }
+
+    pub fn cost(&self) -> f32 {
+        self
+            .plan()
+            .iter()
+            .map(|action| action.cost())
+            .sum()
     }
 }
 
@@ -213,6 +157,8 @@ fn make_plan(
     goals: Vec<Goal>,
     actions: Vec<Action>,
 ) -> Plan {
+    let mut plans_scored_by_priority: Vec<(Plan, f32)> = vec![];
+
     for goal in next_best_goal(agent, game_state, goals) {
         let mut desired_beliefs_remaining = goal.desired_beliefs();
         let Some(next_desired_belief) = desired_beliefs_remaining.pop() else {
@@ -271,11 +217,24 @@ fn make_plan(
                 .sum::<u32>()
         });
 
-        return potential_plans.first().unwrap().to_owned();
+        let plan = potential_plans.first().unwrap().to_owned();
+        let prioritized_cost = goal.priority() as f32 * plan.cost();
+        plans_scored_by_priority.push((plan, prioritized_cost));
+
+        // Once we have three goals potentially satisfied, pick the best and hope it's reasonable
+        if plans_scored_by_priority.len() >= 3 {
+            break;
+        }
     }
 
-    tracing::warn!("Failed to construct plan for any goal - this is very bad!");
-    Plan::new()
+    plans_scored_by_priority.sort_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+
+    if let Some((best_plan, _)) = plans_scored_by_priority.first() {
+        best_plan.to_owned()
+    } else {
+        tracing::warn!("Failed to construct plan for any goal - this is very bad!");
+        Plan::new()
+    }
 }
 
 fn make_potential_plans(
@@ -322,17 +281,6 @@ fn make_potential_plans(
     potential_plans
 }
 
-#[tracing::instrument(name = "planner::get_action_for_belief", skip_all, level = "trace")]
-fn get_action_for_belief<'a>(
-    desired_belief: &BeliefTest,
-    _: &BeliefSet,
-    actions: &'a [Action]
-) -> Option<&'a Action> {
-    actions
-        .iter()
-        .find(|action| action.can_satisfy(desired_belief.clone()))
-}
-
 /// The best goal is the highest priority goal where the agent doesn't already have all of the desired beliefs.
 /// In the event we can't find a good goal from the goals provided, we'll return the Idle goal.
 #[tracing::instrument(fields(combatant_id = agent.combatant().id), skip_all, level = "debug")]
@@ -346,13 +294,18 @@ fn next_best_goal<'a>(
         .into_iter()
         .filter(|goal| {
             let desired_beliefs = goal.desired_beliefs();
-            if desired_beliefs.is_empty() {
-                true
-            } else {
-                desired_beliefs
-                    .iter()
-                    .any(|desired_belief| !agent_beliefs.can_satisfy(desired_belief))
+            // We assume that all goals have desired beliefs
+            assert!(!desired_beliefs.is_empty());
+
+            // If the goal is repeatable,
+            // allow it regardless of if we have all of the beliefs already
+            if goal.repeatable() {
+                return true;
             }
+
+            desired_beliefs
+                .iter()
+                .any(|desired_belief| !agent_beliefs.can_satisfy(desired_belief))
         })
         .collect();
 

@@ -32,11 +32,12 @@ pub fn goals(
     vec![
         GoalBuilder::new()
             .name("Score Points")
-            .desired_beliefs(vec![
+            .desired_belief(
                 SatisfiableBelief::OnPlate()
                     .combatant_id(SatisfiableField::Exactly(combatant_object.id))
-            ])
+            )
             .priority(attr(AttributeType::Dexterity))
+            .repeatable(true)
             .build(),
         GoalBuilder::new()
             .name("Throw Ball At Enemies")

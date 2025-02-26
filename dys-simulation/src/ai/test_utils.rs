@@ -36,13 +36,6 @@ impl TestAgent {
         TestAgent::new_with_settings(TestAgentSettings::default())
     }
 
-    pub fn from_combatant(combatant: CombatantObject) -> TestAgent {
-        TestAgent {
-            combatant,
-            beliefs: Vec::new(),
-        }
-    }
-
     pub fn new_with_settings(settings: TestAgentSettings) -> TestAgent {
         TestAgent {
             combatant: CombatantObject {

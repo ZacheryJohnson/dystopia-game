@@ -40,13 +40,6 @@ impl ArenaBarrier {
             pathing
         }
     }
-
-    pub fn interaction_groups() -> InteractionGroups {
-        InteractionGroups::new(
-            Group::GROUP_1 | Group::GROUP_2,
-            Group::GROUP_1 | Group::GROUP_2,
-        )
-    }
 }
 
 impl ArenaFeature for ArenaBarrier {
@@ -70,7 +63,6 @@ impl ArenaFeature for ArenaBarrier {
             .density(10000.0)
             .restitution(restitution)
             .friction(0.85)
-            .collision_groups(ArenaBarrier::interaction_groups())
             .build();
 
         Some(collider)
