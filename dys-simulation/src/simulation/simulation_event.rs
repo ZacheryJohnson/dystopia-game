@@ -196,7 +196,7 @@ impl SimulationEvent {
                         .unwrap();
 
                     // Our combatant may have been stunned since initially trying this
-                    if combatant_object.combatant_state.lock().unwrap().stunned_by_explosion {
+                    if combatant_object.is_stunned() {
                         return (false, vec![]);
                     }
                     combatant_object.pickup_ball(ball_id);
@@ -339,8 +339,15 @@ impl SimulationEvent {
                     game_state.away_points += points as u16;
                 }
             }
-            SimulationEvent::CombatantStunned { combatant_id, start: _ } => {
+            SimulationEvent::CombatantStunned { combatant_id, start: is_stunned } => {
                 let mut game_state = game_state.lock().unwrap();
+
+                if !is_stunned {
+                    let combatant_object = game_state.combatants.get_mut(&combatant_id).unwrap();
+                    combatant_object.set_stunned(false);
+                    return (true, vec![]);
+                }
+
                 let current_tick = game_state.current_tick.to_owned();
 
                 let maybe_ball_id = {

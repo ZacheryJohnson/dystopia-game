@@ -36,11 +36,11 @@ pub(crate) fn simulate_combatants(
             let combatant_isometry = combatant_object.forward_isometry(rigid_body_set);
 
             let sensors = {
-                let mut combatant_state = combatant_object.combatant_state.lock().unwrap();
                 // ZJ-TODO: refactor yuck
-                if combatant_state.stunned_by_explosion {
+                if combatant_object.is_stunned() {
                     vec![]
                 } else {
+                    let mut combatant_state = combatant_object.combatant_state.lock().unwrap();
                     combatant_state.beliefs.expire_stale_beliefs(current_tick);
 
                     // ZJ-TODO: don't like this, have the simulation be correct elsewhere

@@ -132,6 +132,7 @@ pub fn actions(
                 )
                 .promises(Belief::CombatantShoved {
                     combatant_id: *other_combatant_id,
+                    on_plate: other_combatant_object.plate(),
                 })
                 .consumes(SatisfiableBelief::CombatantShoved()
                     .combatant_id(SatisfiableField::Exactly(*other_combatant_id)),
@@ -236,8 +237,9 @@ pub fn actions(
                     .completion(vec![
                         Belief::BallThrownAtCombatant {
                             ball_id,
-                            thrower_id: combatant.id,
-                            target_id: target_combatant_id
+                            thrower_combatant_id: combatant.id,
+                            target_combatant_id,
+                            target_on_plate: target_combatant_object.plate(),
                         },
                     ])
                     .consumes(
@@ -248,8 +250,8 @@ pub fn actions(
                     .consumes(
                         SatisfiableBelief::BallThrownAtCombatant()
                             .ball_id(SatisfiableField::Exactly(ball_id))
-                            .thrower_id(SatisfiableField::Exactly(combatant.id))
-                            .target_id(SatisfiableField::Exactly(target_combatant_id))
+                            .thrower_combatant_id(SatisfiableField::Exactly(combatant.id))
+                            .target_combatant_id(SatisfiableField::Exactly(target_combatant_id))
                     )
                     .build()
             );

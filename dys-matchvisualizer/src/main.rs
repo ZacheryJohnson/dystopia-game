@@ -650,6 +650,7 @@ fn update(
                         }
 
                         combatant_id_text.is_stunned = *start;
+                        break;
                     }
                 },
                 _ => {}

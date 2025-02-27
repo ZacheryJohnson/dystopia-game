@@ -218,7 +218,7 @@ fn make_plan(
         });
 
         let plan = potential_plans.first().unwrap().to_owned();
-        let prioritized_cost = goal.priority() as f32 * plan.cost();
+        let prioritized_cost = plan.cost() / goal.priority() as f32;
         plans_scored_by_priority.push((plan, prioritized_cost));
 
         // Once we have three goals potentially satisfied, pick the best and hope it's reasonable
@@ -393,7 +393,7 @@ mod tests {
             let goals = vec![
                 GoalBuilder::new()
                     .name("Do C")
-                    .priority(1)
+                    .priority(1.0)
                     .desired_belief(
                         SatisfiableBelief::DirectLineOfSightToCombatant()
                             .self_combatant_id(SatisfiableField::Exactly(1))
@@ -435,8 +435,8 @@ mod tests {
             let goals = vec![
                 GoalBuilder::new()
                     .name(expected_goal_name)
-                    .priority(1)
-                    .desired_beliefs(vec![SatisfiableBelief::OnPlate()])
+                    .priority(1.0)
+                    .desired_belief(SatisfiableBelief::OnPlate())
                     .build()
             ];
 
@@ -459,11 +459,11 @@ mod tests {
             let goals = vec![
                 GoalBuilder::new()
                     .name(expected_goal_name)
-                    .priority(1)
-                    .desired_beliefs(vec![
+                    .priority(1.0)
+                    .desired_belief(
                         SatisfiableBelief::OnPlate()
                             .combatant_id(SatisfiableField::Exactly(agent.combatant().id))
-                    ])
+                    )
                     .build()
             ];
 
@@ -483,19 +483,19 @@ mod tests {
             let goals = vec![
                 GoalBuilder::new()
                     .name(lower_priority_goal_name)
-                    .priority(1)
-                    .desired_beliefs(vec![
+                    .priority(1.0)
+                    .desired_belief(
                         SatisfiableBelief::OnPlate()
                             .combatant_id(SatisfiableField::Exactly(agent.combatant().id))
-                    ])
+                    )
                     .build(),
                 GoalBuilder::new()
                     .name(higher_priority_goal_name)
-                    .priority(2)
-                    .desired_beliefs(vec![
+                    .priority(2.0)
+                    .desired_belief(
                         SatisfiableBelief::HeldBall()
                             .combatant_id(SatisfiableField::Exactly(agent.combatant().id))
-                    ])
+                    )
                     .build(),
             ];
 
