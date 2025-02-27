@@ -163,21 +163,8 @@ impl Strategy for MoveToLocationStrategy {
         game_state: Arc<Mutex<GameState>>,
     ) -> Option<Vec<SimulationEvent>> {
         let mut events = vec![];
-        self.max_ticks = self.max_ticks.checked_sub(1).unwrap_or(0);
 
-        if self.dynamic_pathing {
-            // 1. Always finish path to next node if exists
-            if self.next_node.is_none() {
-                self.path = self.compute_path(game_state.clone());
-                self.next_node = self.path.next_node();
-            }
-        }
-        else {
-            if self.path.is_empty() && self.next_node.is_none() {
-                self.path = self.compute_path(game_state.clone());
-                self.next_node = self.path.next_node();
-            }
-        }
+        self.max_ticks = self.max_ticks.checked_sub(1).unwrap_or(0);
 
         let (combatant_isometry, unit_resolution) = {
             let game_state = game_state.lock().unwrap();
@@ -195,6 +182,21 @@ impl Strategy for MoveToLocationStrategy {
         };
 
         let mut combatant_position = combatant_isometry.translation.vector;
+
+        if self.dynamic_pathing {
+            self.start_location = Some(combatant_position.into());
+            // 1. Always finish path to next node if exists
+            if self.next_node.is_none() {
+                self.path = self.compute_path(game_state.clone());
+                self.next_node = self.path.next_node();
+            }
+        }
+        else {
+            if self.path.is_empty() && self.next_node.is_none() {
+                self.path = self.compute_path(game_state.clone());
+                self.next_node = self.path.next_node();
+            }
+        }
 
         let mut total_distance_can_travel_this_tick = agent.combatant().combatant.lock().unwrap().move_speed();
 

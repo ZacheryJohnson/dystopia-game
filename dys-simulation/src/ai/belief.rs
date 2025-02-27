@@ -69,9 +69,10 @@ pub enum Belief {
         #[unique]
         ball_id: BallId,
         #[unique]
-        thrower_id: CombatantId,
+        thrower_combatant_id: CombatantId,
         #[unique]
-        target_id: CombatantId,
+        target_combatant_id: CombatantId,
+        target_on_plate: Option<PlateId>,
     },
     BallIsFlying {
         #[unique]
@@ -86,6 +87,7 @@ pub enum Belief {
     CombatantShoved {
         #[unique]
         combatant_id: CombatantId,
+        on_plate: Option<PlateId>,
     },
 }
 

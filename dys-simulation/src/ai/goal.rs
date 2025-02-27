@@ -8,7 +8,7 @@ pub struct Goal {
 
     /// Priority of the goal. 
     /// Goals with higher priorities will be selected and executed before goals with lower priorities.
-    priority: u32,
+    priority: f32,
 
     /// Beliefs about the world that we would like to be true.
     /// 
@@ -26,7 +26,7 @@ impl Goal {
         self.name.clone()
     }
 
-    pub fn priority(&self) -> u32 {
+    pub fn priority(&self) -> f32 {
         self.priority
     }
 
@@ -48,7 +48,7 @@ impl GoalBuilder {
         GoalBuilder {
             goal: Goal {
                 name: String::new(),
-                priority: 0_u32,
+                priority: 0.0,
                 desired_beliefs: vec![],
                 repeatable: false,
             },  
@@ -64,7 +64,7 @@ impl GoalBuilder {
         self
     }
 
-    pub(super) fn priority(mut self, priority: u32) -> GoalBuilder {
+    pub(super) fn priority(mut self, priority: f32) -> GoalBuilder {
         self.goal.priority = priority;
         self
     }
@@ -76,17 +76,6 @@ impl GoalBuilder {
 
     pub(super) fn desired_belief(mut self, desired_belief: impl BeliefSatisfiabilityTest + 'static) -> GoalBuilder {
         self.goal.desired_beliefs.push(desired_belief.into());
-        self
-    }
-
-    pub(super) fn desired_beliefs(
-        mut self,
-        desired_beliefs: impl IntoIterator<Item = (impl BeliefSatisfiabilityTest + 'static)>,
-    ) -> GoalBuilder {
-        self.goal.desired_beliefs = desired_beliefs
-            .into_iter()
-            .map(|belief_test| belief_test.into())
-            .collect();
         self
     }
 }

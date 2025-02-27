@@ -44,7 +44,7 @@ pub struct CombatantState {
 
     pub on_plate: Option<PlateId>,
     pub holding_ball: Option<BallId>,
-    pub stunned_by_explosion: bool,
+    pub stunned: bool,
 }
 
 impl CombatantObject {
@@ -96,7 +96,7 @@ impl CombatantObject {
                 plan: vec![],
                 beliefs: BeliefSet::empty(),
                 sensors: vec![(1, Box::new(field_of_view_sensor)), (2, Box::new(proximity_sensor))],
-                stunned_by_explosion: false,
+                stunned: false,
             })),
             team,
             rigid_body_handle,
@@ -180,7 +180,7 @@ impl CombatantObject {
 
     pub fn set_stunned(&mut self, stunned: bool) {
         let mut combatant_state = self.combatant_state.lock().unwrap();
-        combatant_state.stunned_by_explosion = stunned;
+        combatant_state.stunned = stunned;
 
         // ZJ_TODO: make this a function `invalidate_plan`
         //          we also do this in the action planner
@@ -188,6 +188,10 @@ impl CombatantObject {
             combatant_state.plan.clear();
             combatant_state.current_action = None;
         }
+    }
+
+    pub fn is_stunned(&self) -> bool {
+        self.combatant_state.lock().unwrap().stunned
     }
 }
 
@@ -243,7 +247,7 @@ impl Agent for CombatantObject {
     ) -> Vec<SimulationEvent> {
         let mut events = vec![];
 
-        if self.combatant_state.lock().unwrap().stunned_by_explosion {
+        if self.is_stunned() {
             let random_value = game_state.lock().unwrap().rng.next_u32() % 500;
             let constitution = self
                 .combatant
@@ -253,21 +257,20 @@ impl Agent for CombatantObject {
                 .unwrap_or(0.0);
 
             if constitution >= random_value as f32 {
-                self.combatant_state.lock().unwrap().stunned_by_explosion = false;
                 let mut game_state = game_state.lock().unwrap();
                 let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
                 rigid_body_set.get_mut(self.rigid_body_handle).unwrap().set_linvel(
                     Vector3::zeros(),
                     true
                 );
-                
+
                 events.push(SimulationEvent::CombatantStunned {
                     combatant_id: self.id,
                     start: false,
                 });
-            } else {
-                return events;
             }
+
+            return events;
         }
 
         let current_plan = {

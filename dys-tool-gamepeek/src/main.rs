@@ -128,7 +128,7 @@ impl eframe::App for GamePeekApp {
                                 make_collapseable(format!("{combatant_id}"), tick.tick_number).show(ui, |ui| {
                                     ui.label(format!("On Plate: {:?}", combatant_state.on_plate));
                                     ui.label(format!("Holding Ball: {:?}", combatant_state.holding_ball));
-                                    ui.label(format!("Is Stunned: {:?}", combatant_state.stunned_by_explosion));
+                                    ui.label(format!("Is Stunned: {:?}", combatant_state.stunned));
 
                                     make_collapseable("AI".to_string(), tick.tick_number).show(ui, |ui| {
                                         let current_action_name = if combatant_state.current_action.is_some() {
