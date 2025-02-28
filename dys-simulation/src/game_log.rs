@@ -1,12 +1,13 @@
 use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
 use crate::combatant_statline::CombatantStatline;
-use crate::game_state::GameState;
+use crate::game_state::{GameState, SeedT};
 use crate::game_tick::{GameTick, TickPerformance};
 use crate::simulation::simulation_event::SimulationEvent;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GameLog {
+    seed: SeedT,
     home_score: u16,
     away_score: u16,
     ticks: Vec<GameTick>,
@@ -62,6 +63,7 @@ impl GameLog {
         }
 
         GameLog {
+            seed: game_state.seed,
             home_score: game_state.home_points,
             away_score: game_state.away_points,
             ticks,
@@ -84,5 +86,9 @@ impl GameLog {
 
     pub fn perf_string(&self) -> String {
         self.performance.perf_string()
+    }
+
+    pub fn seed(&self) -> SeedT {
+        self.seed
     }
 }

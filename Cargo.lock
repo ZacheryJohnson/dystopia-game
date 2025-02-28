@@ -2415,6 +2415,7 @@ dependencies = [
  "bevy",
  "bevy-ui-debug-overlay",
  "dys-simulation",
+ "hex",
  "once_cell",
  "postcard",
  "wasm-bindgen",

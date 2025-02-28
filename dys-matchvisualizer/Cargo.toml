@@ -9,6 +9,7 @@ dys-simulation = { path = "../dys-simulation" }
 bevy-ui-debug-overlay = "0.2.0"
 
 bevy.workspace = true
+hex = "0.4"
 once_cell.workspace = true
 postcard.workspace = true
 wasm-bindgen.workspace = true

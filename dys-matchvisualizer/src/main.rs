@@ -43,6 +43,9 @@ struct HomeTeamScoreText;
 struct AwayTeamScoreText;
 
 #[derive(Component)]
+struct SeedText;
+
+#[derive(Component)]
 struct PostgameScoreboard;
 
 #[derive(Component)]
@@ -287,6 +290,25 @@ fn setup(
             ..Default::default()
         },
         MatchTimerText
+    ));
+
+    commands.spawn((
+        Text2d(String::from("")),
+        TextFont {
+            font_size: 20.0,
+            ..default()
+        },
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(109.0),
+            left: Val::Px(-21.5),
+            ..default()
+        },
+        Transform {
+            scale: Vec3::splat(0.07),
+            ..Default::default()
+        },
+        SeedText
     ));
 }
 
@@ -665,16 +687,21 @@ fn update(
 
 fn display_game_log_perf(
     vis_state: Res<VisualizationState>,
-    mut text_query: Query<&mut Text2d, With<GameLogPerfText>>,
+    mut text_query: Query<(&mut Text2d, Has<GameLogPerfText>), Or<(With<GameLogPerfText>, With<SeedText>)>>,
 ) {
-    let mut text = text_query.get_single_mut().expect("failed to get debug position text component");
     let Some(ref game_log) = vis_state.game_log else {
         return;
     };
 
-    // Bevy default font doesn't display unicode (or at least 'μ')
-    // Just replace with 'u'
-    text.0 = game_log.perf_string().replace("μ", "u") + format!(" (tick {})", vis_state.current_tick).as_str();
+    for (mut text, is_perf_text) in text_query.iter_mut() {
+        if is_perf_text {
+            // Bevy default font doesn't display unicode (or at least 'μ')
+            // Just replace with 'u'
+            text.0 = game_log.perf_string().replace("μ", "u") + format!(" (tick {})", vis_state.current_tick).as_str();
+        } else {
+            text.0 = hex::encode(&game_log.seed());
+        }
+    }
 }
 
 fn display_mouse_hover(
@@ -825,7 +852,9 @@ fn handle_keyboard_input(
     }
 
     if keyboard_input.just_pressed(KeyCode::KeyR) {
-        restart_with_local_game_log();
+        let game_log = vis_state.game_log.as_ref().unwrap();
+        let game_log_bytes = postcard::to_allocvec(game_log).unwrap();
+        load_game_log(game_log_bytes);
     }
 }
 
