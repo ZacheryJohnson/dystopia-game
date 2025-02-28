@@ -8,6 +8,9 @@ edition = "2021"
 [dev-dependencies]
 criterion.workspace = true
 
+# used for testing world serialization
+serde_json.workspace = true
+
 [dependencies]
 ordered-float.workspace = true
 petgraph.workspace = true

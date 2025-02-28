@@ -2558,6 +2558,7 @@ dependencies = [
  "rand",
  "rapier3d",
  "serde",
+ "serde_json",
  "tracing",
 ]
 
