@@ -3,7 +3,7 @@ services:
     container_name: "director"
     build:
       context: ..
-      dockerfile: docker/dys-svc-director.Dockerfile
+      dockerfile: ./dys-svc-director/Dockerfile
     environment:
       - OTEL_ENDPOINT=http://jaeger:4317
       - RUST_BACKTRACE=1
@@ -16,7 +16,7 @@ services:
     container_name: "webapp"
     build:
       context: ..
-      dockerfile: docker/dys-svc-webapp.Dockerfile
+      dockerfile: ./dys-svc-webapp/Dockerfile
       #args:
       #  BIN_CMD: "npm run dev"
       #  INSTALL_NPM: "true"

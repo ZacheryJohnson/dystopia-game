@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package match_results;
+
+service Summary {
+  rpc Matches(MatchRequest) returns (MatchResponse) {}
+}
+
+message MatchRequest {
+  repeated uint64 match_ids = 1;
+}
+
+message MatchResponse {
+  message Match {
+    uint64 match_id = 1;
+    bytes match_summary_json = 2;
+  }
+
+  repeated Match match_summary = 1;
+}
