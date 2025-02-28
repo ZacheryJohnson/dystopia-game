@@ -16,7 +16,7 @@ opt-level = "z"
 # Build dependencies
 # -----------------------
 build-deps = "0.1.4"
-tonic-build = "0.11"
+tonic-build = "0.12"
 
 # -----------------------
 # Dev dependencies
@@ -42,7 +42,7 @@ opentelemetry_sdk = { version = "0.24.1", features = ["trace", "metrics", "logs"
 ordered-float = "4.2.0"
 petgraph = "0.6.5"
 postcard = { version = "1.0.8", features = ["alloc"] }
-prost = "0.12"
+prost = { version = "0.13.5", features = ["prost-derive"] }
 rand = "0.8.5"
 rand_distr = "0.4.3"
 rand_pcg = "0.3.1"
@@ -54,7 +54,7 @@ serde_json = { version = "1.0.120" }
 strum = { version = "0.26" }
 strum_macros = { version = "0.26" }
 tokio = { version = "1.40", features = ["full"] }
-tonic = "0.11"
+tonic = "0.12"
 tower = { version = "0.4.13", features = ["full"] }
 tower-http = { version = "0.5.2", features = ["fs", "trace"] }
 tracing = { version = "0.1.40", features = ["attributes", "log"] }

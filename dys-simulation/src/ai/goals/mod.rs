@@ -78,7 +78,6 @@ pub fn goals(
             )
             .priority(attr(AttributeType::Constitution) + attr(AttributeType::Presence))
             .build(),
-        // ZJ-TODO: goal: recover from explosion / self is cogent
         idle_goal()
     ]
 }

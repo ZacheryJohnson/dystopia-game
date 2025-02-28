@@ -2,6 +2,7 @@
 .vscode/
 .wasm_out/
 
+dys-protocol/generated/
 
 infra/.terraform/
 infra/terraform.tfstate
