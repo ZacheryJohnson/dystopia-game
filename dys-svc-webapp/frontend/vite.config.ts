@@ -19,7 +19,28 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': 'http://localhost:6080'
-    }
+      '/api': 'http://172.18.0.1:6080',
+      '': {
+        target: 'http://172.18.0.1:6080',
+        bypass: (req) => {
+          if (req.url?.endsWith(".wasm")) {
+            return null;
+          }
+
+          return req.url;
+        },
+      },
+    },
+    host: true,
+    strictPort: true,
+    hmr: {
+      host: "localhost",
+      clientPort: 5173,
+      port: 5174,
+      protocol: "wss",
+    },
+    watch: {
+      usePolling: true
+    },
   }
 })

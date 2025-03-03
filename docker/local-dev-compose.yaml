@@ -17,16 +17,33 @@ services:
     build:
       context: ..
       dockerfile: ./dys-svc-webapp/Dockerfile
-      #args:
-      #  BIN_CMD: "npm run dev"
-      #  INSTALL_NPM: "true"
     environment:
       - SVC_DIRECTOR_API_BASE_URI=http://director:6081
       - OTEL_ENDPOINT=http://jaeger:4317
       - RUST_BACKTRACE=1
     ports:
       - "6080:6080"
-      #- "5173:5173"
+    depends_on:
+      valkey:
+        condition: service_started
+  webapp-hot-reload:
+    container_name: "webapp-frontend-hot-reload"
+    build:
+      context: ..
+      dockerfile: ./dys-svc-webapp/Frontend.Dockerfile
+    environment:
+      - SVC_DIRECTOR_API_BASE_URI=http://director:6081
+      - OTEL_ENDPOINT=http://jaeger:4317
+      - RUST_BACKTRACE=1
+    develop:
+      watch:
+        - action: sync
+          path: ../dys-svc-webapp/frontend
+          target: /frontend
+          ignore:
+            - node_modules/
+    ports:
+      - "5173:5173"
     depends_on:
       valkey:
         condition: service_started

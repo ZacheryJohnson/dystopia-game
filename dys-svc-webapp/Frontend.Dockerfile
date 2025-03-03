@@ -53,27 +53,17 @@ WORKDIR /opt/dystopia/dys-svc-webapp/frontend
 RUN npm install
 RUN npm run build
 
-WORKDIR /opt/dystopia/dys-svc-webapp
-RUN cargo build --release -p dys-svc-webapp
-
 # --------------------------------------------
 #   Runtime
 # --------------------------------------------
 FROM debian:bookworm-slim AS runtime
-EXPOSE 6080/tcp
+EXPOSE 5173/tcp
 
 RUN apt update
+RUN apt install -y nodejs npm
 
-# Copy the binary
-COPY --from=builder /opt/dystopia/target/release/dys-svc-webapp /dys-svc-webapp
-COPY dys-svc-webapp/frontend frontend/
-
-WORKDIR /
-# Copy static files to be served
-# ZJ-TODO: this should be an attached volume instead
-#          we don't need every container with the static files, but instead one shared source of truth
-ENV DIST_PATH=/dist
-COPY --from=builder /opt/dystopia/dys-svc-webapp/frontend/dist /dist/
+COPY dys-svc-webapp/frontend /frontend/
 
 WORKDIR /frontend/
-CMD [ "/dys-svc-webapp" ]
+RUN npm install
+CMD [ "npm", "run", "dev" ]
