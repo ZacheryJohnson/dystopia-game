@@ -1,47 +1,48 @@
 <script setup lang="ts">
-    import { onMounted } from "vue";
-    import init, { exit, initializeWithCanvas, loadGameLog } from "@/assets/matchvisualizer.js"
-    import {getMatchVisualizerStore} from "@/stores/MatchVisualizer";
-    const matchVisualizerStore = getMatchVisualizerStore();
+import {onMounted, onUnmounted, onUpdated} from "vue";
+  import init, { exit, initializeWithCanvas, loadGameLog } from "@/assets/matchvisualizer.js"
+  import {getMatchVisualizerStore} from "@/stores/MatchVisualizer";
+  const matchVisualizerStore = getMatchVisualizerStore();
 
-    const props = defineProps([
-       "gameLogData" 
-    ]);
+  const props = defineProps([
+     "gameLogData"
+  ]);
 
-    defineEmits(['close'])
+  defineEmits(['close'])
 
-    onMounted(async () => {
-      if (!matchVisualizerStore.hasWasmLoaded) {
-        await init(await fetch("/matchvisualizer_opt.wasm"))
-          .catch(err => {
-            if (!err.message.startsWith("Using exceptions for control flow,")) {
-              throw err;
-            }
-          });
-        matchVisualizerStore.hasWasmLoaded = true;
-        startGameThen(() => {});
+  onMounted(async () => {
+    if (!matchVisualizerStore.hasWasmLoaded) {
+      await init(await fetch("/matchvisualizer_opt.wasm"))
+        .catch(err => {
+          if (!err.message.startsWith("Using exceptions for control flow,")) {
+            throw err;
+          }
+        });
+      matchVisualizerStore.hasWasmLoaded = true;
+
+      try {
+        // This will block! Do nothing after this.
+        initializeWithCanvas("#match-visualizer");
       }
-
-      loadGameLog(props.gameLogData);
-    });
-
-    // This function will block immediately upon calling.
-    // Any logic that should be run after initialization should be passed through a lambda.
-    function startGameThen(andThen: () => void = () => {}) {
-        setTimeout(andThen, 0);
-        
-        try {
-          initializeWithCanvas("#match-visualizer");
-        } catch (ex: any) {
-            if (!ex.message.startsWith("Using exceptions for control flow,")) {
-                throw ex;
-            }
+      catch (ex: any) {
+        if (!ex.message.startsWith("Using exceptions for control flow,")) {
+          throw ex;
         }
+      }
     }
+  });
+
+  onUpdated(async () => {
+    if (props.gameLogData.length === 0) {
+      return;
+    }
+
+    loadGameLog(props.gameLogData);
+  });
 </script>
 
 <template>
-  <div class="overlay" @click="() => { $emit('close'); }">
+  <div class="overlay" @click="() => { exit(); $emit('close'); }">
     <div class="modal">
       <canvas id="match-visualizer"></canvas>
     </div>
@@ -49,6 +50,10 @@
 </template>
 
 <style>
+  .hidden {
+    transform: translateY(-100%);
+  }
+
   .modal {
     display: flex;
     flex-direction: column;
