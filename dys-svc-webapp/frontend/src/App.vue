@@ -21,14 +21,14 @@ const matchVisualizerStore = getMatchVisualizerStore();
   <RouterView />
 
   <MatchVisualizer
-    v-if="matchVisualizerStore.gameLogData.length > 0"
     :gameLogData="matchVisualizerStore.gameLogData"
     @close="matchVisualizerStore.$reset()"
-    />
-  <div v-else style="text-align: center; width: 50%; margin-left: auto; margin-right: auto">
+    :class="{ 'hidden': matchVisualizerStore.gameLogData.length == 0 }"
+  />
+  <article style="text-align: center; width: 50%; margin-left: auto; margin-right: auto">
     <p>DAX is a work in progress project, and many features are not implemented.</p>
     <p>Click a match result at the top to see a visualization of how the match played out.</p>
-  </div>
+  </article>
 </template>
 
 <style>

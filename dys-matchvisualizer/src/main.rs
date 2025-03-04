@@ -1,13 +1,13 @@
+use std::process::ExitCode;
 use std::sync::{Arc, Mutex};
 
 use dys_simulation::{game_log::GameLog, game_objects::{ball::BallId, combatant::CombatantId}, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 
-use bevy::{math::{bounding::{Aabb2d, IntersectsVolume}, vec2}, prelude::*, sprite::{MeshMaterial2d}, window::PrimaryWindow};
+use bevy::{math::vec2, prelude::*, sprite::{MeshMaterial2d}, window::PrimaryWindow};
 use bevy::prelude::Color::Srgba;
 use bevy::render::camera::ScalingMode;
 use bevy::sprite::AlphaMode2d;
-use bevy::text::{FontSmoothing, TextBounds};
-use bevy::window::WindowResolution;
+use bevy::window::{AppLifecycle, ExitCondition, RequestRedraw, WindowEvent, WindowOccluded, WindowResolution};
 use bevy_ui_debug_overlay::{UiDebugOverlay, UiDebugOverlayPlugin};
 use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -120,8 +120,6 @@ struct BarrierVisualizer;
 pub fn initialize_with_canvas(
     canvas_id: String
 ) {
-    info!("Initializing with canvas {}", canvas_id);
-
     let canvas: Option<String> = if canvas_id.is_empty() { None } else { Some(canvas_id) };
 
     App::new()
@@ -134,6 +132,8 @@ pub fn initialize_with_canvas(
                         resolution: WindowResolution::new(900.0, 900.0),
                         ..default()
                     }),
+                    #[cfg(target_family = "wasm")]
+                    exit_condition: ExitCondition::DontExit,
                     ..default()
                 }),
             UiDebugOverlayPlugin::start_disabled().with_line_width(2.0),
@@ -340,7 +340,6 @@ fn try_reload_vis_state(
     materials: ResMut<Assets<ColorMaterial>>,
     mut vis_state: ResMut<VisualizationState>,
     entity_query: Query<Entity, Or<(With<VisualizationObject>, With<Text>)>>,
-    mut app_exit_events: ResMut<Events<AppExit>>,
 ) {
     // If we don't have pending updated game state from WASM, abort early
     let Some(updated_vis_state) = UPDATED_VIS_STATE.get() else {
@@ -350,11 +349,6 @@ fn try_reload_vis_state(
     let Some(new_vis_state) = updated_vis_state.lock().unwrap().take() else {
         return;
     };
-
-    if new_vis_state.should_exit {
-        app_exit_events.send(AppExit::Success);
-        return;
-    }
 
     // We have new game state - blow away all of our current state
     for entity in &entity_query {
@@ -373,6 +367,11 @@ fn setup_after_reload_game_log(
     mut materials: ResMut<Assets<ColorMaterial>>,
     vis_state: ResMut<VisualizationState>
 ) {
+    // If we're in the exit state, do nothing
+    if vis_state.should_exit {
+        return;
+    }
+
     // This function assumes we're setting up state from tick zero
     // Maybe there's a world where you can live-watch matches and want to join in some intermediate state, but that's not this world
     assert!(vis_state.current_tick == 0);
@@ -523,12 +522,12 @@ fn setup_after_reload_game_log(
                 "Hits",
                 "Shoves",
             ] {
-                parent.spawn((
+                parent.spawn(
                     Node {
                         width: Val::Percent(100.0),
                         ..default()
                     }
-                )).with_child((
+                ).with_child((
                     Text::new(stat_category),
                     TextFont {
                         font_size: 32.0,
@@ -556,12 +555,12 @@ fn setup_after_reload_game_log(
                     statline.throws_hit.to_string(),
                     statline.combatants_shoved.to_string(),
                 ] {
-                    parent.spawn((
+                    parent.spawn(
                         Node {
                             width: Val::Percent(100.0),
                             ..default()
                         }
-                    )).with_child((
+                    ).with_child((
                         Text::new(stat_str),
                         TextFont {
                             font_size: 36.0,
@@ -585,6 +584,10 @@ fn update(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     if matches!(vis_state.mode, VisualizationMode::Paused) {
+        return;
+    }
+
+    if vis_state.should_exit {
         return;
     }
 
@@ -790,6 +793,10 @@ fn display_current_score(
     )>,
     vis_state: Res<VisualizationState>,
 ) {
+    if vis_state.should_exit {
+        return;
+    }
+
     const TICKS_PER_SECOND: u32 = 10;
     {
         let mut home_text_query = set.p0();
@@ -866,6 +873,10 @@ fn handle_keyboard_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut vis_state: ResMut<VisualizationState>,
 ) {
+    if vis_state.should_exit {
+        return;
+    }
+
     if keyboard_input.just_pressed(KeyCode::Tab) && !matches!(vis_state.mode, VisualizationMode::Play) {
         vis_state.mode = VisualizationMode::Step;
         vis_state.current_tick += 1;
@@ -902,6 +913,10 @@ fn debug_ui(
     mut vis_state: ResMut<VisualizationState>,
     mut ui_debug_overlay: ResMut<UiDebugOverlay>,
 ) {
+    if vis_state.should_exit {
+        return;
+    }
+
     if input.just_pressed(KeyCode::KeyO) {
         ui_debug_overlay.toggle();
     }
@@ -924,6 +939,10 @@ fn update_postgame_scoreboard(
     mut query: Query<&mut Visibility, With<PostgameScoreboard>>,
     vis_state: Res<VisualizationState>,
 ) {
+    if vis_state.should_exit {
+        return;
+    }
+
     let Ok(mut visibility) = query.get_single_mut() else {
         return;
     };
