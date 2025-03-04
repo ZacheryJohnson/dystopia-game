@@ -55,7 +55,7 @@
 .carousel-frame {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(220px, .15fr);
+  grid-auto-columns: minmax(220px, .10fr);
   min-height: 100px;
 
   border-bottom: 2px solid;

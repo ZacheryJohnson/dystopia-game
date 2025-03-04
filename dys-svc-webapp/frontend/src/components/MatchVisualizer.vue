@@ -1,27 +1,28 @@
 <script setup lang="ts">
-    import { onMounted, onUpdated, ref } from "vue";
-    import init, { initializeWithCanvas, loadGameLog } from "@/assets/matchvisualizer.js"
-
-    const isWasmLoaded = ref(false);
+    import { onMounted } from "vue";
+    import init, { exit, initializeWithCanvas, loadGameLog } from "@/assets/matchvisualizer.js"
+    import {getMatchVisualizerStore} from "@/stores/MatchVisualizer";
+    const matchVisualizerStore = getMatchVisualizerStore();
 
     const props = defineProps([
        "gameLogData" 
     ]);
 
-    onMounted(async () => {
-        init(await fetch("/matchvisualizer_opt.wasm"))
-            .then(() => startGameThen(async () => { 
-                isWasmLoaded.value = true;
-            }))
-            .catch(err => {
-                if (!err.message.startsWith("Using exceptions for control flow,")) {
-                    throw err;
-                }
-            });
-    });
+    defineEmits(['close'])
 
-    onUpdated(() => {
-        loadGameLog(props.gameLogData);
+    onMounted(async () => {
+      if (!matchVisualizerStore.hasWasmLoaded) {
+        await init(await fetch("/matchvisualizer_opt.wasm"))
+          .catch(err => {
+            if (!err.message.startsWith("Using exceptions for control flow,")) {
+              throw err;
+            }
+          });
+        matchVisualizerStore.hasWasmLoaded = true;
+        startGameThen(() => {});
+      }
+
+      loadGameLog(props.gameLogData);
     });
 
     // This function will block immediately upon calling.
@@ -30,7 +31,7 @@
         setTimeout(andThen, 0);
         
         try {
-            initializeWithCanvas("#match-visualizer");
+          initializeWithCanvas("#match-visualizer");
         } catch (ex: any) {
             if (!ex.message.startsWith("Using exceptions for control flow,")) {
                 throw ex;
@@ -40,36 +41,56 @@
 </script>
 
 <template>
-    <p v-show="!isWasmLoaded" id="match-visualizer-loading-text">Loading...</p>
-    <canvas id="match-visualizer"></canvas>
+  <div class="overlay" @click="() => { $emit('close'); }">
+    <div class="modal">
+      <canvas id="match-visualizer"></canvas>
+    </div>
+  </div>
 </template>
 
 <style>
-    #match-visualizer-loading-text {
-        padding: 0;
-        margin: 0 auto;
-        display: block;
-        text-align: center;
-    }
+  .modal {
+    display: flex;
+    flex-direction: column;
 
-    #match-visualizer {
-        padding: 0;
-        margin: 0 auto;
-        display: block;
-        width: 70%;
-        max-width: 70%;
-        height: 50%;
-        max-height: 50%;
-        justify-content: center;
+    position: relative;
+    left: 5%;
+    top: 50%;
+    -webkit-transform: translateY(-50%);
+    -ms-transform: translateY(-50%);
+    transform: translateY(-50%);
 
-        /* Disable selecting the canvas */
-        -webkit-touch-callout: none;
-        -webkit-user-select: none;
-        -khtml-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        user-select: none;
-        outline: none;
-        -webkit-tap-highlight-color: rgba(255, 255, 255, 0); /* mobile webkit */
-    }
+    width: 90%;
+    max-height: 90vw;
+    border-color: rgba(60, 60, 60, 1);
+    border-radius: 10px;
+    background-color: darkgray;
+    z-index: 10;
+  }
+
+  .overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+
+  #match-visualizer {
+    padding: 5px;
+    margin: 0 auto;
+    max-width: 100%;
+
+    /* Disable selecting the canvas */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    outline: none;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0); /* mobile webkit */
+  }
 </style>
