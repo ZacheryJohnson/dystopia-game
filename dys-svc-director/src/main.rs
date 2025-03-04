@@ -71,8 +71,6 @@ async fn main() {
         std::env::var("VALKEY_PORT").unwrap_or(String::from("6379")).parse::<u16>().unwrap()
     );
 
-    tracing::info!("Valkey config: {:?}", valkey_config);
-
     let world_state = WorldState {
         game_world: game_world.clone(),
         valkey: ValkeyDatastore::connect(valkey_config).await.unwrap()
@@ -99,7 +97,7 @@ async fn main() {
 
             let _: i32 = valkey.expire(
                 "env:dev:world",
-                300,
+                450,
             ).await.unwrap();
 
             // Sleep before simulating more matches

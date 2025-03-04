@@ -20,19 +20,22 @@ const matchVisualizerStore = getMatchVisualizerStore();
 
   <RouterView />
 
-  <body>
-    <MatchVisualizer
-      v-if="matchVisualizerStore.gameLogData.length > 0"
-      :gameLogData="matchVisualizerStore.gameLogData"
-      />
-    <div v-else style="text-align: center; width: 50%; margin-left: auto; margin-right: auto">
-      <p>DAX is a work in progress project, and many features are not implemented.</p>
-      <p>Click a match result at the top to see a visualization of how the match played out.</p>
-    </div>
-  </body>
+  <MatchVisualizer
+    v-if="matchVisualizerStore.gameLogData.length > 0"
+    :gameLogData="matchVisualizerStore.gameLogData"
+    @close="matchVisualizerStore.$reset()"
+    />
+  <div v-else style="text-align: center; width: 50%; margin-left: auto; margin-right: auto">
+    <p>DAX is a work in progress project, and many features are not implemented.</p>
+    <p>Click a match result at the top to see a visualization of how the match played out.</p>
+  </div>
 </template>
 
 <style>
+body {
+  overflow: clip;
+}
+
 nav {
   display: flex;
 }

@@ -68,6 +68,7 @@ enum VisualizationMode {
 
 #[derive(Debug, Resource)]
 struct VisualizationState {
+    should_exit: bool,
     game_log: Option<GameLog>,
     current_tick: GameTickNumber,
     last_update_time: Instant,
@@ -130,8 +131,7 @@ pub fn initialize_with_canvas(
                     primary_window: Some(Window {
                         name: Some(String::from("Match Visualizer")),
                         canvas,
-                        fit_canvas_to_parent: true,
-                        resolution: WindowResolution::new(1600.0, 900.0),
+                        resolution: WindowResolution::new(900.0, 900.0),
                         ..default()
                     }),
                     ..default()
@@ -139,6 +139,7 @@ pub fn initialize_with_canvas(
             UiDebugOverlayPlugin::start_disabled().with_line_width(2.0),
         ))
         .insert_resource(VisualizationState {
+            should_exit: false,
             game_log: None,
             current_tick: 0,
             last_update_time: Instant::now(),
@@ -183,6 +184,7 @@ pub fn load_game_log(
     let visualization_mode = VisualizationMode::Play;
 
     updated_visualization_state.lock().unwrap().replace(VisualizationState {
+        should_exit: false,
         game_log: Some(game_log),
         current_tick: 0,
         last_update_time: Instant::now(),
@@ -191,6 +193,25 @@ pub fn load_game_log(
         end_of_game: false,
         mode: visualization_mode,
     });
+}
+
+#[wasm_bindgen]
+pub fn exit() {
+    UPDATED_VIS_STATE
+        .get()
+        .unwrap()
+        .lock()
+        .unwrap()
+        .replace(VisualizationState {
+            should_exit: true,
+            game_log: None,
+            current_tick: 0,
+            last_update_time: Instant::now(),
+            home_score: 0,
+            away_score: 0,
+            end_of_game: false,
+            mode: VisualizationMode::Paused,
+        });
 }
 
 fn setup(
@@ -205,12 +226,12 @@ fn setup(
             scale: 0.13,
             viewport_origin: Default::default(),
             scaling_mode: ScalingMode::Fixed {
-                width: 1600.0,
+                width: 900.0,
                 height: 900.0,
             },
             area: Default::default(),
         },
-        Transform::from_xyz(-50.0, -6.0, 0.0),
+        Transform::from_xyz(-8.0, -6.0, 0.0),
     ));
 
     commands.spawn((
@@ -319,6 +340,7 @@ fn try_reload_vis_state(
     materials: ResMut<Assets<ColorMaterial>>,
     mut vis_state: ResMut<VisualizationState>,
     entity_query: Query<Entity, Or<(With<VisualizationObject>, With<Text>)>>,
+    mut app_exit_events: ResMut<Events<AppExit>>,
 ) {
     // If we don't have pending updated game state from WASM, abort early
     let Some(updated_vis_state) = UPDATED_VIS_STATE.get() else {
@@ -328,6 +350,11 @@ fn try_reload_vis_state(
     let Some(new_vis_state) = updated_vis_state.lock().unwrap().take() else {
         return;
     };
+
+    if new_vis_state.should_exit {
+        app_exit_events.send(AppExit::Success);
+        return;
+    }
 
     // We have new game state - blow away all of our current state
     for entity in &entity_query {
@@ -872,6 +899,7 @@ fn update_combatant_id_text(
 
 fn debug_ui(
     input: Res<ButtonInput<KeyCode>>,
+    mut vis_state: ResMut<VisualizationState>,
     mut ui_debug_overlay: ResMut<UiDebugOverlay>,
 ) {
     if input.just_pressed(KeyCode::KeyO) {
@@ -884,6 +912,11 @@ fn debug_ui(
 
     if input.just_pressed(KeyCode::KeyV) {
         ui_debug_overlay.show_hidden = !ui_debug_overlay.show_hidden;
+    }
+
+    #[cfg(not(target_family="wasm"))]
+    if input.just_pressed(KeyCode::Escape) {
+        vis_state.should_exit = true;
     }
 }
 

@@ -58,6 +58,7 @@ RUN npm run build
 # --------------------------------------------
 FROM debian:bookworm-slim AS runtime
 EXPOSE 5173/tcp
+EXPOSE 5174/tcp
 
 RUN apt update
 RUN apt install -y nodejs npm
