@@ -8,6 +8,8 @@ use crate::game_objects::combatant::CombatantId;
 use crate::game_state::GameState;
 use crate::simulation::simulation_event::SimulationEvent;
 
+const SHOVE_FORCE_MULTIPLIER: f32 = 15000.0;
+
 pub struct ShoveCombatantStrategy {
     self_combatant_id: CombatantId,
     target_combatant_id: CombatantId,
@@ -72,7 +74,7 @@ impl Strategy for ShoveCombatantStrategy {
             let strength = combatant_instance
                 .get_attribute_value(&AttributeType::Strength)
                 .unwrap_or_default()
-                * 10000.0;
+                * SHOVE_FORCE_MULTIPLIER;
 
             let target_weight = target_object.weight();
 

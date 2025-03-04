@@ -37,7 +37,7 @@ pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationSta
         let simulation_config = game_state.simulation_config.clone();
 
         for (_, ball_object) in &mut game_state.balls {
-            decrease_charge(ball_object, &simulation_config);
+            increase_charge(ball_object, &simulation_config);
         }
     }
 
@@ -176,6 +176,10 @@ fn apply_explosion_forces(
     events
 }
 
-fn decrease_charge(ball: &mut BallObject, simulation_config: &SimulationConfig) {
-    ball.charge = (ball.charge - simulation_config.ball_charge_decay_per_tick()).clamp(0.0, simulation_config.ball_charge_maximum());
+fn increase_charge(ball: &mut BallObject, simulation_config: &SimulationConfig) {
+    if !matches!(ball.state, BallState::ThrownAtTarget { .. }) {
+        // Only increase the charge of balls flying in the air
+        ball.charge = (ball.charge + simulation_config.ball_charge_increase_per_tick())
+            .clamp(0.0, simulation_config.ball_charge_maximum());
+    }
 }

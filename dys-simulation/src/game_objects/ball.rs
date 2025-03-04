@@ -77,7 +77,7 @@ impl BallObject {
 
         if let Some(id) = combatant_id {
             self.change_state(current_tick, BallState::Held { holder_id: id });
-            self.charge = 50.0;
+            self.charge = 10.0;
         }
     }
 }
