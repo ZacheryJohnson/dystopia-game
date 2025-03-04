@@ -1,13 +1,12 @@
-use std::process::ExitCode;
 use std::sync::{Arc, Mutex};
 
 use dys_simulation::{game_log::GameLog, game_objects::{ball::BallId, combatant::CombatantId}, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 
-use bevy::{math::vec2, prelude::*, sprite::{MeshMaterial2d}, window::PrimaryWindow};
+use bevy::{math::vec2, prelude::*, sprite::MeshMaterial2d};
 use bevy::prelude::Color::Srgba;
 use bevy::render::camera::ScalingMode;
 use bevy::sprite::AlphaMode2d;
-use bevy::window::{AppLifecycle, ExitCondition, RequestRedraw, WindowEvent, WindowOccluded, WindowResolution};
+use bevy::window::WindowResolution;
 use bevy_ui_debug_overlay::{UiDebugOverlay, UiDebugOverlayPlugin};
 use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -31,19 +30,19 @@ fn main() {
 struct GameLogPerfText;
 
 #[derive(Component)]
-struct DebugPositionText;
-
-#[derive(Component)]
 struct MatchTimerText;
 
 #[derive(Component)]
 struct HomeTeamScoreText;
 
 #[derive(Component)]
+struct HomeTeamScoreUpdateText;
+
+#[derive(Component)]
 struct AwayTeamScoreText;
 
 #[derive(Component)]
-struct SeedText;
+struct AwayTeamScoreUpdateText;
 
 #[derive(Component)]
 struct PostgameScoreboard;
@@ -73,7 +72,9 @@ struct VisualizationState {
     current_tick: GameTickNumber,
     last_update_time: Instant,
     home_score: u16,
+    home_score_diff_from_last_tick: i16,
     away_score: u16,
+    away_score_diff_from_last_tick: i16,
     end_of_game: bool,
     mode: VisualizationMode,
 }
@@ -116,6 +117,9 @@ struct ExplosionVisualizer {
 #[derive(Component)]
 struct BarrierVisualizer;
 
+#[derive(Component)]
+struct PlateVisualizer;
+
 #[wasm_bindgen(js_name = initializeWithCanvas)]
 pub fn initialize_with_canvas(
     canvas_id: String
@@ -144,7 +148,9 @@ pub fn initialize_with_canvas(
             current_tick: 0,
             last_update_time: Instant::now(),
             home_score: 0,
+            home_score_diff_from_last_tick: 0,
             away_score: 0,
+            away_score_diff_from_last_tick: 0,
             end_of_game: false,
             mode: VisualizationMode::Paused,
         })
@@ -152,10 +158,11 @@ pub fn initialize_with_canvas(
         .add_systems(Update, (
             update,
             display_game_log_perf,
-            display_mouse_hover,
             display_current_score,
             handle_keyboard_input,
             update_explosion_visualizers,
+            update_plate_visualizers,
+            update_scoring_text_visualizers.after(update),
             update_combatant_id_text,
             debug_ui,
             try_reload_vis_state.before(update),
@@ -189,7 +196,9 @@ pub fn load_game_log(
         current_tick: 0,
         last_update_time: Instant::now(),
         home_score: 0,
+        home_score_diff_from_last_tick: 0,
         away_score: 0,
+        away_score_diff_from_last_tick: 0,
         end_of_game: false,
         mode: visualization_mode,
     });
@@ -208,7 +217,9 @@ pub fn exit() {
             current_tick: 0,
             last_update_time: Instant::now(),
             home_score: 0,
+            home_score_diff_from_last_tick: 0,
             away_score: 0,
+            away_score_diff_from_last_tick: 0,
             end_of_game: false,
             mode: VisualizationMode::Paused,
         });
@@ -216,7 +227,6 @@ pub fn exit() {
 
 fn setup(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
 ) {
     commands.spawn((
         Camera2d,
@@ -238,7 +248,7 @@ fn setup(
         Text2d(String::new()),
         TextColor(Color::WHITE),
         TextFont {
-            font_size: 40.0,
+            font_size: 26.0,
             ..default()
         },
         Node {
@@ -275,6 +285,26 @@ fn setup(
     ));
 
     commands.spawn((
+        Text2d(String::from("")),
+        TextColor(Color::WHITE),
+        TextFont {
+            font_size: 50.0,
+            ..default()
+        },
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(107.0),
+            left: Val::Px(19.0),
+            ..default()
+        },
+        Transform {
+            scale: Vec3::splat(0.07),
+            ..Default::default()
+        },
+        HomeTeamScoreUpdateText
+    ));
+
+    commands.spawn((
         Text2d(String::from("A")),
         TextColor(Color::WHITE),
         TextFont {
@@ -292,6 +322,27 @@ fn setup(
             ..Default::default()
         },
         AwayTeamScoreText
+    ));
+
+
+    commands.spawn((
+        Text2d(String::from("")),
+        TextColor(Color::WHITE),
+        TextFont {
+            font_size: 50.0,
+            ..default()
+        },
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(107.0),
+            left: Val::Px(77.0),
+            ..default()
+        },
+        Transform {
+            scale: Vec3::splat(0.07),
+            ..Default::default()
+        },
+        AwayTeamScoreUpdateText
     ));
 
     commands.spawn((
@@ -312,30 +363,10 @@ fn setup(
         },
         MatchTimerText
     ));
-
-    commands.spawn((
-        Text2d(String::from("")),
-        TextFont {
-            font_size: 20.0,
-            ..default()
-        },
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Px(109.0),
-            left: Val::Px(-21.5),
-            ..default()
-        },
-        Transform {
-            scale: Vec3::splat(0.07),
-            ..Default::default()
-        },
-        SeedText
-    ));
 }
 
 fn try_reload_vis_state(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     meshes: ResMut<Assets<Mesh>>,
     materials: ResMut<Assets<ColorMaterial>>,
     mut vis_state: ResMut<VisualizationState>,
@@ -357,12 +388,11 @@ fn try_reload_vis_state(
 
     *vis_state = new_vis_state;
 
-    setup_after_reload_game_log(commands, asset_server, meshes, materials, vis_state);
+    setup_after_reload_game_log(commands, meshes, materials, vis_state);
 }
 
 fn setup_after_reload_game_log(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     vis_state: ResMut<VisualizationState>
@@ -411,13 +441,28 @@ fn setup_after_reload_game_log(
                     _ => Rectangle { half_size: vec2(scale.x / 2.0, scale.z / 2.0) }.into(),
                 };
 
-                commands.spawn((
+                let mut entity_commands = commands.spawn((
                     VisualizationObject,
-                    BarrierVisualizer, // ZJ-TODO: assuming barrier here, probably not the right idea
                     Mesh2d(meshes.add(mesh_shape)),
                     MeshMaterial2d(materials.add(color)),
                     transform,
                 ));
+
+                if *object_type_id == 4 {
+                    entity_commands.insert(PlateVisualizer);
+
+                    let mut inner_transform = transform.clone();
+                    // z-ordering...
+                    inner_transform.translation.z += 1.0;
+                    commands.spawn((
+                       VisualizationObject,
+                       Mesh2d(meshes.add(Circle { radius: scale.x * 0.9 })),
+                       MeshMaterial2d(materials.add(color)),
+                       inner_transform,
+                    ));
+                } else {
+                    entity_commands.insert(BarrierVisualizer);
+                }
             },
             SimulationEvent::BallPositionUpdate { ball_id, position } => {
                 // ZJ-TODO: adding 10.0 sucks, but is necessary for balls to show above combatants in z-ordering
@@ -710,6 +755,8 @@ fn update(
         }
     }
 
+    vis_state.home_score_diff_from_last_tick = new_home_score as i16 - vis_state.home_score as i16;
+    vis_state.away_score_diff_from_last_tick = new_away_score as i16 - vis_state.away_score as i16;
     vis_state.home_score = new_home_score;
     vis_state.away_score = new_away_score;
     vis_state.last_update_time = Instant::now();
@@ -717,72 +764,17 @@ fn update(
 
 fn display_game_log_perf(
     vis_state: Res<VisualizationState>,
-    mut text_query: Query<(&mut Text2d, Has<GameLogPerfText>), Or<(With<GameLogPerfText>, With<SeedText>)>>,
+    mut text_query: Query<&mut Text2d, With<GameLogPerfText>>,
 ) {
     let Some(ref game_log) = vis_state.game_log else {
         return;
     };
 
-    for (mut text, is_perf_text) in text_query.iter_mut() {
-        if is_perf_text {
-            // Bevy default font doesn't display unicode (or at least 'μ')
-            // Just replace with 'u'
-            text.0 = game_log.perf_string().replace("μ", "u") + format!(" (tick {})", vis_state.current_tick).as_str();
-        } else {
-            text.0 = hex::encode(&game_log.seed());
-        }
+    for mut text in text_query.iter_mut() {
+        // Bevy default font doesn't display unicode (or at least 'μ')
+        // Just replace with 'u'
+        text.0 = game_log.perf_string().replace("μ", "u") + format!(" (tick {})", vis_state.current_tick).as_str();
     }
-}
-
-fn display_mouse_hover(
-    mut camera_query: Query<(&Camera, &GlobalTransform)>,
-    vis_objects_query: Query<&Transform, Or<(With<CombatantVisualizer>, With<BallVisualizer>)>>,
-    window_query: Query<&Window, With<PrimaryWindow>>,
-    mut text_query: Query<&mut Text2d, With<DebugPositionText>>,
-) {
-    return;
-    // ZJ-TODO: restore debug position text
-    // let mut text = text_query.get_single_mut().expect("failed to get debug position text component");
-    // text.0 = String::new();
-    //
-    // let Ok((camera, camera_global_transform)) = camera_query.get_single_mut() else {
-    //     return;
-    // };
-    //
-    // let window = window_query
-    //     .get_single()
-    //     .expect("failed to get primary camera");
-    //
-    // let Some(cursor_position) = window.cursor_position() else {
-    //     return;
-    // };
-    //
-    // // use it to convert ndc to world-space coordinates
-    // let Ok(world_pos) =
-    //     camera.viewport_to_world_2d(camera_global_transform, cursor_position)
-    // else {
-    //     // Couldn't convert - mouse likely outside of window
-    //     // Don't log - this would get spammy
-    //     return;
-    // };
-    //
-    // let world_pos_collider = Aabb2d::new(world_pos, Vec2 { x: 1.0, y: 1.0 });
-    // for vis_object_transform in &vis_objects_query {
-    //     let vis_object_collider = Aabb2d::new(
-    //         Vec2::new(vis_object_transform.translation.x, vis_object_transform.translation.y),
-    //         Vec2 { x: vis_object_transform.scale.x, y: vis_object_transform.scale.y });
-    //     if !world_pos_collider.intersects(&vis_object_collider) {
-    //         continue;
-    //     }
-    //
-    //     text.0 = format!(
-    //         "({}, {}, {})",
-    //         vis_object_transform.translation.x.round(),
-    //         vis_object_transform.translation.y.round(),
-    //         vis_object_transform.translation.z.round(),
-    //     );
-    //     return;
-    // }
 }
 
 fn display_current_score(
@@ -866,6 +858,68 @@ fn update_explosion_visualizers(
 
         rgba.alpha -= 0.01;
         color_material.color = rgba.into();
+    }
+}
+
+fn update_plate_visualizers(
+    mut plate_query: Query<(&mut PlateVisualizer, &mut MeshMaterial2d<ColorMaterial>)>,
+    vis_state: Res<VisualizationState>,
+    mut assets: ResMut<Assets<ColorMaterial>>
+) {
+    for (_, mesh_handle) in plate_query.iter_mut() {
+        let Some(color_material) = assets.get_mut(mesh_handle.0.id()) else {
+            continue;
+        };
+
+        let distance_from_mid = (vis_state.current_tick as i16 % 10 - 5).abs();
+        let lerp_progress = ((5 - distance_from_mid) * 2) as f32 / 10.0;
+
+        let color_value = Vec3::new(1.0, 1.0, 1.0)
+            .lerp(Vec3::new(1.0, 0.0, 1.0), lerp_progress);
+
+        color_material.color = Color::srgb(color_value[0], color_value[1], color_value[2]);
+    }
+}
+
+fn update_scoring_text_visualizers(
+    vis_state: Res<VisualizationState>,
+    mut team_query: Query<
+        (&mut Text2d, &mut TextColor, &mut Node, Has<HomeTeamScoreUpdateText>),
+        Or<(With<HomeTeamScoreUpdateText>, With<AwayTeamScoreUpdateText>)>
+    >
+) {
+    for (mut text, mut text_color, mut node, is_home_team) in team_query.iter_mut() {
+        if vis_state.current_tick % 10 == 0 {
+            let (self_score_change, opponent_score_change) = {
+                if is_home_team {
+                    (vis_state.home_score_diff_from_last_tick, vis_state.away_score_diff_from_last_tick)
+                } else {
+                    (vis_state.away_score_diff_from_last_tick, vis_state.home_score_diff_from_last_tick)
+                }
+            };
+
+            if self_score_change > 0 {
+                text.0 = format!("+{}", self_score_change);
+
+                if opponent_score_change == 0 {
+                    *text_color = TextColor(Color::srgb(0.71, 0.58, 0.06));
+                } else {
+                    *text_color = TextColor(Color::srgb(0.16, 0.45, 0.31));
+                }
+            } else {
+                text.0 = String::new();
+                *text_color = TextColor(Color::WHITE);
+            }
+
+            node.top = Val::Px(107.0);
+        } else {
+            let alpha = 1.0 - (vis_state.current_tick % 10) as f32 / 10.0;
+            let mut existing_color = text_color.0;
+            existing_color.set_alpha(alpha);
+            *text_color = TextColor(existing_color);
+
+            node.top = Val::Px(107.0 + ((vis_state.current_tick % 10) as f32 / 2.0));
+        }
     }
 }
 
