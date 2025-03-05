@@ -12,6 +12,11 @@ use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_time::{Duration, Instant};
 
+#[cfg(target_family = "wasm")]
+use bevy::asset::AssetMetaCheck;
+
+const FONT_FILE: &'static str = "fonts/Teko-Medium.ttf";
+
 fn main() {
     // Set the static memory to None for Option<VisualizationState>,
     // indicating we have no game state to update within the Bevy app.
@@ -136,8 +141,18 @@ pub fn initialize_with_canvas(
                         resolution: WindowResolution::new(900.0, 900.0),
                         ..default()
                     }),
+                    ..default()
+                })
+                .set(AssetPlugin {
+                    // In WASM releases, we won't have an "assets" dir
+                    // Just assume the files exist all within the current path
                     #[cfg(target_family = "wasm")]
-                    exit_condition: ExitCondition::DontExit,
+                    file_path: String::new(),
+
+                    // Bevy also validates the existence of .meta files,
+                    // which we won't have when serving files.
+                    #[cfg(target_family = "wasm")]
+                    meta_check: AssetMetaCheck::Never,
                     ..default()
                 }),
             UiDebugOverlayPlugin::start_disabled().with_line_width(2.0),
@@ -227,6 +242,7 @@ pub fn exit() {
 
 fn setup(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
 ) {
     commands.spawn((
         Camera2d,
@@ -244,34 +260,41 @@ fn setup(
         Transform::from_xyz(-8.0, -6.0, 0.0),
     ));
 
-    commands.spawn((
-        Text2d(String::new()),
-        TextColor(Color::WHITE),
-        TextFont {
-            font_size: 26.0,
-            ..default()
-        },
+    commands.spawn(
         Node {
+            display: Display::Block,
             position_type: PositionType::Absolute,
             top: Val::Px(-4.0),
             left: Val::Px(50.0),
             ..default()
-        },
-        Transform {
-            scale: Vec3::splat(0.07),
-            ..Default::default()
-        },
-        GameLogPerfText
-    ));
+        }
+    ).with_children(|parent| {
+        parent.spawn((
+            Text2d(String::new()),
+            TextColor(Color::WHITE),
+            TextFont {
+                font: asset_server.load(FONT_FILE),
+                font_size: 36.0,
+                ..default()
+            },
+            Transform {
+                scale: Vec3::splat(0.07),
+                ..Default::default()
+            },
+            GameLogPerfText
+        ));
+    });
 
     commands.spawn((
         Text2d(String::from("H")),
         TextColor(Color::WHITE),
         TextFont {
-            font_size: 60.0,
+            font: asset_server.load(FONT_FILE),
+            font_size: 70.0,
             ..default()
         },
         Node {
+            display: Display::Block,
             position_type: PositionType::Absolute,
             top: Val::Px(107.0),
             left: Val::Px(30.0),
@@ -288,10 +311,12 @@ fn setup(
         Text2d(String::from("")),
         TextColor(Color::WHITE),
         TextFont {
-            font_size: 50.0,
+            font: asset_server.load(FONT_FILE),
+            font_size: 60.0,
             ..default()
         },
         Node {
+            display: Display::Block,
             position_type: PositionType::Absolute,
             top: Val::Px(107.0),
             left: Val::Px(19.0),
@@ -308,10 +333,12 @@ fn setup(
         Text2d(String::from("A")),
         TextColor(Color::WHITE),
         TextFont {
-            font_size: 60.0,
+            font: asset_server.load(FONT_FILE),
+            font_size: 70.0,
             ..default()
         },
         Node {
+            display: Display::Block,
             position_type: PositionType::Absolute,
             top: Val::Px(107.0),
             left: Val::Px(70.0),
@@ -329,10 +356,12 @@ fn setup(
         Text2d(String::from("")),
         TextColor(Color::WHITE),
         TextFont {
-            font_size: 50.0,
+            font: asset_server.load(FONT_FILE),
+            font_size: 60.0,
             ..default()
         },
         Node {
+            display: Display::Block,
             position_type: PositionType::Absolute,
             top: Val::Px(107.0),
             left: Val::Px(77.0),
@@ -348,10 +377,12 @@ fn setup(
     commands.spawn((
         Text2d(String::from("0:00")),
         TextFont {
-            font_size: 60.0,
+            font: asset_server.load(FONT_FILE),
+            font_size: 70.0,
             ..default()
         },
         Node {
+            display: Display::Block,
             position_type: PositionType::Absolute,
             top: Val::Px(107.0),
             left: Val::Px(50.0),
@@ -370,6 +401,7 @@ fn try_reload_vis_state(
     meshes: ResMut<Assets<Mesh>>,
     materials: ResMut<Assets<ColorMaterial>>,
     mut vis_state: ResMut<VisualizationState>,
+    asset_server: Res<AssetServer>,
     entity_query: Query<Entity, Or<(With<VisualizationObject>, With<Text>)>>,
 ) {
     // If we don't have pending updated game state from WASM, abort early
@@ -388,13 +420,14 @@ fn try_reload_vis_state(
 
     *vis_state = new_vis_state;
 
-    setup_after_reload_game_log(commands, meshes, materials, vis_state);
+    setup_after_reload_game_log(commands, meshes, materials, asset_server, vis_state);
 }
 
 fn setup_after_reload_game_log(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    asset_server: Res<AssetServer>,
     vis_state: ResMut<VisualizationState>
 ) {
     // If we're in the exit state, do nothing
@@ -518,6 +551,7 @@ fn setup_after_reload_game_log(
                     builder.spawn((
                         Text2d(combatant_id.to_string()),
                         TextFont {
+                            font: asset_server.load(FONT_FILE),
                             font_size: 64.0,
                             ..Default::default()
                         },
