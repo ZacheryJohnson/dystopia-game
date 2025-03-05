@@ -6,7 +6,7 @@ use crate::{
     team::instance::TeamInstance,
 };
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct World {
     #[serde(serialize_with = "serialize_combatants")]
     pub combatants: Vec<Arc<Mutex<CombatantInstance>>>,

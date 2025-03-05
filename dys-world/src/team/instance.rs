@@ -7,7 +7,7 @@ use crate::{
 
 pub type TeamInstanceId = u64;
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct TeamInstance {
     pub id: TeamInstanceId,
     pub name: String,

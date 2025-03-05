@@ -14,7 +14,6 @@ const combatants: Ref<CombatantT[]> = ref([]);
 
     combatants.value = [];
     for (const combatant of combatant_results) {
-      console.log(combatant);
       const newCombatant: CombatantT = {
         combatantName: combatant["combatant_name"],
         combatantTeamName: combatant["team_name"],

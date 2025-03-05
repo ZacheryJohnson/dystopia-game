@@ -64,6 +64,30 @@ async fn query_combatants(_: Request) -> Result<Response, Infallible> {
     Ok(json.into_response())
 }
 
+#[tracing::instrument]
+async fn query_world_state(_: Request) -> Result<Response, Infallible> {
+    let director_api_base_uri = std::env::var("SVC_DIRECTOR_API_BASE_URI").unwrap_or(String::from("http://localhost:6081"));
+    let request_url = format!("{director_api_base_uri}/world_state");
+
+    tracing::info!("Requesting world_state from director...");
+    let maybe_response = dys_observability::reqwest::get(request_url).await;
+    if let Err(err) = maybe_response {
+        tracing::warn!("Failed to get world_state from {}: {err:?}", director_api_base_uri);
+        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get world_state").into_response());
+    };
+
+    let response = maybe_response.unwrap();
+
+    let Ok(response_body) = response.text().await else {
+        tracing::warn!("Failed to get world_state response content");
+        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get world_state").into_response());
+    };
+
+    tracing::info!("Sending response...");
+    let json = axum::Json(response_body);
+    Ok(json.into_response())
+}
+
 async fn health_check(_: Request) -> Result<impl IntoResponse, Infallible> {
     Ok(StatusCode::OK)
 }
@@ -87,7 +111,8 @@ async fn main() {
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
                 .map_request(map_trace_context)    
-                .map_request(record_trace_id)    
+                .map_request(record_trace_id)
+                .layer(middleware::from_fn(static_cache_control))
                 .service_fn(query_latest_games)
         )
         .nest_service(
@@ -96,7 +121,17 @@ async fn main() {
                 .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
                 .map_request(map_trace_context)
                 .map_request(record_trace_id)
+                .layer(middleware::from_fn(static_cache_control))
                 .service_fn(query_combatants)
+        )
+        .nest_service(
+            "/api/world_state",
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
+                .map_request(map_trace_context)
+                .map_request(record_trace_id)
+                .layer(middleware::from_fn(static_cache_control))
+                .service_fn(query_world_state)
         )
         .nest_service(
             "/assets",

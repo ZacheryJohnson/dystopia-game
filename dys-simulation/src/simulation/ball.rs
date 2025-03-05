@@ -177,7 +177,7 @@ fn apply_explosion_forces(
 }
 
 fn increase_charge(ball: &mut BallObject, simulation_config: &SimulationConfig) {
-    if !matches!(ball.state, BallState::ThrownAtTarget { .. }) {
+    if matches!(ball.state, BallState::ThrownAtTarget { .. }) {
         // Only increase the charge of balls flying in the air
         ball.charge = (ball.charge + simulation_config.ball_charge_increase_per_tick())
             .clamp(0.0, simulation_config.ball_charge_maximum());

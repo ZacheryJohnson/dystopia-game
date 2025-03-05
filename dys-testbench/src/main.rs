@@ -40,6 +40,9 @@ async fn main() {
     let game_log_artifact = postcard::to_allocvec(&game_log).expect("failed to serialize game log");
     std::fs::write("game_log.bin", game_log_artifact).expect("failed to write game log artifact to file");
 
+    let world_artifact = serde_json::to_string(&world).expect("failed to serialize world artifact");
+    std::fs::write("world_state.bin", world_artifact).expect("failed to write world artifact to file");
+
     let parsed_game_log_contents = std::fs::read("game_log.bin").expect("failed to read serialized game log artifact to vector");
     let parsed_game_log: GameLog = postcard::from_bytes(&parsed_game_log_contents).expect("failed to serialize game log artifact into a game log");
     tracing::info!("{}", parsed_game_log.perf_string());

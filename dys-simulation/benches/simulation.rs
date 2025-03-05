@@ -4,12 +4,13 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use rand::prelude::StdRng;
 use rand::SeedableRng;
 use dys_simulation::{game::Game, generator::Generator};
-use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, instance::ScheduleGame}};
+use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}}, matches::instance::MatchInstance};
 
 fn game_simulation_benchmark(c: &mut Criterion) {
     let world = Generator::new().generate_world(&mut StdRng::from_entropy());
     let game = Game {
-        schedule_game: ScheduleGame {
+        match_instance: MatchInstance {
+            match_id: 0,
             away_team: world.teams[0].clone(),
             home_team: world.teams[1].clone(),
             arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())),

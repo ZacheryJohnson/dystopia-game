@@ -12,6 +12,7 @@ import {onMounted, onUnmounted, onUpdated} from "vue";
 
   onMounted(async () => {
     if (!matchVisualizerStore.hasWasmLoaded) {
+      matchVisualizerStore.worldState = (await (await fetch(`api/world_state`)).json());
       await init(await fetch("/matchvisualizer_opt.wasm"))
         .catch(err => {
           if (!err.message.startsWith("Using exceptions for control flow,")) {
@@ -37,7 +38,8 @@ import {onMounted, onUnmounted, onUpdated} from "vue";
       return;
     }
 
-    loadGameLog(props.gameLogData);
+    const bytes = Uint8Array.from(Array.from(matchVisualizerStore.worldState.valueOf()).map(letter => letter.charCodeAt(0)));
+    loadGameLog(props.gameLogData, bytes);
   });
 </script>
 

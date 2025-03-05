@@ -1,6 +1,7 @@
 #![cfg(test)]
 
 use std::sync::{Arc, Mutex};
+use indexmap::IndexMap;
 use rand::SeedableRng;
 use rand_pcg::Pcg64;
 use dys_world::combatant::instance::CombatantInstance;
@@ -111,6 +112,7 @@ pub fn make_test_game_state(with_physics_sim: Option<PhysicsSim>) -> Arc<Mutex<G
             PhysicsSim::new(simulation_config.ticks_per_second())
         },
         combatants: CombatantsMapT::new(),
+        combatant_id_to_instance_id: IndexMap::new(),
         balls: BallsMapT::new(),
         plates: PlatesMapT::new(),
         active_colliders: CollidersMapT::new(),

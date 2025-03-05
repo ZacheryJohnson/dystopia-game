@@ -4,7 +4,7 @@ use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, comba
 use rand::{random, SeedableRng};
 use rand_pcg::Pcg64;
 use rapier3d::prelude::*;
-
+use dys_world::combatant::instance::CombatantInstanceId;
 use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType, plate::PlateObject}, game_tick::GameTickNumber, physics_sim::PhysicsSim, simulation::config::SimulationConfig};
 use crate::game_objects::combatant::CombatantId;
 
@@ -24,6 +24,7 @@ pub struct GameState {
     pub rng: Pcg64,
     pub physics_sim: PhysicsSim,
     pub combatants: CombatantsMapT,
+    pub combatant_id_to_instance_id: IndexMap<CombatantId, CombatantInstanceId>,
     pub balls: BallsMapT,
     pub plates: PlatesMapT,
     pub active_colliders: CollidersMapT,
@@ -66,6 +67,7 @@ impl GameState {
         let mut active_colliders = CollidersMapT::new();
         let mut balls = BallsMapT::new();
         let mut combatants = CombatantsMapT::new();
+        let mut combatant_id_to_instance_id = IndexMap::new();
         let mut plates = PlatesMapT::new();
 
         {
@@ -135,6 +137,7 @@ impl GameState {
                     rigid_body_set,
                     collider_set);
                 active_colliders.insert(combatant_object.collider_handle().expect("combatant game objects must have collider handles"), GameObjectType::Combatant(combatant_id));
+                combatant_id_to_instance_id.insert(combatant_id, combatant_object.combatant.lock().unwrap().id);
                 combatants.insert(combatant_id, combatant_object);
             }
         }
@@ -152,6 +155,7 @@ impl GameState {
             rng: Pcg64::from_seed(*seed),
             physics_sim,
             combatants,
+            combatant_id_to_instance_id,
             active_colliders,
             balls,
             plates,

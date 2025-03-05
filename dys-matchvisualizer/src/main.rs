@@ -14,6 +14,7 @@ use web_time::{Duration, Instant};
 
 #[cfg(target_family = "wasm")]
 use bevy::asset::AssetMetaCheck;
+use dys_world::combatant::instance::CombatantInstanceId;
 
 const FONT_FILE: &'static str = "fonts/Teko-Medium.ttf";
 
@@ -74,6 +75,7 @@ enum VisualizationMode {
 struct VisualizationState {
     should_exit: bool,
     game_log: Option<GameLog>,
+    world_state: Option<dys_world::world::World>,
     current_tick: GameTickNumber,
     last_update_time: Instant,
     home_score: u16,
@@ -101,6 +103,7 @@ struct VisualizationObject;
 #[derive(Component)]
 struct CombatantVisualizer {
     pub id: CombatantId,
+    pub instance_id: CombatantInstanceId,
     pub desired_location: Vec3,
     pub last_position: Vec3,
 }
@@ -160,6 +163,7 @@ pub fn initialize_with_canvas(
         .insert_resource(VisualizationState {
             should_exit: false,
             game_log: None,
+            world_state: None,
             current_tick: 0,
             last_update_time: Instant::now(),
             home_score: 0,
@@ -188,14 +192,17 @@ pub fn initialize_with_canvas(
 
 fn restart_with_local_game_log() {
     let game_log_bytes = include_bytes!("../data/game_log.bin");
-    load_game_log(game_log_bytes.to_vec());
+    let world_state_bytes = include_bytes!("../data/world_state.bin");
+    load_game_log(game_log_bytes.to_vec(), world_state_bytes.to_vec());
 }
 
 #[wasm_bindgen(js_name = loadGameLog)]
 pub fn load_game_log(
     serialized_game_log: Vec<u8>,
+    serialized_world_state: Vec<u8>,
 ) {
     let game_log: GameLog = postcard::from_bytes(&serialized_game_log).expect("failed to deserialize game log");
+    let world: dys_world::world::World = serde_json::from_str(std::str::from_utf8(serialized_world_state.as_slice()).unwrap()).expect("failed to deserialize world state");
 
     let updated_visualization_state = UPDATED_VIS_STATE.get().unwrap();
 
@@ -208,6 +215,7 @@ pub fn load_game_log(
     updated_visualization_state.lock().unwrap().replace(VisualizationState {
         should_exit: false,
         game_log: Some(game_log),
+        world_state: Some(world),
         current_tick: 0,
         last_update_time: Instant::now(),
         home_score: 0,
@@ -229,6 +237,7 @@ pub fn exit() {
         .replace(VisualizationState {
             should_exit: true,
             game_log: None,
+            world_state: None,
             current_tick: 0,
             last_update_time: Instant::now(),
             home_score: 0,
@@ -531,9 +540,36 @@ fn setup_after_reload_game_log(
                 // ZJ-TODO: don't assume team by position
                 let home_team = position.x < 50.0;
 
+                let instance_id = game_log
+                    .combatant_id_mapping()
+                    .get(&combatant_id)
+                    .unwrap()
+                    .to_owned();
+
+                let world = vis_state.world_state.as_ref().unwrap();
+                let mut name = String::new();
+                for combatant in &world.combatants {
+                    let combatant_instance = combatant.lock().unwrap();
+                    if combatant_instance.id == instance_id {
+                        name = combatant_instance.name.to_owned();
+                        break;
+                    }
+                }
+
+                if name.is_empty() {
+                    panic!("failed to find combatant with instance ID {instance_id}");
+                };
+
+                name = name.splitn(2, " ").skip(1).collect::<String>();
+
                 commands.spawn((
                     VisualizationObject,
-                    CombatantVisualizer { id: *combatant_id, desired_location: translation, last_position: translation },
+                    CombatantVisualizer {
+                        id: *combatant_id,
+                        instance_id,
+                        desired_location: translation,
+                        last_position: translation
+                    },
                     Mesh2d(meshes.add(Capsule2d::new(0.75, 1.75))), // ZJ-TODO: read radius
                     MeshMaterial2d(materials.add(Color::linear_rgb(
                         if home_team { 0.0 } else { 0.0 },
@@ -546,10 +582,11 @@ fn setup_after_reload_game_log(
                     // but we want this text to always be on top, and to be smooth
                     let mut new_transform = Transform::default();
                     new_transform.translation.z = 30.0;
+                    new_transform.translation.y = -4.0;
                     new_transform.scale *= 0.05;
 
                     builder.spawn((
-                        Text2d(combatant_id.to_string()),
+                        Text2d(name),
                         TextFont {
                             font: asset_server.load(FONT_FILE),
                             font_size: 64.0,
@@ -609,6 +646,7 @@ fn setup_after_reload_game_log(
                 ).with_child((
                     Text::new(stat_category),
                     TextFont {
+                        font: asset_server.load(FONT_FILE),
                         font_size: 32.0,
                         ..default()
                     },
@@ -617,7 +655,19 @@ fn setup_after_reload_game_log(
             }
         });
 
+        let combatant_mapping = vis_state.game_log.as_ref().unwrap().combatant_id_mapping();
+        let world = vis_state.world_state.as_ref().unwrap();
         for statline in combatant_statlines {
+            let combatant_instance_id = combatant_mapping.get(&statline.combatant_id).unwrap();
+            let mut combatant_name = statline.combatant_id.to_string();
+            for combatant in &world.combatants {
+                let combatant_instance = combatant.lock().unwrap();
+                if combatant_instance.id == *combatant_instance_id {
+                    combatant_name = combatant_instance.name.splitn(2, " ").skip(1).collect::<String>();
+                    break;
+                }
+            }
+
             parent.spawn((
                 Node {
                     width: Val::Percent(100.0),
@@ -628,7 +678,7 @@ fn setup_after_reload_game_log(
                 },
             )).with_children(|parent| {
                 for stat_str in vec![
-                    statline.combatant_id.to_string(),
+                    combatant_name,
                     statline.points_scored.to_string(),
                     statline.balls_thrown.to_string(),
                     statline.throws_hit.to_string(),
@@ -642,6 +692,7 @@ fn setup_after_reload_game_log(
                     ).with_child((
                         Text::new(stat_str),
                         TextFont {
+                            font: asset_server.load(FONT_FILE),
                             font_size: 36.0,
                             ..default()
                         },
@@ -872,7 +923,7 @@ fn update_explosion_visualizers(
     mut explosion_query: Query<(&mut ExplosionVisualizer, &mut MeshMaterial2d<ColorMaterial>, Entity)>,
     mut assets: ResMut<Assets<ColorMaterial>>
 ) {
-    let decrement_amount = 1.0;
+    let decrement_amount = 2.5;
 
     for (mut explosion, mesh_handle, entity) in explosion_query.iter_mut() {
         let Some(new_opacity) = explosion.opacity.checked_sub(decrement_amount as u8) else {
@@ -890,7 +941,7 @@ fn update_explosion_visualizers(
             continue;
         };
 
-        rgba.alpha -= 0.01;
+        rgba.alpha -= decrement_amount / 100.0;
         color_material.color = rgba.into();
     }
 }
@@ -980,7 +1031,9 @@ fn handle_keyboard_input(
     if keyboard_input.just_pressed(KeyCode::KeyR) {
         let game_log = vis_state.game_log.as_ref().unwrap();
         let game_log_bytes = postcard::to_allocvec(game_log).unwrap();
-        load_game_log(game_log_bytes);
+        let world = vis_state.world_state.as_ref().unwrap();
+        let world_bytes = postcard::to_allocvec(world).unwrap();
+        load_game_log(game_log_bytes, world_bytes);
     }
 }
 

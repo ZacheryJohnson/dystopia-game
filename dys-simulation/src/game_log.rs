@@ -1,7 +1,10 @@
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
+use dys_world::combatant::instance::CombatantInstanceId;
 use dys_world::matches::instance::MatchInstanceId;
 use crate::combatant_statline::CombatantStatline;
+use crate::game_objects::combatant::CombatantId;
 use crate::game_state::{GameState, SeedT};
 use crate::game_tick::{GameTick, TickPerformance};
 use crate::simulation::simulation_event::SimulationEvent;
@@ -13,6 +16,7 @@ pub struct GameLog {
     home_score: u16,
     away_score: u16,
     ticks: Vec<GameTick>,
+    combatant_id_to_instance_id: HashMap<CombatantId, CombatantInstanceId>,
     combatant_statlines: Vec<CombatantStatline>,
     performance: TickPerformance,
 }
@@ -64,12 +68,18 @@ impl GameLog {
             });
         }
 
+        let mut combatant_id_to_instance_id = HashMap::new();
+        for (k, v) in &game_state.combatant_id_to_instance_id {
+            combatant_id_to_instance_id.insert(*k, *v);
+        }
+
         GameLog {
             match_id: game_state.game.match_instance.match_id,
             seed: game_state.seed,
             home_score: game_state.home_points,
             away_score: game_state.away_points,
             ticks,
+            combatant_id_to_instance_id,
             combatant_statlines,
             performance: perf,
         }
@@ -81,6 +91,10 @@ impl GameLog {
 
     pub fn ticks(&self) -> &Vec<GameTick> {
         &self.ticks
+    }
+
+    pub fn combatant_id_mapping(&self) -> &HashMap<CombatantId, CombatantInstanceId> {
+        &self.combatant_id_to_instance_id
     }
 
     pub fn combatant_statlines(&self) -> &Vec<CombatantStatline> {
