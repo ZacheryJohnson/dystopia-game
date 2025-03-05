@@ -4,7 +4,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use rand::prelude::StdRng;
 use rand::SeedableRng;
 use dys_simulation::{game::Game, generator::Generator};
-use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}};
+use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, instance::ScheduleGame}};
 
 fn game_simulation_benchmark(c: &mut Criterion) {
     let world = Generator::new().generate_world(&mut StdRng::from_entropy());

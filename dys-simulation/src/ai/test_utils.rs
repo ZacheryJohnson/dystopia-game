@@ -8,7 +8,7 @@ use rapier3d::prelude::{ColliderHandle, RigidBodyHandle};
 use dys_world::arena::Arena;
 use dys_world::arena::navmesh::{ArenaNavmesh, ArenaNavmeshConfig};
 use dys_world::schedule::calendar::{Date, Month};
-use dys_world::schedule::schedule_game::ScheduleGame;
+use dys_world::matches::instance::MatchInstance;
 use dys_world::team::instance::TeamInstance;
 use crate::{game_objects::combatant::{CombatantId, CombatantObject, CombatantState, TeamAlignment}, game_state::GameState, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
@@ -77,7 +77,8 @@ impl Agent for TestAgent {
 
 pub fn make_test_game_state(with_physics_sim: Option<PhysicsSim>) -> Arc<Mutex<GameState>> {
     let game = Game {
-        schedule_game: ScheduleGame {
+        match_instance: MatchInstance {
+            match_id: 0,
             away_team: Arc::new(Mutex::new(TeamInstance {
                 id: 1,
                 name: String::from("TestAwayTeam"),
@@ -94,7 +95,7 @@ pub fn make_test_game_state(with_physics_sim: Option<PhysicsSim>) -> Arc<Mutex<G
     };
     let simulation_config = SimulationConfig::default();
     let arena_navmesh = ArenaNavmesh::new_from(
-        game.schedule_game.arena.clone(),
+        game.match_instance.arena.clone(),
         ArenaNavmeshConfig {
             unit_resolution: 1.0
         }

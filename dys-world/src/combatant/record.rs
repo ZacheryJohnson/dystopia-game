@@ -1,27 +1,31 @@
+use serde::Serialize;
+use crate::combatant::instance::CombatantInstanceId;
 use crate::history::recordable::{RecordType, Recordable};
 
 use super::{instance::CombatantInstance, limb::Limb};
 
-const RECORD_PREFIX: &str = "COMB";
-
+#[derive(Serialize)]
 pub struct CombatantRecord {  
-    pub id: u64,
+    pub combatant_id: CombatantInstanceId,
     pub name: String,
-    pub limbs: Vec<Limb>
+    pub limbs: Vec<Limb>,
 }
 
 impl RecordType for CombatantRecord {
-    fn id(&self) -> String {
-        format!("{}-{}", RECORD_PREFIX, self.id)
+    const RECORD_PREFIX: &'static str = "COM";
+    type InstanceIdType = CombatantInstanceId;
+
+    fn instance_id(&self) -> Self::InstanceIdType {
+        self.combatant_id
     }
 }
 
 impl Recordable<CombatantRecord> for CombatantInstance {
     fn to_record(&self) -> CombatantRecord {
         CombatantRecord {
-            id: self.id,
+            combatant_id: self.id,
             name: self.name.clone(),
-            limbs: self.limbs.clone()
+            limbs: self.limbs.clone(),
         }
     }
 }

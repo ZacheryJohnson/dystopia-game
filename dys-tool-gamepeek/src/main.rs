@@ -12,7 +12,7 @@ use dys_simulation::simulation::simulate_tick;
 use dys_world::arena::Arena;
 use dys_world::schedule::calendar::Date;
 use dys_world::schedule::calendar::Month::Arguscorp;
-use dys_world::schedule::schedule_game::ScheduleGame;
+use dys_world::matches::instance::MatchInstance;
 
 struct GamePeekApp {
     game_state: Arc<Mutex<GameState>>,
@@ -176,7 +176,8 @@ fn main() -> eframe::Result {
     let app = GamePeekApp {
         game_state: Arc::new(Mutex::new(GameState::from_game_seeded(
             Game {
-                schedule_game: ScheduleGame {
+                match_instance: MatchInstance {
+                    match_id: 0,
                     away_team: world.teams[0].to_owned(),
                     home_team: world.teams[1].to_owned(),
                     arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())),

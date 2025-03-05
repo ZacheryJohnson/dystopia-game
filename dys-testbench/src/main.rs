@@ -1,7 +1,7 @@
 use std::{sync::{Arc, Mutex}, time::Duration};
 use dys_observability::logger::LoggerOptions;
 use dys_simulation::{game::Game, game_log::GameLog, generator::Generator};
-use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}, schedule_game::ScheduleGame}};
+use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}}, matches::instance::MatchInstance};
 use tracing::Level;
 use rand::SeedableRng;
 use rand_pcg::Pcg64;
@@ -27,13 +27,14 @@ async fn main() {
     let arena = Arc::new(Mutex::new(Arena::new_with_testing_defaults()));
     let date = Date(Month::Arguscorp, 1, 10000);
 
-    let schedule_game = ScheduleGame {
+    let match_instance = MatchInstance {
+        match_id: 0,
         away_team,
         home_team,
         arena,
         date,
     };
-    let game = Game { schedule_game };
+    let game = Game { match_instance };
 
     let game_log = game.simulate_seeded(&seed);
     let game_log_artifact = postcard::to_allocvec(&game_log).expect("failed to serialize game log");

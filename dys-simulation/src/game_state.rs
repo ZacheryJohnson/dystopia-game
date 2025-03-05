@@ -69,7 +69,7 @@ impl GameState {
         let mut plates = PlatesMapT::new();
 
         {
-            let arena = game.schedule_game.arena.lock().unwrap();
+            let arena = game.match_instance.arena.lock().unwrap();
             for feature in arena.all_features() {
                 if let Some(rigid_body) = feature.build_rigid_body() {
                     let rigid_body_handle = rigid_body_set.insert(rigid_body);
@@ -107,10 +107,10 @@ impl GameState {
         }
 
         {
-            let mut home_combatants = { game.schedule_game.home_team.lock().unwrap().combatants.clone() };
-            let mut away_combatants = { game.schedule_game.away_team.lock().unwrap().combatants.clone() };
+            let mut home_combatants = { game.match_instance.home_team.lock().unwrap().combatants.clone() };
+            let mut away_combatants = { game.match_instance.away_team.lock().unwrap().combatants.clone() };
 
-            let arena = game.schedule_game.arena.lock().unwrap();
+            let arena = game.match_instance.arena.lock().unwrap();
             let combatant_starts = arena.features::<ArenaCombatantStart>();
 
             let mut combatant_id = 0;
@@ -140,7 +140,7 @@ impl GameState {
         }
 
         let arena_navmesh = ArenaNavmesh::new_from(
-            game.schedule_game.arena.clone(),
+            game.match_instance.arena.clone(),
             ArenaNavmeshConfig {
                 unit_resolution: 1.0
             }

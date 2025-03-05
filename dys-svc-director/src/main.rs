@@ -11,7 +11,7 @@ use dys_observability::middleware::{make_span, map_trace_context, record_trace_i
 use dys_simulation::game::Game;
 use dys_world::arena::Arena;
 use dys_world::schedule::calendar::{Date, Month};
-use dys_world::schedule::schedule_game::ScheduleGame;
+use dys_world::matches::instance::MatchInstance;
 use dys_world::world::World;
 use serde::{Deserialize, Serialize};
 
@@ -24,9 +24,8 @@ use tower_http::trace::TraceLayer;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
 
-// ZJ-TODO: this should live in dys-world
-#[derive(Clone, Serialize, Deserialize)]
-struct MatchResult {
+#[derive(Debug, Serialize, Deserialize)]
+struct MatchSummary {
     away_team_name: String,
     home_team_name: String,
     away_team_score: u32,
@@ -150,8 +149,8 @@ async fn shutdown_signal() {
     }
 }
 
-fn simulate_matches(world_state: WorldState) -> Vec<MatchResult> {
-    let mut scheduled_games = vec![];
+fn simulate_matches(world_state: WorldState) -> Vec<MatchSummary> {
+    let mut match_instances = vec![];
     let mut teams = {
         tracing::info!("Acquiring game world lock...");
         let game_world = world_state.game_world.lock().unwrap();
@@ -164,7 +163,8 @@ fn simulate_matches(world_state: WorldState) -> Vec<MatchResult> {
         let home_team = teams.pop().expect("failed to pop home team from shuffled teams list");
         let away_team = teams.pop().expect("failed to pop home team from shuffled teams list");
 
-        scheduled_games.push(ScheduleGame {
+        match_instances.push(MatchInstance {
+            match_id: 0, // ZJ-TODO
             home_team,
             away_team,
             // ZJ-TODO
@@ -176,16 +176,16 @@ fn simulate_matches(world_state: WorldState) -> Vec<MatchResult> {
 
     // Simulate matches
     let mut match_results = vec![];
-    for scheduled_game in scheduled_games {
-        let away_team_name = scheduled_game.away_team.lock().unwrap().name.clone();
-        let home_team_name = scheduled_game.home_team.lock().unwrap().name.clone();
+    for match_instance in match_instances {
+        let away_team_name = match_instance.away_team.lock().unwrap().name.clone();
+        let home_team_name = match_instance.home_team.lock().unwrap().name.clone();
 
         tracing::info!("Simulating match: {} vs {}", away_team_name, home_team_name);
 
-        let game = Game { schedule_game: scheduled_game };
+        let game = Game { match_instance };
         let game_log = game.simulate();
 
-        match_results.push(MatchResult {
+        match_results.push(MatchSummary {
             away_team_name,
             home_team_name,
             away_team_score: game_log.away_score() as u32,
@@ -199,10 +199,10 @@ fn simulate_matches(world_state: WorldState) -> Vec<MatchResult> {
 
 #[tracing::instrument(skip_all)]
 async fn run_simulation(mut world_state: WorldState) {
-    let match_results = simulate_matches(world_state.clone());
+    let match_summary = simulate_matches(world_state.clone());
 
     // Swap simulation results
-    let match_result_json = serde_json::to_string(&match_results).unwrap();
+    let match_result_json = serde_json::to_string(&match_summary).unwrap();
     let mut valkey = world_state.valkey.connection();
     // ZJ-TODO: latest should be a pointer to a unique ID
     let _: i32 = valkey.hset("env:dev:match.results:latest", "data", match_result_json).await.unwrap();

@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
+use dys_world::matches::instance::MatchInstanceId;
 use crate::combatant_statline::CombatantStatline;
 use crate::game_state::{GameState, SeedT};
 use crate::game_tick::{GameTick, TickPerformance};
@@ -7,6 +8,7 @@ use crate::simulation::simulation_event::SimulationEvent;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GameLog {
+    match_id: MatchInstanceId,
     seed: SeedT,
     home_score: u16,
     away_score: u16,
@@ -63,6 +65,7 @@ impl GameLog {
         }
 
         GameLog {
+            match_id: game_state.game.match_instance.match_id,
             seed: game_state.seed,
             home_score: game_state.home_points,
             away_score: game_state.away_points,
