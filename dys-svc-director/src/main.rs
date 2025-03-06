@@ -1,10 +1,8 @@
-use std::convert::Infallible;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::{extract::State, routing::get, Router};
-use axum::extract::Request;
 use dys_observability::logger::LoggerOptions;
 use dys_observability::middleware::{make_span, map_trace_context, record_trace_id};
 use dys_simulation::game::Game;
@@ -67,7 +65,7 @@ async fn main() {
 
     tracing::info!("Starting server...");
 
-    let game_world = Arc::new(Mutex::new(dys_simulation::generator::Generator::new().generate_world(&mut StdRng::from_entropy())));
+    let game_world = Arc::new(Mutex::new(dys_world::generator::Generator::new().generate_world(&mut StdRng::from_entropy())));
 
     let valkey_config = ValkeyConfig::new(
         std::env::var("VALKEY_USER").unwrap_or(String::from("default")),

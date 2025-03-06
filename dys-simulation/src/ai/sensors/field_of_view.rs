@@ -215,6 +215,7 @@ mod tests {
     use dys_satisfiable::{SatisfiabilityTest, SatisfiableField};
     use dys_world::arena::barrier::{ArenaBarrier, BarrierPathing};
     use dys_world::arena::feature::ArenaFeature;
+    use dys_world::generator::Generator;
     use GameObjectType::Combatant;
     use crate::ai::belief::SatisfiableBelief;
     use crate::ai::sensor::Sensor;
@@ -223,7 +224,6 @@ mod tests {
     use crate::game_objects::game_object_type::GameObjectType;
     use crate::game_objects::game_object_type::GameObjectType::Barrier;
     use crate::game_state::{BallsMapT, CollidersMapT, CombatantsMapT};
-    use crate::generator::Generator;
     use crate::physics_sim::PhysicsSim;
 
     #[test]

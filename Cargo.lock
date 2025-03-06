@@ -2646,6 +2646,7 @@ dependencies = [
  "ordered-float",
  "petgraph",
  "rand",
+ "rand_distr",
  "rapier3d",
  "serde",
  "serde_json",

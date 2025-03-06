@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use std::ops::Deref;
 use nalgebra::Quaternion;
 use rapier3d::{na::vector, prelude::*};
@@ -16,6 +17,12 @@ const PLATE_VERTICAL_HEIGHT: f32 = 5.0;
 
 pub struct Arena {
     all_features: Vec<Box<dyn ArenaFeature>>
+}
+
+impl Debug for Arena {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Arena <no impl atm>")
+    }
 }
 
 impl Arena {

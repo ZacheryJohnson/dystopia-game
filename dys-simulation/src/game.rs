@@ -117,9 +117,9 @@ mod tests {
     use std::sync::{Arc, Mutex};
     use rand::prelude::StdRng;
     use rand::SeedableRng;
-    use dys_world::{arena::Arena, schedule::calendar::{Date, Month}, matches::instance::MatchInstance};
+    use dys_world::{arena::Arena, schedule::calendar::{Date, Month}, generator::Generator, matches::instance::MatchInstance};
 
-    use crate::{game::Game, generator::Generator};
+    use crate::game::Game;
 
     #[test]
     fn test_deterministic_simulations() {

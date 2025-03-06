@@ -1,7 +1,12 @@
 use std::{sync::{Arc, Mutex}, time::Duration};
 use dys_observability::logger::LoggerOptions;
-use dys_simulation::{game::Game, game_log::GameLog, generator::Generator};
-use dys_world::{arena::Arena, schedule::{calendar::{Date, Month}}, matches::instance::MatchInstance};
+use dys_simulation::{game::Game, game_log::GameLog};
+use dys_world::{
+    arena::Arena,
+    generator::Generator,
+    matches::instance::MatchInstance,
+    schedule::{calendar::{Date, Month}},
+};
 use tracing::Level;
 use rand::SeedableRng;
 use rand_pcg::Pcg64;
