@@ -11,6 +11,7 @@ dys-world = { path = "../dys-world" }
 dys-datastore = { path = "../dys-datastore" }
 dys-datastore-valkey = { path = "../dys-datastore-valkey" }
 
+async-nats.workspace = true
 axum.workspace = true
 postcard.workspace = true
 rand.workspace = true

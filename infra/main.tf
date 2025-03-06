@@ -66,3 +66,9 @@ module "valkey" {
 
   kube_config = module.aks.kube_config[0]
 }
+
+module "nats" {
+  source = "./modules/nats"
+
+  kube_config = module.aks.kube_config[0]
+}

@@ -72,7 +72,7 @@ fn main() -> Result<()> {
             continue;
         }
 
-        let mod_name = format!("pub mod {};\n", file_name_without_ext);
+        let mod_name = format!("pub mod {file_name_without_ext};\n");
         generated_mod_file.write_all(mod_name.as_bytes())?;
     }
 

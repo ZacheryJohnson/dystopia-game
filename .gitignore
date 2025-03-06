@@ -8,6 +8,7 @@ infra/.terraform/
 infra/terraform.tfstate
 infra/terraform.tfstate.backup
 infra/.terraform.tfstate.lock.info
+infra/terraform.tfvars
 
 target/
 

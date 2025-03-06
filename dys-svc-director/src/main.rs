@@ -1,7 +1,6 @@
 use std::convert::Infallible;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-
 use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::{extract::State, routing::get, Router};
@@ -44,9 +43,16 @@ struct CombatantTeamMember {
 struct WorldState {
     game_world: Arc<Mutex<World>>,
     valkey: Box<ValkeyDatastore>,
+    nats: async_nats::Client,
 }
 
-async fn health_check(_: Request) -> Result<impl IntoResponse, Infallible> {
+async fn health_check(
+    State(world_state): State<WorldState>
+) -> Result<impl IntoResponse, StatusCode> {
+    if !matches!(world_state.nats.connection_state(), async_nats::connection::State::Connected) {
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    };
+
     Ok(StatusCode::OK)
 }
 
@@ -70,9 +76,22 @@ async fn main() {
         std::env::var("VALKEY_PORT").unwrap_or(String::from("6379")).parse::<u16>().unwrap()
     );
 
+    let nats_server_str = format!(
+        "{}:{}",
+        std::env::var("NATS_HOST").unwrap_or(String::from("172.18.0.1")),
+        std::env::var("NATS_PORT").unwrap_or(String::from("4222")).parse::<u16>().unwrap(),
+    );
+
+    let nats_client = async_nats::ConnectOptions::new()
+        .token(std::env::var("NATS_TOKEN").unwrap_or(String::from("replaceme")))
+        .connect(nats_server_str)
+        .await
+        .expect("failed to connect to NATS server");
+
     let world_state = WorldState {
         game_world: game_world.clone(),
-        valkey: ValkeyDatastore::connect(valkey_config).await.unwrap()
+        valkey: ValkeyDatastore::connect(valkey_config).await.unwrap(),
+        nats: nats_client,
     };
 
     let world_state_thread_copy = world_state.clone();
