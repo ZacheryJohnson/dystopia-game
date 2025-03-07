@@ -83,3 +83,5 @@ services:
     command:
       - "--auth"
       - "replaceme"
+      - "-m"
+      - "8222"

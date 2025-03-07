@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 dys-simulation = { path = "../dys-simulation" }
 dys-observability = { path = "../dys-observability" }
+dys-protocol = { path = "../dys-protocol" }
 dys-world = { path = "../dys-world" }
 
 dys-datastore = { path = "../dys-datastore" }
@@ -13,6 +14,7 @@ dys-datastore-valkey = { path = "../dys-datastore-valkey" }
 
 async-nats.workspace = true
 axum.workspace = true
+futures.workspace = true
 postcard.workspace = true
 rand.workspace = true
 serde.workspace = true

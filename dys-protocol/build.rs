@@ -46,6 +46,7 @@ fn main() -> Result<()> {
         .build_server(true)
         .build_client(true)
         .build_transport(true)
+        .type_attribute(".", "#[derive(serde::Deserialize, serde::Serialize)]")
         .compile_protos(
             &get_proto_files(),
             &get_proto_includes(),

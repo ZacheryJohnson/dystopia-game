@@ -51,6 +51,7 @@ RUN cp $OUT_DIR/matchvisualizer.js /opt/dystopia/$WEBAPP_INTERNAL_DIR_PATH/match
 
 WORKDIR /opt/dystopia/dys-svc-webapp/frontend
 RUN npm install
+RUN npm run protoc-ubuntu
 RUN npm run build
 
 WORKDIR /opt/dystopia/dys-svc-webapp

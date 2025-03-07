@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "protoc-ubuntu": "mkdir -p generated && protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./generated --proto_path=../../dys-protocol/protos $(find ../../dys-protocol/protos -name \"*.proto\" | xargs)",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
@@ -33,6 +34,7 @@
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "vite-plugin-vue-devtools": "^7.7.2",
-    "vue-tsc": "^2.2.8"
+    "vue-tsc": "^2.2.8",
+    "ts-proto": "^2.6.1"
   }
 }

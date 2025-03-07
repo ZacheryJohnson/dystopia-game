@@ -57,6 +57,14 @@ resource "kubernetes_secret_v1" "nats_auth_token_namespaced" {
   type = "Opaque"
 }
 
+resource "helm_release" "prometheus_operator_crds" {
+  chart = "prometheus-operator-crds"
+  repository = "https://prometheus-community.github.io/helm-charts"
+  name = "prometheusoperatorcrds"
+
+  version = "18.0.1"
+}
+
 resource "helm_release" "nats" {
   chart = "nats"
   repository = "https://nats-io.github.io/k8s/helm/charts/"
@@ -70,4 +78,18 @@ resource "helm_release" "nats" {
     name  = "config.merge.authorization.token"
     value = random_password.nats_auth_token.result
   }
+
+  set {
+    name  = "promExporter.enabled"
+    value = true
+  }
+
+  set {
+    name  = "promExporter.podMonitor.enabled"
+    value = true
+  }
+
+  depends_on = [
+    helm_release.prometheus_operator_crds
+  ]
 }

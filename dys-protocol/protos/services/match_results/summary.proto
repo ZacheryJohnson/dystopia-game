@@ -11,10 +11,14 @@ message MatchRequest {
 }
 
 message MatchResponse {
-  message Match {
+  message MatchSummary {
     uint64 match_id = 1;
-    bytes match_summary_json = 2;
+    string away_team_name = 2;
+    string home_team_name = 3;
+    uint32 away_team_score = 4;
+    uint32 home_team_score = 5;
+    bytes game_log_serialized = 6;
   }
 
-  repeated Match match_summary = 1;
+  repeated MatchSummary match_summaries = 1;
 }

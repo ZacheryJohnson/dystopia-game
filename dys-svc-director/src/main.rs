@@ -1,3 +1,5 @@
+mod match_result;
+
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use axum::http::{HeaderValue, StatusCode};
@@ -5,6 +7,7 @@ use axum::response::{IntoResponse, Response};
 use axum::{extract::State, routing::get, Router};
 use dys_observability::logger::LoggerOptions;
 use dys_observability::middleware::{make_span, map_trace_context, record_trace_id};
+use dys_protocol::protocol::match_results::match_response::MatchSummary;
 use dys_simulation::game::Game;
 use dys_world::arena::Arena;
 use dys_world::schedule::calendar::{Date, Month};
@@ -20,15 +23,7 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
-
-#[derive(Debug, Serialize, Deserialize)]
-struct MatchSummary {
-    away_team_name: String,
-    home_team_name: String,
-    away_team_score: u32,
-    home_team_score: u32,
-    game_log_serialized: Vec<u8>,
-}
+use crate::match_result::SummaryService;
 
 // ZJ-TODO: this should also live elsewhere
 #[derive(Clone, Serialize)]
@@ -40,8 +35,9 @@ struct CombatantTeamMember {
 #[derive(Clone)]
 struct WorldState {
     game_world: Arc<Mutex<World>>,
-    valkey: Box<ValkeyDatastore>,
+    valkey: ValkeyDatastore,
     nats: async_nats::Client,
+    next_match_id: Arc<Mutex<u64>>, // ZJ-TODO: remove
 }
 
 async fn health_check(
@@ -88,8 +84,9 @@ async fn main() {
 
     let world_state = WorldState {
         game_world: game_world.clone(),
-        valkey: ValkeyDatastore::connect(valkey_config).await.unwrap(),
+        valkey: *ValkeyDatastore::connect(valkey_config).await.unwrap(),
         nats: nats_client,
+        next_match_id: Arc::new(Mutex::new(1)),
     };
 
     let world_state_thread_copy = world_state.clone();
@@ -122,13 +119,26 @@ async fn main() {
         }
     });
 
+    let world_state_thread_copy = world_state.clone();
+    tokio::spawn(async move {
+        let mut summary_service = SummaryService::new(
+            world_state_thread_copy.valkey.to_owned(),
+            world_state_thread_copy.nats.to_owned(),
+        );
+
+        summary_service.initialize().await;
+
+        loop {
+            summary_service.process().await;
+        }
+    });
+
     let trace_middleware_layer = ServiceBuilder::new()
         .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
         .map_request(map_trace_context)    
         .map_request(record_trace_id);
 
     let app = Router::new()
-        .route("/latest_games", get(latest_games))
         .route("/combatants", get(combatants))
         .route("/world_state", get(get_world_state))
         .route("/health", get(health_check))
@@ -199,16 +209,20 @@ fn simulate_matches(world_state: WorldState) -> Vec<MatchSummary> {
 
         tracing::info!("Simulating match: {} vs {}", away_team_name, home_team_name);
 
+        let match_id = match_instance.match_id.to_owned();
         let game = Game { match_instance };
         let game_log = game.simulate();
 
         match_results.push(MatchSummary {
+            match_id,
             away_team_name,
             home_team_name,
             away_team_score: game_log.away_score() as u32,
             home_team_score: game_log.home_score() as u32,
             game_log_serialized: postcard::to_allocvec(&game_log).expect("failed to serialize game log"),
         });
+
+        *world_state.next_match_id.lock().unwrap() += 1;
     }
 
     match_results
@@ -223,19 +237,6 @@ async fn run_simulation(mut world_state: WorldState) {
     let mut valkey = world_state.valkey.connection();
     // ZJ-TODO: latest should be a pointer to a unique ID
     let _: i32 = valkey.hset("env:dev:match.results:latest", "data", match_result_json).await.unwrap();
-}
-
-#[tracing::instrument(skip_all)]
-async fn latest_games(State(mut world_state): State<WorldState>) -> Response {
-    let mut valkey = world_state.valkey.connection();
-    let response_data: String = valkey.hget("env:dev:match.results:latest", "data").await.unwrap();
-
-    let mut response = response_data.into_response();
-    response.headers_mut()
-        // ZJ-TODO: not *
-        .insert("Access-Control-Allow-Origin", HeaderValue::from_str("*").unwrap());
-
-    response
 }
 
 #[tracing::instrument(skip_all)]

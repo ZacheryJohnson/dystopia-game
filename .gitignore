@@ -50,3 +50,5 @@ dys-svc-webapp/frontend/*.sw?
 
 dys-svc-webapp/frontend/*.tsbuildinfo
 dys-svc-webapp/frontend/vite.config.ts.timestamp*
+
+dys-svc-webapp/frontend/generated

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {onMounted, onUnmounted, onUpdated} from "vue";
+  import {onMounted, onUnmounted, onUpdated} from "vue";
   import init, { exit, initializeWithCanvas, loadGameLog } from "@/assets/matchvisualizer.js"
   import {getMatchVisualizerStore} from "@/stores/MatchVisualizer";
   const matchVisualizerStore = getMatchVisualizerStore();

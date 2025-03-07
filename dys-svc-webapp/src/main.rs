@@ -1,10 +1,15 @@
 use std::convert::Infallible;
-
+use std::time::Duration;
 use axum::{extract::Request, http::{header, HeaderValue, StatusCode}, middleware::{self, Next}, response::{IntoResponse, Response}, Router};
+use axum::extract::State;
+use axum::handler::Handler;
+use axum::routing::get;
 use tokio::signal;
+use tonic::codegen::tokio_stream::{Stream, StreamExt};
 use dys_observability::{logger::LoggerOptions, middleware::{make_span, map_trace_context, record_trace_id}};
 use tower::ServiceBuilder;
 use tower_http::{services::{ServeDir, ServeFile}, trace::TraceLayer};
+use dys_protocol::protocol::match_results::{MatchRequest, MatchResponse};
 
 const DEFAULT_DIST_PATH: &str = "dys-svc-webapp/frontend/dist";
 
@@ -17,26 +22,57 @@ async fn static_cache_control(request: Request, next: Next) -> Response {
     response
 }
 
-#[tracing::instrument]
-async fn query_latest_games(_: Request) -> Result<Response, Infallible> {
-    let director_api_base_uri = std::env::var("SVC_DIRECTOR_API_BASE_URI").unwrap_or(String::from("http://localhost:6081"));
-    let request_url = format!("{director_api_base_uri}/latest_games");
+#[derive(Clone, Debug)]
+struct AppState {
+    nats_client: async_nats::Client,
+}
 
-    tracing::info!("Requesting latest games from director...");
-    let maybe_response = dys_observability::reqwest::get(request_url).await;
-    if let Err(err) = maybe_response {
-        tracing::warn!("Failed to get latest_games from {}: {err:?}", director_api_base_uri);
-        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get latest_games").into_response());
+#[tracing::instrument(skip(app_state))]
+async fn query_latest_games(State(app_state): State<AppState>) -> Result<Response, StatusCode> {
+    let match_request = MatchRequest {
+        match_ids: vec![], // ZJ-TODO: make this field useful
     };
 
-    let response = maybe_response.unwrap();
+    let payload = postcard::to_allocvec(&match_request).unwrap();
 
-    let Ok(response_body) = response.text().await else {
-        tracing::warn!("Failed to get latest_games response content");
-        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get latest_games").into_response());
+    let reply_subject = "rpc.testing";
+    let result = app_state.nats_client.subscribe(
+        reply_subject
+    ).await;
+
+    let Ok(mut reply_subscriber) = result else {
+        tracing::error!("failed to subscribe to reply topic {reply_subject}");
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
     };
 
-    let json = axum::Json(response_body);
+    let result = app_state.nats_client.publish_with_reply(
+        format!("rpc.{}", dys_protocol::protocol::match_results::summary_server::SERVICE_NAME),
+        reply_subject,
+        payload.into()
+    ).await;
+
+    if result.is_err() {
+        tracing::error!("failed to publish summary request");
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+   let Ok(response) = tokio::time::timeout(Duration::from_millis(500), async {
+        loop {
+            let Some(response) = reply_subscriber.next().await else {
+                continue;
+            };
+
+            return response;
+        }
+    }).await else {
+        tracing::error!("timed out waiting for reply");
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    };
+
+    let response: MatchResponse = postcard::from_bytes(&response.payload).unwrap();
+    let response_json = serde_json::to_string(&response).unwrap();
+
+    let json = axum::Json(response_json);
     Ok(json.into_response())
 }
 
@@ -104,16 +140,28 @@ async fn main() {
     tracing::info!("Starting server...");
     let dist_path = std::env::var("DIST_PATH").unwrap_or(DEFAULT_DIST_PATH.to_string());
 
-    // ZJ-TODO: not everything should be uncached - would be helpful to cache the game logs in particular
+    let nats_server_str = format!(
+        "{}:{}",
+        std::env::var("NATS_HOST").unwrap_or(String::from("172.18.0.1")),
+        std::env::var("NATS_PORT").unwrap_or(String::from("4222")).parse::<u16>().unwrap(),
+    );
+
+    let nats_client = async_nats::ConnectOptions::new()
+        .token(std::env::var("NATS_TOKEN").unwrap_or(String::from("replaceme")))
+        .connect(nats_server_str)
+        .await
+        .expect("failed to connect to NATS server");
+
+    let app_state = AppState {
+        nats_client,
+    };
+
     let app = Router::new()
         .nest_service(
-            "/api/latest_games",
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
-                .map_request(map_trace_context)    
-                .map_request(record_trace_id)
-                .layer(middleware::from_fn(static_cache_control))
-                .service_fn(query_latest_games)
+            "/api/summaries",
+            Router::new()
+                .fallback(get(query_latest_games))
+                .with_state(app_state)
         )
         .nest_service(
             "/api/combatants",

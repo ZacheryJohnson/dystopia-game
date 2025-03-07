@@ -41,6 +41,13 @@ spec:
               secretKeyRef:
                 name: "valkeypass"
                 key: default_password
+          - name: NATS_HOST
+            value: "nats.nats"
+          - name: NATS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: "natstoken"
+                key: token
         livenessProbe:
           httpGet:
             port: http-port

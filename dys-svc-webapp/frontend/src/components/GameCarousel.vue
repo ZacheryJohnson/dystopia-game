@@ -15,11 +15,11 @@
   const games: Ref<MatchResultT[]> = ref([]);
 
   onMounted(async () => {
-    const match_results = JSON.parse((await (await fetch(`api/latest_games`)).json()));
+    const match_summaries = JSON.parse((await (await fetch(`api/summaries`)).json()))["match_summaries"];
 
     games.value = [];
     let gameId = 1;
-    for (const match of match_results) {
+    for (const match of match_summaries) {
       const newGame: MatchResultT = {
         gameId: gameId++,
         awayTeamAbbreviation: match["away_team_name"].substring(0, 3).toUpperCase(),

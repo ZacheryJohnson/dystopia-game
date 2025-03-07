@@ -2532,6 +2532,7 @@ name = "dys-protocol"
 version = "0.1.0"
 dependencies = [
  "prost",
+ "serde",
  "tonic",
  "tonic-build",
  "walkdir",
@@ -2585,8 +2586,10 @@ dependencies = [
  "dys-datastore",
  "dys-datastore-valkey",
  "dys-observability",
+ "dys-protocol",
  "dys-simulation",
  "dys-world",
+ "futures",
  "postcard",
  "rand",
  "serde",
@@ -2601,9 +2604,12 @@ dependencies = [
 name = "dys-svc-webapp"
 version = "0.1.0"
 dependencies = [
+ "async-nats",
  "axum",
  "dys-observability",
  "dys-protocol",
+ "postcard",
+ "serde_json",
  "tokio",
  "tonic",
  "tower 0.4.13",
