@@ -19,6 +19,7 @@ services:
       dockerfile: ./dys-svc-webapp/Dockerfile
     environment:
       - SVC_DIRECTOR_API_BASE_URI=http://director:6081
+      - SVC_AUTH_API_BASE_URI=http://auth:6082
       - OTEL_ENDPOINT=http://jaeger:4317
       - RUST_BACKTRACE=1
     ports:
@@ -45,6 +46,19 @@ services:
     ports:
       - "5173:5173"
       - "5174:5174"
+    depends_on:
+      valkey:
+        condition: service_started
+  auth:
+    container_name: "auth"
+    build:
+      context: ..
+      dockerfile: ./dys-svc-auth/Dockerfile
+    environment:
+      - OTEL_ENDPOINT=http://jaeger:4317
+      - RUST_BACKTRACE=1
+    ports:
+      - "6082:6082"
     depends_on:
       valkey:
         condition: service_started

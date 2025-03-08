@@ -2,13 +2,13 @@ use std::convert::Infallible;
 use std::time::Duration;
 use axum::{extract::Request, http::{header, HeaderValue, StatusCode}, middleware::{self, Next}, response::{IntoResponse, Response}, Router};
 use axum::extract::State;
-use axum::handler::Handler;
+use axum::http::Method;
 use axum::routing::get;
-use tokio::signal;
-use tonic::codegen::tokio_stream::{Stream, StreamExt};
+use tonic::codegen::tokio_stream::StreamExt;
 use dys_observability::{logger::LoggerOptions, middleware::{make_span, map_trace_context, record_trace_id}};
 use tower::ServiceBuilder;
 use tower_http::{services::{ServeDir, ServeFile}, trace::TraceLayer};
+use dys_observability::middleware::handle_shutdown_signal;
 use dys_protocol::protocol::match_results::{MatchRequest, MatchResponse};
 
 const DEFAULT_DIST_PATH: &str = "dys-svc-webapp/frontend/dist";
@@ -124,6 +124,34 @@ async fn query_world_state(_: Request) -> Result<Response, Infallible> {
     Ok(json.into_response())
 }
 
+async fn create_account(request: Request) -> Result<Response, Infallible> {
+    if request.method() != Method::POST {
+        return Ok((StatusCode::METHOD_NOT_ALLOWED, "method not allowed").into_response());
+    };
+
+    let auth_api_base_uri = std::env::var("SVC_AUTH_API_BASE_URI").unwrap_or(String::from("http://localhost:6082"));
+    let request_url = format!("{auth_api_base_uri}/create_account");
+
+    let body = request.into_body();
+    let bytes = axum::body::to_bytes(body, 256usize).await.unwrap();
+    let body_str = String::from_utf8(bytes.to_vec()).unwrap().replace("accountName", "account_name");
+
+    let maybe_response = dys_observability::reqwest::post(request_url, body_str).await;
+    if let Err(err) = maybe_response {
+        tracing::warn!("Failed to create account: {err:?}");
+        return Ok((StatusCode::BAD_REQUEST, "failed to get create account").into_response());
+    };
+
+    let Ok(response_body) = maybe_response.unwrap().text().await else {
+        tracing::warn!("Failed to get create account response content");
+        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get create account response").into_response());
+    };
+
+    tracing::info!("Sending response...");
+    let json = axum::Json(response_body);
+    Ok(json.into_response())
+}
+
 async fn health_check(_: Request) -> Result<impl IntoResponse, Infallible> {
     Ok(StatusCode::OK)
 }
@@ -182,6 +210,14 @@ async fn main() {
                 .service_fn(query_world_state)
         )
         .nest_service(
+            "/api/create_account",
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
+                .map_request(map_trace_context)
+                .map_request(record_trace_id)
+                .service_fn(create_account)
+        )
+        .nest_service(
             "/assets",
             ServiceBuilder::new()
                 .layer(middleware::from_fn(static_cache_control))
@@ -206,31 +242,7 @@ async fn main() {
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:6080").await.unwrap();
     axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
+        .with_graceful_shutdown(handle_shutdown_signal())
         .await
         .unwrap();
-}
-
-async fn shutdown_signal() {
-    let ctrl_c = async {
-        signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
-    };
-
-    #[cfg(unix)]
-    let terminate = async {
-        signal::unix::signal(signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
-
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    tokio::select! {
-        _ = ctrl_c => { tracing::warn!("received ctrl+c...") },
-        _ = terminate => { tracing::warn!("received terminate...") },
-    }
 }

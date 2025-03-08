@@ -1,6 +1,7 @@
 use axum::{body::Body, extract::Request};
 use opentelemetry::trace::TraceContextExt;
 use opentelemetry_http::HeaderExtractor;
+use tokio::signal;
 use tracing::{info_span, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
@@ -26,4 +27,28 @@ pub fn record_trace_id(request: Request<Body>) -> Request<Body> {
 pub fn make_span(request: &Request<Body>) -> Span {
     let headers = request.headers();
     info_span!("incoming http request", ?headers, trace_id = tracing::field::Empty)
+}
+
+pub async fn handle_shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => { tracing::warn!("received ctrl+c...") },
+        _ = terminate => { tracing::warn!("received terminate...") },
+    }
 }

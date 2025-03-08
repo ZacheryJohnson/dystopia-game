@@ -4,6 +4,7 @@ import GameCarousel from './components/GameCarousel.vue'
 import MatchVisualizer from './components/MatchVisualizer.vue';
 
 import { getMatchVisualizerStore } from '@/stores/MatchVisualizer'
+import Auth from "@/components/Auth.vue";
 const matchVisualizerStore = getMatchVisualizerStore();
 </script>
 
@@ -13,6 +14,7 @@ const matchVisualizerStore = getMatchVisualizerStore();
       <GameCarousel />
       <nav>
         <RouterLink to="/"><h1>DAX</h1></RouterLink>
+        <Auth></Auth>
       </nav>
     </div>
   </header>

@@ -6,7 +6,7 @@ use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::{extract::State, routing::get, Router};
 use dys_observability::logger::LoggerOptions;
-use dys_observability::middleware::{make_span, map_trace_context, record_trace_id};
+use dys_observability::middleware::{handle_shutdown_signal, make_span, map_trace_context, record_trace_id};
 use dys_protocol::protocol::match_results::match_response::MatchSummary;
 use dys_simulation::game::Game;
 use dys_world::arena::Arena;
@@ -146,33 +146,9 @@ async fn main() {
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:6081").await.unwrap();
     axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
+        .with_graceful_shutdown(handle_shutdown_signal())
         .await
         .unwrap();
-}
-
-async fn shutdown_signal() {
-    let ctrl_c = async {
-        signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
-    };
-
-    #[cfg(unix)]
-    let terminate = async {
-        signal::unix::signal(signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
-
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    tokio::select! {
-        _ = ctrl_c => { tracing::warn!("received ctrl+c...") },
-        _ = terminate => { tracing::warn!("received terminate...") },
-    }
 }
 
 fn simulate_matches(world_state: WorldState) -> Vec<MatchSummary> {

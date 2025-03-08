@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package auth;
+
+service Account {
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+}
+
+message CreateAccountRequest {
+  string account_name = 1;
+}
+
+message CreateAccountResponse {
+
+}
+
+message LoginRequest {
+  string account_name = 1;
+}
+
+message LoginResponse {
+  // ZJ-TODO: jwt jwt jwt
+}
