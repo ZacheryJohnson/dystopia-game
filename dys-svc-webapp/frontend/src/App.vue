@@ -13,7 +13,6 @@ const matchVisualizerStore = getMatchVisualizerStore();
       <GameCarousel />
       <nav>
         <RouterLink to="/"><h1>DAX</h1></RouterLink>
-        <RouterLink to="/combatants"><h1>Combatants</h1></RouterLink>
       </nav>
     </div>
   </header>

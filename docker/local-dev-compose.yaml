@@ -73,6 +73,8 @@ services:
     image: "redis/redisinsight"
     ports:
       - "5540:5540"
+    volumes:
+      - redisinsight:/data
   nats:
     container_name: "nats"
     image: "nats"
@@ -85,3 +87,5 @@ services:
       - "replaceme"
       - "-m"
       - "8222"
+volumes:
+  redisinsight:

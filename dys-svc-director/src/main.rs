@@ -139,7 +139,6 @@ async fn main() {
         .map_request(record_trace_id);
 
     let app = Router::new()
-        .route("/combatants", get(combatants))
         .route("/world_state", get(get_world_state))
         .route("/health", get(health_check))
         .layer(trace_middleware_layer)
@@ -191,7 +190,7 @@ fn simulate_matches(world_state: WorldState) -> Vec<MatchSummary> {
         let away_team = teams.pop().expect("failed to pop home team from shuffled teams list");
 
         match_instances.push(MatchInstance {
-            match_id: 0, // ZJ-TODO
+            match_id: world_state.next_match_id.lock().unwrap().to_owned(),
             home_team,
             away_team,
             // ZJ-TODO
@@ -199,6 +198,8 @@ fn simulate_matches(world_state: WorldState) -> Vec<MatchSummary> {
             // ZJ-TODO
             date: Date(Month::Arguscorp, 1, 1)
         });
+
+        *world_state.next_match_id.lock().unwrap() += 1;
     }
 
     // Simulate matches
@@ -221,8 +222,6 @@ fn simulate_matches(world_state: WorldState) -> Vec<MatchSummary> {
             home_team_score: game_log.home_score() as u32,
             game_log_serialized: postcard::to_allocvec(&game_log).expect("failed to serialize game log"),
         });
-
-        *world_state.next_match_id.lock().unwrap() += 1;
     }
 
     match_results
@@ -232,39 +231,28 @@ fn simulate_matches(world_state: WorldState) -> Vec<MatchSummary> {
 async fn run_simulation(mut world_state: WorldState) {
     let match_summary = simulate_matches(world_state.clone());
 
-    // Swap simulation results
-    let match_result_json = serde_json::to_string(&match_summary).unwrap();
+    let mut latest_ids = vec![];
     let mut valkey = world_state.valkey.connection();
-    // ZJ-TODO: latest should be a pointer to a unique ID
-    let _: i32 = valkey.hset("env:dev:match.results:latest", "data", match_result_json).await.unwrap();
-}
+    for summary in match_summary {
+        latest_ids.push(summary.match_id);
 
-#[tracing::instrument(skip_all)]
-async fn combatants(State(world_state): State<WorldState>) -> Response {
-    // ZJ-TODO: caching
-    tracing::info!("Trying to acquire world lock...");
-    let world = world_state.game_world.lock().unwrap();
+        let match_summary_json = serde_json::to_string(&summary).unwrap();
+        let _: i32 = valkey.hset(
+            format!("env:dev:match.results:id:{}", summary.match_id),
+            "data",
+            match_summary_json,
+        ).await.unwrap();
 
-    let mut combatants = vec![];
-    for team in &world.teams {
-        let team_instance = team.lock().unwrap();
-        for combatant in &team_instance.combatants {
-            let combatant_instance = combatant.lock().unwrap();
-
-            combatants.push(CombatantTeamMember {
-                team_name: team_instance.name.clone(),
-                combatant_name: combatant_instance.name.clone(),
-            });
-        }
+        let _: i32 = valkey.expire(
+            format!("env:dev:match.results:id:{}", summary.match_id),
+            60 * 60 // 1 hour
+        ).await.unwrap();
     }
 
-    tracing::info!("Sending response...");
-    let mut response = axum::Json(combatants).into_response();
-    response.headers_mut()
-        // ZJ-TODO: not *
-        .insert("Access-Control-Allow-Origin", HeaderValue::from_str("*").unwrap());
-
-    response
+    let _: String = valkey.set(
+        "env:dev:match.results:latest",
+        serde_json::to_string(&latest_ids).unwrap(),
+    ).await.unwrap();
 }
 
 async fn get_world_state(State(mut world_state): State<WorldState>) -> Response {

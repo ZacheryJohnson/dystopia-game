@@ -45,6 +45,7 @@ ordered-float = "4.2.0"
 petgraph = "0.6.5"
 postcard = { version = "1.0.8", features = ["alloc"] }
 prost = { version = "0.13.5", features = ["prost-derive"] }
+prost-build = "0.13.5"
 rand = "0.8.5"
 rand_distr = "0.4.3"
 rand_pcg = "0.3.1"
