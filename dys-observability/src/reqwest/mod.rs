@@ -1,6 +1,5 @@
 use opentelemetry_http::HeaderInjector;
 use reqwest::{Error, Method, Response};
-use serde::Serialize;
 use tracing::Span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 

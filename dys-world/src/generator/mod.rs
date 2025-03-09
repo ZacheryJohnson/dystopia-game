@@ -379,7 +379,7 @@ impl Generator {
     pub fn generate_world(&self, rng: &mut impl Rng) -> World {
         // ZJ-TODO: this should be config driven
         let number_of_teams = 4;
-        let players_per_team = 12;
+        let players_per_team = 5;
         let total_combatants_to_generate = number_of_teams * players_per_team;
 
         let combatants = self.generate_combatants(total_combatants_to_generate, rng);

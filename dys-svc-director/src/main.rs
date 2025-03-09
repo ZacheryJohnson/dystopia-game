@@ -4,7 +4,8 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
-use axum::{extract::State, routing::get, Router};
+use axum::{extract::State, routing::get, Json, Router};
+use axum::routing::post;
 use dys_observability::logger::LoggerOptions;
 use dys_observability::middleware::{handle_shutdown_signal, make_span, map_trace_context, record_trace_id};
 use dys_protocol::protocol::match_results::match_response::MatchSummary;
@@ -15,7 +16,7 @@ use dys_world::matches::instance::MatchInstance;
 use dys_world::world::World;
 use serde::{Deserialize, Serialize};
 
-use rand::{thread_rng, SeedableRng};
+use rand::{thread_rng, Rng, SeedableRng};
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use tokio::signal;
@@ -23,6 +24,8 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
+use dys_protocol::protocol::vote::{GetProposalsResponse, Proposal, ProposalOption, VoteOnProposalRequest, VoteOnProposalResponse};
+use dys_world::combatant::instance::CombatantInstance;
 use crate::match_result::SummaryService;
 
 // ZJ-TODO: this should also live elsewhere
@@ -140,6 +143,8 @@ async fn main() {
 
     let app = Router::new()
         .route("/world_state", get(get_world_state))
+        .route("/get_voting_proposals", get(get_voting_proposals))
+        .route("/vote", post(submit_vote))
         .route("/health", get(health_check))
         .layer(trace_middleware_layer)
         .with_state(world_state);
@@ -234,6 +239,81 @@ async fn run_simulation(mut world_state: WorldState) {
 async fn get_world_state(State(mut world_state): State<WorldState>) -> Response {
     let mut valkey = world_state.valkey.connection();
     let response_data: String = valkey.hget("env:dev:world", "data").await.unwrap();
+    let mut response = response_data.into_response();
+    response.headers_mut()
+        // ZJ-TODO: not *
+        .insert("Access-Control-Allow-Origin", HeaderValue::from_str("*").unwrap());
+
+    response
+}
+
+#[tracing::instrument(skip(world_state))]
+async fn get_voting_proposals(State(mut world_state): State<WorldState>) -> Response {
+    let mut valkey = world_state.valkey.connection();
+    let response_data: String = valkey.hget("env:dev:world", "data").await.unwrap();
+    let world: World = serde_json::from_str(&response_data).unwrap();
+    let team = world.teams.choose(&mut rand::thread_rng()).unwrap();
+
+    let team_instance = team.lock().unwrap();
+    let team_name = team_instance.name.to_owned();
+
+    let combatants = team_instance.combatants.clone().into_iter()
+        .take(3)
+        .collect::<Vec<Arc<Mutex<CombatantInstance>>>>();
+    let combatant_1_name = combatants[0].lock().unwrap().name.to_owned();
+    let combatant_2_name = combatants[1].lock().unwrap().name.to_owned();
+    let combatant_3_name = combatants[2].lock().unwrap().name.to_owned();
+
+    let response = GetProposalsResponse {
+        proposals: vec![
+            Proposal {
+                proposal_id: 1,
+                proposal_name: format!("Supercharge {} Player", team_name),
+                proposal_desc: "Pick a combatant to supercharge for a match.".to_string(),
+                proposal_options: vec![
+                    ProposalOption {
+                        option_id: 1,
+                        option_name: combatant_1_name,
+                        option_desc: "".to_string(),
+                    },
+                    ProposalOption {
+                        option_id: 2,
+                        option_name: combatant_2_name,
+                        option_desc: "".to_string(),
+                    },
+                    ProposalOption {
+                        option_id: 3,
+                        option_name: combatant_3_name,
+                        option_desc: "".to_string(),
+                    }
+                ],
+            },
+        ],
+    };
+
+    let response_data = serde_json::to_string(&response).unwrap();
+    let mut response = response_data.into_response();
+    response.headers_mut()
+        // ZJ-TODO: not *
+        .insert("Access-Control-Allow-Origin", HeaderValue::from_str("*").unwrap());
+
+    response
+}
+
+#[tracing::instrument(skip(world_state, request))]
+async fn submit_vote(
+    State(mut world_state): State<WorldState>,
+    Json(request): Json<VoteOnProposalRequest>
+) -> Response {
+    let mut valkey = world_state.valkey.connection();
+
+    let _: i32 = valkey.hincr(
+        format!("env:dev:votes:proposal:{}", request.proposal_id),
+        format!("option:{}", request.option_id),
+        1,
+    ).await.unwrap();
+
+    let response_data = serde_json::to_string(&VoteOnProposalResponse{}).unwrap();
     let mut response = response_data.into_response();
     response.headers_mut()
         // ZJ-TODO: not *

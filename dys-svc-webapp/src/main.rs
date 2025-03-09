@@ -76,8 +76,8 @@ async fn query_latest_games(State(app_state): State<AppState>) -> Result<Respons
     Ok(json.into_response())
 }
 
-#[tracing::instrument]
-async fn query_combatants(_: Request) -> Result<Response, Infallible> {
+#[tracing::instrument(skip(request))]
+async fn query_combatants(request: Request) -> Result<Response, Infallible> {
     let director_api_base_uri = std::env::var("SVC_DIRECTOR_API_BASE_URI").unwrap_or(String::from("http://localhost:6081"));
     let request_url = format!("{director_api_base_uri}/combatants");
 
@@ -100,8 +100,8 @@ async fn query_combatants(_: Request) -> Result<Response, Infallible> {
     Ok(json.into_response())
 }
 
-#[tracing::instrument]
-async fn query_world_state(_: Request) -> Result<Response, Infallible> {
+#[tracing::instrument(skip(request))]
+async fn query_world_state(request: Request) -> Result<Response, Infallible> {
     let director_api_base_uri = std::env::var("SVC_DIRECTOR_API_BASE_URI").unwrap_or(String::from("http://localhost:6081"));
     let request_url = format!("{director_api_base_uri}/world_state");
 
@@ -124,6 +124,7 @@ async fn query_world_state(_: Request) -> Result<Response, Infallible> {
     Ok(json.into_response())
 }
 
+#[tracing::instrument(skip(request))]
 async fn create_account(request: Request) -> Result<Response, Infallible> {
     if request.method() != Method::POST {
         return Ok((StatusCode::METHOD_NOT_ALLOWED, "method not allowed").into_response());
@@ -148,6 +149,64 @@ async fn create_account(request: Request) -> Result<Response, Infallible> {
     };
 
     tracing::info!("Sending response...");
+    let json = axum::Json(response_body);
+    Ok(json.into_response())
+}
+
+#[tracing::instrument(skip(request))]
+async fn get_voting_proposals(request: Request) -> Result<Response, Infallible> {
+    if request.method() != Method::GET {
+        return Ok((StatusCode::METHOD_NOT_ALLOWED, "method not allowed").into_response());
+    };
+
+    let director_api_base_uri = std::env::var("SVC_DIRECTOR_API_BASE_URI").unwrap_or(String::from("http://localhost:6081"));
+    let request_url = format!("{director_api_base_uri}/get_voting_proposals");
+
+    let maybe_response = dys_observability::reqwest::get(request_url).await;
+    if let Err(err) = maybe_response {
+        tracing::warn!("Failed to get voting proposals: {err:?}");
+        return Ok((StatusCode::BAD_REQUEST, "failed to get voting proposals").into_response());
+    };
+
+    let Ok(response_body) = maybe_response.unwrap().text().await else {
+        tracing::warn!("Failed to get voting proposals content");
+        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get voting proposals response").into_response());
+    };
+
+    tracing::info!("Sending response...");
+    let json = axum::Json(response_body);
+    Ok(json.into_response())
+}
+
+#[tracing::instrument(skip(request))]
+async fn submit_vote(request: Request) -> Result<Response, Infallible> {
+    if request.method() != Method::POST {
+        tracing::info!("rejecting");
+        return Ok((StatusCode::METHOD_NOT_ALLOWED, "method not allowed").into_response());
+    };
+
+    let director_api_base_uri = std::env::var("SVC_DIRECTOR_API_BASE_URI").unwrap_or(String::from("http://localhost:6081"));
+    let request_url = format!("{director_api_base_uri}/vote");
+
+    let body = request.into_body();
+    let bytes = axum::body::to_bytes(body, 256usize).await.unwrap();
+    let body_str = String::from_utf8(bytes.to_vec()).unwrap()
+        .replace("proposalId", "proposal_id")
+        .replace("optionId", "option_id")
+        .replace("\"proposalPayload\":{}", "\"proposal_payload\":[]");
+
+    let maybe_response = dys_observability::reqwest::post(request_url, body_str).await;
+    if let Err(err) = maybe_response {
+        tracing::warn!("Failed to post vote: {err:?}");
+        return Ok((StatusCode::BAD_REQUEST, "failed to post vote").into_response());
+    };
+
+    let Ok(response_body) = maybe_response.unwrap().text().await else {
+        tracing::warn!("Failed to parse vote response content");
+        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to parse vote response").into_response());
+    };
+
+    tracing::info!("Sending response {response_body}");
     let json = axum::Json(response_body);
     Ok(json.into_response())
 }
@@ -216,6 +275,22 @@ async fn main() {
                 .map_request(map_trace_context)
                 .map_request(record_trace_id)
                 .service_fn(create_account)
+        )
+        .nest_service(
+            "/api/get_voting_proposals",
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
+                .map_request(map_trace_context)
+                .map_request(record_trace_id)
+                .service_fn(get_voting_proposals)
+        )
+        .nest_service(
+            "/api/vote",
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
+                .map_request(map_trace_context)
+                .map_request(record_trace_id)
+                .service_fn(submit_vote)
         )
         .nest_service(
             "/assets",

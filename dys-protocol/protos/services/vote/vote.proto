@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package vote;
+
+service Vote {
+  rpc GetProposals(GetProposalsRequest) returns (GetProposalsResponse);
+  rpc VoteOnProposal(VoteOnProposalRequest) returns (VoteOnProposalResponse);
+}
+
+message ProposalOption {
+  uint64 option_id = 1;
+  string option_name = 2;
+  string option_desc = 3;
+}
+
+message Proposal {
+  uint64 proposal_id = 1;
+  string proposal_name = 2;
+  string proposal_desc = 3;
+  repeated ProposalOption proposal_options = 4;
+}
+
+message GetProposalsRequest {
+
+}
+
+message GetProposalsResponse {
+  repeated Proposal proposals = 1;
+}
+
+message VoteOnProposalRequest {
+  uint64 proposal_id = 1;
+  uint64 option_id = 2;
+  bytes proposal_payload = 3;
+}
+
+message VoteOnProposalResponse {
+
+}

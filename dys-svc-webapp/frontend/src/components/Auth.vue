@@ -2,9 +2,10 @@
 import {computed, inject, onMounted, ref} from "vue";
 import type {VueCookies} from "vue-cookies";
 import { CreateAccountRequest } from "%/services/auth/account.ts";
+import {getAuthStore} from "@/stores/Auth.ts";
 const $cookies = inject<VueCookies>('$cookies');
-const cookie = ref($cookies?.get("dax-auth"));
-const isLoggedIn = computed(() => cookie.value && (cookie.value.length > 0));
+const authStore = getAuthStore();
+const isLoggedIn = computed(() => authStore.cookie && (authStore.cookie.length > 0));
 
 const createAccount = async () => {
   const accountName = (document.getElementById("auth-username") as HTMLInputElement).value;
@@ -18,23 +19,23 @@ const createAccount = async () => {
   })).status;
   if (respStatus === 200) {
     $cookies?.set("dax-auth", accountName);
-    cookie.value = accountName;
+    authStore.cookie = accountName;
   }
 };
 
 const logout = async () => {
   $cookies?.remove('dax-auth');
-  cookie.value = null;
+  authStore.cookie = String();
 };
 
 onMounted(() => {
-  cookie.value = $cookies?.get("dax-auth");
+  authStore.cookie = $cookies?.get("dax-auth");
 })
 </script>
 
 <template>
   <div v-if="isLoggedIn">
-    <p>Authenticated as {{cookie}}</p>
+    <p>Authenticated as {{authStore.cookie}}</p>
     <p @click="logout">Log Out</p>
   </div>
   <div v-else>
