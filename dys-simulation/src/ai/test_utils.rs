@@ -90,13 +90,15 @@ pub fn make_test_game_state(with_physics_sim: Option<PhysicsSim>) -> Arc<Mutex<G
                 name: String::from("TestHomeTeam"),
                 combatants: vec![],
             })),
-            arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())), // ZJ-TODO: don't use arena's default values
+            // arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())), // ZJ-TODO: don't use arena's default values
+            arena_id: 0,
             date: Date(Month::Arguscorp, 1, 10000),
         },
     };
     let simulation_config = SimulationConfig::default();
     let arena_navmesh = ArenaNavmesh::new_from(
-        game.match_instance.arena.clone(),
+        Arc::new(Mutex::new(Arena::new_with_testing_defaults())),
+        // game.match_instance.arena.clone(),
         ArenaNavmeshConfig {
             unit_resolution: 1.0
         }

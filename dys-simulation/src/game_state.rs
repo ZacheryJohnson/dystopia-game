@@ -1,9 +1,11 @@
 use std::f32::consts::FRAC_PI_2;
+use std::sync::{Arc, Mutex};
 use indexmap::IndexMap;
 use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, combatant_start::ArenaCombatantStart, feature::ArenaFeature, navmesh::{ArenaNavmesh, ArenaNavmeshConfig}, plate::{ArenaPlate, PlateId}}};
 use rand::{random, SeedableRng};
 use rand_pcg::Pcg64;
 use rapier3d::prelude::*;
+use dys_world::arena::Arena;
 use dys_world::combatant::instance::CombatantInstanceId;
 use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType, plate::PlateObject}, game_tick::GameTickNumber, physics_sim::PhysicsSim, simulation::config::SimulationConfig};
 use crate::game_objects::combatant::CombatantId;
@@ -71,7 +73,8 @@ impl GameState {
         let mut plates = PlatesMapT::new();
 
         {
-            let arena = game.match_instance.arena.lock().unwrap();
+            // let arena = game.match_instance.arena.lock().unwrap();
+            let arena = Arena::new_with_testing_defaults();
             for feature in arena.all_features() {
                 if let Some(rigid_body) = feature.build_rigid_body() {
                     let rigid_body_handle = rigid_body_set.insert(rigid_body);
@@ -112,7 +115,8 @@ impl GameState {
             let mut home_combatants = { game.match_instance.home_team.lock().unwrap().combatants.clone() };
             let mut away_combatants = { game.match_instance.away_team.lock().unwrap().combatants.clone() };
 
-            let arena = game.match_instance.arena.lock().unwrap();
+            // let arena = game.match_instance.arena.lock().unwrap();
+            let arena = Arena::new_with_testing_defaults();
             let combatant_starts = arena.features::<ArenaCombatantStart>();
 
             let mut combatant_id = 0;
@@ -143,7 +147,8 @@ impl GameState {
         }
 
         let arena_navmesh = ArenaNavmesh::new_from(
-            game.match_instance.arena.clone(),
+            Arc::new(Mutex::new(Arena::new_with_testing_defaults())),
+            // game.match_instance.arena.clone(),
             ArenaNavmeshConfig {
                 unit_resolution: 1.0
             }

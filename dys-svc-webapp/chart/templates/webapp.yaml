@@ -28,6 +28,8 @@ spec:
         env:
           - name: SVC_DIRECTOR_API_BASE_URI
             value: "http://dys-svc-director"
+          - name: SVC_AUTH_API_BASE_URI
+            value: "http://dys-svc-auth"
           - name: NODE_IP
             valueFrom:
               fieldRef:

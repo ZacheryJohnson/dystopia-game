@@ -36,7 +36,8 @@ async fn main() {
         match_id: 0,
         away_team,
         home_team,
-        arena,
+        // arena,
+        arena_id: 0,
         date,
     };
     let game = Game { match_instance };

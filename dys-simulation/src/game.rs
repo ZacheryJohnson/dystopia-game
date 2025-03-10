@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, feature::ArenaFeature, plate::ArenaPlate}, matches::instance::MatchInstance};
 use rapier3d::prelude::*;
-
+use dys_world::arena::Arena;
 use crate::{
     game_log::GameLog,
     game_objects::game_object::GameObject,
@@ -40,7 +40,8 @@ impl Game {
                 });
             }
 
-            let arena = self.match_instance.arena.lock().unwrap();
+            let arena = Arena::new_with_testing_defaults();
+            // let arena = self.match_instance.arena.lock().unwrap();
             let arena_features = arena.all_features();
             for feature in arena_features.iter().filter(|feature| feature.shape().is_some()) {
                 let shape = feature.shape().unwrap();
@@ -130,7 +131,8 @@ mod tests {
                 match_id: 0,
                 away_team: world.teams[0].clone(),
                 home_team: world.teams[1].clone(),
-                arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())),
+                // arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())),
+                arena_id: 0,
                 date: Date(Month::Arguscorp, 1, 10000),
             },
         };

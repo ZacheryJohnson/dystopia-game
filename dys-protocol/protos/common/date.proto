@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package common;
+
+message Date {
+  enum Month {
+    Invalid = 0;
+    Arguscorp = 1;
+  }
+
+  uint32 year = 1;
+  Month month = 2;
+  uint32 day = 3;
+}

@@ -12,6 +12,7 @@ pub mod plate;
 pub mod combatant_start;
 pub mod ball_spawn;
 pub mod navmesh;
+pub(crate) mod serde;
 
 const PLATE_VERTICAL_HEIGHT: f32 = 5.0;
 

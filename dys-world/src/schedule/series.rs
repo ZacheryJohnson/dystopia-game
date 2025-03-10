@@ -1,7 +1,8 @@
 use std::sync::{Arc, Mutex};
+use serde::{Deserialize, Serialize};
 use crate::matches::instance::MatchInstance;
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum SeriesType {
     /// All matches of the series will be played as normal.
     Normal,
@@ -10,7 +11,7 @@ pub enum SeriesType {
     FirstTo(u8),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Series {
     pub matches: Vec<Arc<Mutex<MatchInstance>>>,
     pub series_type: SeriesType,

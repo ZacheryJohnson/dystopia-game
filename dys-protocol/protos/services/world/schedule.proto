@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+import "common/date.proto";
+
+package world;
+
+service Schedule {
+  rpc GetSeason(GetSeasonRequest) returns (GetSeasonResponse);
+}
+
+message GetSeasonRequest {
+
+}
+
+message MatchInstance {
+  uint64 match_id = 1;
+  uint64 home_team_id = 2;
+  uint64 away_team_id = 3;
+  uint64 arena_id = 4;
+  common.Date date = 5;
+}
+
+message Series {
+  repeated MatchInstance matches = 1;
+
+  enum SeriesType {
+    Normal = 0;
+    FirstTo = 1;
+  }
+  SeriesType series_type = 2;
+  bytes series_type_payload = 3;
+}
+
+message GetSeasonResponse {
+  uint64 season_id = 1;
+  common.Date current_date = 2;
+  repeated Series all_series = 3;
+}

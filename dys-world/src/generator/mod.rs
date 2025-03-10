@@ -439,7 +439,8 @@ impl Generator {
                     match_id,
                     away_team: if swap_fixed_matchup { fixed_team.clone() } else { fixed_opponent.clone() },
                     home_team: if swap_fixed_matchup { fixed_opponent.clone() } else { fixed_team.clone() },
-                    arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())), // ZJ-TODO
+                    // arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())), // ZJ-TODO
+                    arena_id: 0,
                     date: Date(
                         Month::Arguscorp,
                         1 + (series_len * series_idx) as u32 + game_idx as u32,
@@ -463,7 +464,8 @@ impl Generator {
                     match_id,
                     away_team: if swap_alt_matchup { alt_opponent_1.clone() } else { alt_opponent_2.clone() },
                     home_team: if swap_alt_matchup { alt_opponent_2.clone() } else { alt_opponent_1.clone() },
-                    arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())), // ZJ-TODO
+                    // arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())), // ZJ-TODO
+                    arena_id: 0,
                     date: Date(
                         Month::Arguscorp,
                         1 + (series_len * series_idx) as u32 + game_idx as u32,

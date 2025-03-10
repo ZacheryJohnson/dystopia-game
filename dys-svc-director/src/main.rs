@@ -25,7 +25,11 @@ use tower_http::trace::TraceLayer;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
 use dys_protocol::protocol::vote::{GetProposalsResponse, Proposal, ProposalOption, VoteOnProposalRequest, VoteOnProposalResponse};
+use dys_protocol::protocol::world::GetSeasonResponse;
 use dys_world::combatant::instance::CombatantInstance;
+use dys_world::schedule::calendar::Month::Arguscorp;
+use dys_world::schedule::season::Season;
+use dys_world::schedule::series::SeriesType;
 use crate::match_result::SummaryService;
 
 // ZJ-TODO: this should also live elsewhere
@@ -38,6 +42,8 @@ struct CombatantTeamMember {
 #[derive(Clone)]
 struct WorldState {
     game_world: Arc<Mutex<World>>,
+    season: Arc<Mutex<Season>>,
+    current_date: Arc<Mutex<Date>>,
     valkey: ValkeyDatastore,
     nats: async_nats::Client,
     next_match_id: Arc<Mutex<u64>>, // ZJ-TODO: remove
@@ -64,7 +70,14 @@ async fn main() {
 
     tracing::info!("Starting server...");
 
-    let game_world = Arc::new(Mutex::new(dys_world::generator::Generator::new().generate_world(&mut StdRng::from_entropy())));
+    let (game_world, season) = {
+        let generator = dys_world::generator::Generator::new();
+        let world = generator.generate_world(&mut StdRng::from_entropy());
+
+        let season = generator.generate_season(&mut StdRng::from_entropy(), &world);
+
+        (Arc::new(Mutex::new(world)), season)
+    };
 
     let valkey_config = ValkeyConfig::new(
         std::env::var("VALKEY_USER").unwrap_or(String::from("default")),
@@ -87,6 +100,10 @@ async fn main() {
 
     let world_state = WorldState {
         game_world: game_world.clone(),
+        season: Arc::new(Mutex::new(season)),
+        current_date: Arc::new(Mutex::new(Date(
+            Arguscorp, 1, 10000
+        ))),
         valkey: *ValkeyDatastore::connect(valkey_config).await.unwrap(),
         nats: nats_client,
         next_match_id: Arc::new(Mutex::new(1)),
@@ -142,6 +159,7 @@ async fn main() {
         .map_request(record_trace_id);
 
     let app = Router::new()
+        .route("/season", get(get_season))
         .route("/world_state", get(get_world_state))
         .route("/get_voting_proposals", get(get_voting_proposals))
         .route("/vote", post(submit_vote))
@@ -157,39 +175,17 @@ async fn main() {
 }
 
 fn simulate_matches(world_state: WorldState) -> Vec<MatchSummary> {
-    let mut match_instances = vec![];
-    let mut teams = {
-        tracing::info!("Acquiring game world lock...");
-        let game_world = world_state.game_world.lock().unwrap();
-        game_world.teams.clone()
-    };
-    teams.shuffle(&mut thread_rng());
-
-    assert_eq!(teams.len() % 2, 0);
-    while !teams.is_empty() {
-        let home_team = teams.pop().expect("failed to pop home team from shuffled teams list");
-        let away_team = teams.pop().expect("failed to pop home team from shuffled teams list");
-
-        match_instances.push(MatchInstance {
-            match_id: world_state.next_match_id.lock().unwrap().to_owned(),
-            home_team,
-            away_team,
-            // ZJ-TODO
-            arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())),
-            // ZJ-TODO
-            date: Date(Month::Arguscorp, 1, 1)
-        });
-
-        *world_state.next_match_id.lock().unwrap() += 1;
-    }
+    let current_date = world_state.current_date.lock().unwrap().to_owned();
+    let match_instances = world_state.season.lock().unwrap().matches_on_date(&current_date);
 
     // Simulate matches
     let mut match_results = vec![];
     for match_instance in match_instances {
+        let match_instance = match_instance.lock().unwrap().to_owned();
         let away_team_name = match_instance.away_team.lock().unwrap().name.clone();
         let home_team_name = match_instance.home_team.lock().unwrap().name.clone();
 
-        tracing::info!("Simulating match: {} vs {}", away_team_name, home_team_name);
+        tracing::info!("Simulating {} vs {} on {:?}", away_team_name, home_team_name, current_date);
 
         let match_id = match_instance.match_id.to_owned();
         let game = Game { match_instance };
@@ -202,8 +198,19 @@ fn simulate_matches(world_state: WorldState) -> Vec<MatchSummary> {
             away_team_score: game_log.away_score() as u32,
             home_team_score: game_log.home_score() as u32,
             game_log_serialized: postcard::to_allocvec(&game_log).expect("failed to serialize game log"),
+            date: Some(dys_protocol::protocol::common::Date {
+                year: current_date.2,
+                month: current_date.0.to_owned() as i32 + 1, // ZJ-TODO: yuck
+                day: current_date.1,
+            }),
         });
     }
+
+    *world_state.current_date.lock().unwrap() = Date(
+        current_date.0,
+        current_date.1 + 1,
+        current_date.2
+    );
 
     match_results
 }
@@ -234,6 +241,65 @@ async fn run_simulation(mut world_state: WorldState) {
         "env:dev:match.results:latest",
         serde_json::to_string(&latest_ids).unwrap(),
     ).await.unwrap();
+}
+
+async fn get_season(State(world_state): State<WorldState>) -> Response {
+    let season = world_state.season.lock().unwrap();
+
+    let proto_series = season
+        .all_series
+        .iter()
+        .map(|rs_series| {
+            dys_protocol::protocol::world::Series {
+                matches: rs_series
+                    .matches
+                    .iter()
+                    .map(|rs_match| {
+                        let rs_match = rs_match.lock().unwrap();
+                        let x = dys_protocol::protocol::world::MatchInstance {
+                            match_id: rs_match.match_id.to_owned(),
+                            home_team_id: rs_match.home_team.lock().unwrap().id.to_owned(),
+                            away_team_id: rs_match.away_team.lock().unwrap().id.to_owned(),
+                            arena_id: 0,
+                            // arena_id: rs_match.arena.lock().unwrap().id.to_owned(),
+                            date: Some(dys_protocol::protocol::common::Date {
+                                year: rs_match.date.2,
+                                month: 1, // ZJ-TODO: arguscorp
+                                day: rs_match.date.1,
+                            })
+                        };
+                        x
+                    })
+                    .collect::<Vec<_>>(),
+                series_type: if matches!(rs_series.series_type, SeriesType::Normal) {
+                    dys_protocol::protocol::world::series::SeriesType::Normal
+                } else {
+                    dys_protocol::protocol::world::series::SeriesType::FirstTo
+                } as i32,
+                series_type_payload: vec![], // ZJ-TODO
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let current_date = world_state.current_date.lock().unwrap().to_owned();
+
+    let resp = GetSeasonResponse {
+        season_id: 1,
+        current_date: Some(dys_protocol::protocol::common::Date {
+            year: current_date.2,
+            month: 1, // ZJ-TODO: arguscorp
+            day: current_date.1,
+        }),
+        all_series: proto_series,
+    };
+
+    let response_data: String = serde_json::to_string(&resp).unwrap();
+    let mut response = response_data.into_response();
+    response.headers_mut()
+        // ZJ-TODO: not *
+        .insert("Access-Control-Allow-Origin", HeaderValue::from_str("*").unwrap());
+
+    response
 }
 
 async fn get_world_state(State(mut world_state): State<WorldState>) -> Response {

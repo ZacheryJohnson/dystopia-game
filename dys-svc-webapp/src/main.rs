@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 use std::time::Duration;
 use axum::{extract::Request, http::{header, HeaderValue, StatusCode}, middleware::{self, Next}, response::{IntoResponse, Response}, Router};
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::http::Method;
 use axum::routing::get;
 use tonic::codegen::tokio_stream::StreamExt;
@@ -181,7 +181,6 @@ async fn get_voting_proposals(request: Request) -> Result<Response, Infallible> 
 #[tracing::instrument(skip(request))]
 async fn submit_vote(request: Request) -> Result<Response, Infallible> {
     if request.method() != Method::POST {
-        tracing::info!("rejecting");
         return Ok((StatusCode::METHOD_NOT_ALLOWED, "method not allowed").into_response());
     };
 
@@ -204,6 +203,31 @@ async fn submit_vote(request: Request) -> Result<Response, Infallible> {
     let Ok(response_body) = maybe_response.unwrap().text().await else {
         tracing::warn!("Failed to parse vote response content");
         return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to parse vote response").into_response());
+    };
+
+    tracing::info!("Sending response {response_body}");
+    let json = axum::Json(response_body);
+    Ok(json.into_response())
+}
+
+#[tracing::instrument(skip(request))]
+async fn get_season(request: Request) -> Result<Response, Infallible> {
+    if request.method() != Method::GET {
+        return Ok((StatusCode::METHOD_NOT_ALLOWED, "method not allowed").into_response());
+    }
+
+    let director_api_base_uri = std::env::var("SVC_DIRECTOR_API_BASE_URI").unwrap_or(String::from("http://localhost:6081"));
+    let request_url = format!("{director_api_base_uri}/season");
+
+    let maybe_response = dys_observability::reqwest::get(request_url).await;
+    if let Err(err) = maybe_response {
+        tracing::warn!("Failed to get season: {err:?}");
+        return Ok((StatusCode::BAD_REQUEST, "failed to get season").into_response());
+    };
+
+    let Ok(response_body) = maybe_response.unwrap().text().await else {
+        tracing::warn!("Failed to get season response content");
+        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get season response").into_response());
     };
 
     tracing::info!("Sending response {response_body}");
@@ -267,6 +291,15 @@ async fn main() {
                 .map_request(record_trace_id)
                 .layer(middleware::from_fn(static_cache_control))
                 .service_fn(query_world_state)
+        )
+        .nest_service(
+            "/api/season",
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
+                .map_request(map_trace_context)
+                .map_request(record_trace_id)
+                .layer(middleware::from_fn(static_cache_control))
+                .service_fn(get_season)
         )
         .nest_service(
             "/api/create_account",

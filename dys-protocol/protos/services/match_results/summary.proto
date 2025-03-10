@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "common/date.proto";
+
 package match_results;
 
 service Summary {
@@ -18,6 +20,7 @@ message MatchResponse {
     uint32 away_team_score = 4;
     uint32 home_team_score = 5;
     bytes game_log_serialized = 6;
+    common.Date date = 7;
   }
 
   repeated MatchSummary match_summaries = 1;
