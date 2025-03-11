@@ -9,7 +9,7 @@ use dys_observability::{logger::LoggerOptions, middleware::{make_span, map_trace
 use tower::ServiceBuilder;
 use tower_http::{services::{ServeDir, ServeFile}, trace::TraceLayer};
 use dys_observability::middleware::handle_shutdown_signal;
-use dys_protocol::protocol::match_results::{MatchRequest, MatchResponse};
+use dys_protocol::http::match_results::{MatchRequest, MatchResponse};
 
 const DEFAULT_DIST_PATH: &str = "dys-svc-webapp/frontend/dist";
 
@@ -46,7 +46,7 @@ async fn query_latest_games(State(app_state): State<AppState>) -> Result<Respons
     };
 
     let result = app_state.nats_client.publish_with_reply(
-        format!("rpc.{}", dys_protocol::protocol::match_results::summary_server::SERVICE_NAME),
+        format!("rpc.{}", dys_protocol::http::match_results::summary_server::SERVICE_NAME),
         reply_subject,
         payload.into()
     ).await;

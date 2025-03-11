@@ -1,3 +1,4 @@
+use async_nats::ConnectOptions;
 use axum::extract::{Request, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -7,9 +8,12 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
+use dys_nats::error::NatsError;
+use dys_nats::router::NatsRouter;
 use dys_observability::logger::LoggerOptions;
 use dys_observability::middleware::{handle_shutdown_signal, make_span, map_trace_context, record_trace_id};
-use dys_protocol::protocol::auth::{CreateAccountRequest, LoginRequest};
+use dys_protocol::nats::auth::account_svc::{CreateAccountRpcService, LoginRpcService};
+use dys_protocol::nats::auth::{CreateAccountRequest, CreateAccountResponse, LoginRequest, LoginResponse};
 
 #[derive(Clone)]
 struct AppState {
@@ -38,23 +42,11 @@ async fn main() {
         valkey: *ValkeyDatastore::connect(valkey_config).await.unwrap(),
     };
 
-    let trace_middleware_layer = ServiceBuilder::new()
-        .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
-        .map_request(map_trace_context)
-        .map_request(record_trace_id);
-
-    let app = Router::new()
-        .route("/create_account", post(create_account))
-        .route("/login", post(login))
-        .route("/health", get(health_check))
-        .layer(trace_middleware_layer)
-        .with_state(app_state);
-
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:6082").await.unwrap();
-    axum::serve(listener, app)
-        .with_graceful_shutdown(handle_shutdown_signal())
+    let nats = NatsRouter::new()
         .await
-        .unwrap();
+        .service(CreateAccountRpcService::with_handler(create_account))
+        .service(LoginRpcService::with_handler(login));
+    nats.run().await;
 }
 
 async fn health_check(
@@ -64,29 +56,23 @@ async fn health_check(
 }
 
 async fn create_account(
-    State(mut app_state): State<AppState>,
-    request: String,
-) -> impl IntoResponse {
+    request: CreateAccountRequest,
+) -> Result<CreateAccountResponse, NatsError> {
     tracing::info!("Creating account!");
-    let mut valkey = app_state.valkey.connection();
+    // let mut valkey = app_state.valkey.connection();
+    //
+    // let _: i32 = valkey.sadd(
+    //     "env:dev:auth:accounts",
+    //     request.account_name,
+    // ).await.unwrap();
 
-    let request: CreateAccountRequest = serde_json::from_str(&request).unwrap();
-
-    let resp: i32 = valkey.sadd(
-        "env:dev:auth:accounts",
-        request.account_name,
-    ).await.unwrap();
-
-    if resp == 0 {
-        StatusCode::BAD_REQUEST
-    } else {
-        StatusCode::OK
-    }
+    Ok(CreateAccountResponse{})
 }
 
 async fn login(
-    State(mut app_state): State<AppState>,
-    Json(request): Json<LoginRequest>,
-) -> impl IntoResponse {
-    StatusCode::NOT_IMPLEMENTED
+    request: LoginRequest,
+) -> Result<LoginResponse, NatsError> {
+    tracing::info!("Logging in!");
+
+    Ok(LoginResponse{})
 }

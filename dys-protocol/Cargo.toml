@@ -5,9 +5,17 @@ edition = "2021"
 
 [build-dependencies]
 tonic-build.workspace = true
+prost-build.workspace = true
 walkdir = "2.5.0"
 
 [dependencies]
+dys-nats = { path = "../dys-nats" }
+
+async-nats.workspace = true
+bytes.workspace = true
+futures.workspace = true
+postcard.workspace = true
 prost.workspace = true
 serde.workspace = true
 tonic.workspace = true
+tower.workspace = true

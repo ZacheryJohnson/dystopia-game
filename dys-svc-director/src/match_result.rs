@@ -3,8 +3,8 @@ use axum::http::HeaderValue;
 use axum::response::IntoResponse;
 use futures::StreamExt;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyDatastore};
-use dys_protocol::protocol::match_results::match_response::MatchSummary;
-use dys_protocol::protocol::match_results::MatchResponse;
+use dys_protocol::http::match_results::match_response::MatchSummary;
+use dys_protocol::http::match_results::MatchResponse;
 
 pub struct SummaryService {
     valkey: ValkeyDatastore,
@@ -33,7 +33,7 @@ impl SummaryService {
 
         let subject = format!(
             "rpc.{}",
-            dys_protocol::protocol::match_results::summary_server::SERVICE_NAME
+            dys_protocol::http::match_results::summary_server::SERVICE_NAME
         );
         let subscriber = self
             .nats_client

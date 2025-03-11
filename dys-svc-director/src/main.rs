@@ -8,7 +8,7 @@ use axum::{extract::State, routing::get, Json, Router};
 use axum::routing::post;
 use dys_observability::logger::LoggerOptions;
 use dys_observability::middleware::{handle_shutdown_signal, make_span, map_trace_context, record_trace_id};
-use dys_protocol::protocol::match_results::match_response::MatchSummary;
+use dys_protocol::http::match_results::match_response::MatchSummary;
 use dys_simulation::game::Game;
 use dys_world::arena::Arena;
 use dys_world::schedule::calendar::{Date, Month};
@@ -24,8 +24,8 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
-use dys_protocol::protocol::vote::{GetProposalsResponse, Proposal, ProposalOption, VoteOnProposalRequest, VoteOnProposalResponse};
-use dys_protocol::protocol::world::GetSeasonResponse;
+use dys_protocol::http::vote::{GetProposalsResponse, Proposal, ProposalOption, VoteOnProposalRequest, VoteOnProposalResponse};
+use dys_protocol::http::world::GetSeasonResponse;
 use dys_world::combatant::instance::CombatantInstance;
 use dys_world::schedule::calendar::Month::Arguscorp;
 use dys_world::schedule::season::Season;
@@ -198,7 +198,7 @@ fn simulate_matches(world_state: WorldState) -> Vec<MatchSummary> {
             away_team_score: game_log.away_score() as u32,
             home_team_score: game_log.home_score() as u32,
             game_log_serialized: postcard::to_allocvec(&game_log).expect("failed to serialize game log"),
-            date: Some(dys_protocol::protocol::common::Date {
+            date: Some(dys_protocol::http::common::Date {
                 year: current_date.2,
                 month: current_date.0.to_owned() as i32 + 1, // ZJ-TODO: yuck
                 day: current_date.1,
@@ -250,19 +250,19 @@ async fn get_season(State(world_state): State<WorldState>) -> Response {
         .all_series
         .iter()
         .map(|rs_series| {
-            dys_protocol::protocol::world::Series {
+            dys_protocol::http::world::Series {
                 matches: rs_series
                     .matches
                     .iter()
                     .map(|rs_match| {
                         let rs_match = rs_match.lock().unwrap();
-                        let x = dys_protocol::protocol::world::MatchInstance {
+                        let x = dys_protocol::http::world::MatchInstance {
                             match_id: rs_match.match_id.to_owned(),
                             home_team_id: rs_match.home_team.lock().unwrap().id.to_owned(),
                             away_team_id: rs_match.away_team.lock().unwrap().id.to_owned(),
                             arena_id: 0,
                             // arena_id: rs_match.arena.lock().unwrap().id.to_owned(),
-                            date: Some(dys_protocol::protocol::common::Date {
+                            date: Some(dys_protocol::http::common::Date {
                                 year: rs_match.date.2,
                                 month: 1, // ZJ-TODO: arguscorp
                                 day: rs_match.date.1,
@@ -272,9 +272,9 @@ async fn get_season(State(world_state): State<WorldState>) -> Response {
                     })
                     .collect::<Vec<_>>(),
                 series_type: if matches!(rs_series.series_type, SeriesType::Normal) {
-                    dys_protocol::protocol::world::series::SeriesType::Normal
+                    dys_protocol::http::world::series::SeriesType::Normal
                 } else {
-                    dys_protocol::protocol::world::series::SeriesType::FirstTo
+                    dys_protocol::http::world::series::SeriesType::FirstTo
                 } as i32,
                 series_type_payload: vec![], // ZJ-TODO
             }
@@ -285,7 +285,7 @@ async fn get_season(State(world_state): State<WorldState>) -> Response {
 
     let resp = GetSeasonResponse {
         season_id: 1,
-        current_date: Some(dys_protocol::protocol::common::Date {
+        current_date: Some(dys_protocol::http::common::Date {
             year: current_date.2,
             month: 1, // ZJ-TODO: arguscorp
             day: current_date.1,

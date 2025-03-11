@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+dys-nats = { path = "../dys-nats" }
 dys-observability = { path = "../dys-observability" }
 dys-protocol = { path = "../dys-protocol" }
 

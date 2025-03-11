@@ -30,6 +30,7 @@ ahash = "0.8"
 async-nats = "0.39.0"
 axum = "0.7.5"
 bevy = { version = "0.15.2", features = ["bevy_asset", "bevy_color", "bevy_core_pipeline", "bevy_render", "bevy_sprite", "bevy_state", "bevy_text", "default_font"] }
+bytes = { version = "1.10.1", features = ["serde"] }
 crossbeam = "0.8.4"
 dyn-clone = "1.0"
 eframe = "0.31"

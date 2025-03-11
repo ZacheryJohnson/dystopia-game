@@ -1799,9 +1799,9 @@ checksum = "8f1fe948ff07f4bd06c30984e69f5b4899c516a3ef74f34df92a2df2ab535495"
 
 [[package]]
 name = "bytes"
-version = "1.10.0"
+version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f61dac84819c6588b558454b194026eb1f09c293b9036ae9b159e74e73ab6cf9"
+checksum = "d71b6127be86fdcfddb610f7182ac57211d4b18a3e9c82eb2d17662f2227ad6a"
 dependencies = [
  "serde",
 ]
@@ -2513,6 +2513,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dys-nats"
+version = "0.1.0"
+dependencies = [
+ "async-nats",
+ "bytes",
+ "futures",
+ "postcard",
+ "serde",
+ "tokio",
+ "tower 0.4.13",
+ "tracing",
+]
+
+[[package]]
 name = "dys-observability"
 version = "0.1.0"
 dependencies = [
@@ -2534,10 +2548,17 @@ dependencies = [
 name = "dys-protocol"
 version = "0.1.0"
 dependencies = [
+ "async-nats",
+ "bytes",
+ "dys-nats",
+ "futures",
+ "postcard",
  "prost",
+ "prost-build",
  "serde",
  "tonic",
  "tonic-build",
+ "tower 0.4.13",
  "walkdir",
 ]
 
@@ -2588,6 +2609,7 @@ dependencies = [
  "axum",
  "dys-datastore",
  "dys-datastore-valkey",
+ "dys-nats",
  "dys-observability",
  "dys-protocol",
  "futures",
