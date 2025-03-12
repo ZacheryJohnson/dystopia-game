@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {computed, inject, onMounted, ref} from "vue";
 import type {VueCookies} from "vue-cookies";
-import { CreateAccountRequest } from "%/services/auth/account.ts";
+import {CreateAccountRequest} from "%/services/auth/account.ts";
 import {getAuthStore} from "@/stores/Auth.ts";
 const $cookies = inject<VueCookies>('$cookies');
 const authStore = getAuthStore();
@@ -17,6 +17,7 @@ const createAccount = async () => {
     method: "POST",
     body: JSON.stringify(request)
   })).status;
+
   if (respStatus === 200) {
     $cookies?.set("dax-auth", accountName);
     authStore.cookie = accountName;
@@ -29,7 +30,7 @@ const logout = async () => {
 };
 
 onMounted(() => {
-  authStore.cookie = $cookies?.get("dax-auth");
+  authStore.cookie = $cookies?.get("dax-auth") || "";
 })
 </script>
 

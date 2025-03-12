@@ -85,8 +85,25 @@ struct NatsServiceGenerator;
 
 impl ServiceGenerator for NatsServiceGenerator {
     fn generate(&mut self, service: Service, buf: &mut String) {
-        buf.push_str(
+        for method in &service.methods {
+            buf.push_str(
 r#"
+#[cfg(feature = "http")]
+impl <RESPONSE_TYPE> {
+    pub fn to_http(&self) -> crate::http::<PACKAGE_NAME>::<RESPONSE_TYPE> {
+        let bytes = postcard::to_allocvec(&self).unwrap();
+        postcard::from_bytes(&bytes).unwrap()
+    }
+}
+"#
+                .replace("<RESPONSE_TYPE>", method.output_type.as_str())
+                .replace("<PACKAGE_NAME>", service.package.as_str())
+                .as_str()
+            );
+        }
+
+        buf.push_str(
+            r#"
 pub mod <SERVICE_NAME>_svc {
     use std::future::Future;
     use std::pin::Pin;
@@ -113,13 +130,13 @@ pub mod <SERVICE_NAME>_svc {
         }
     }
 "#
-            .replace("<SERVICE_NAME>", service.name.to_ascii_lowercase().as_str())
-            .as_str()
+                .replace("<SERVICE_NAME>", service.name.to_ascii_lowercase().as_str())
+                .as_str()
         );
 
-        for method in service.methods {
+        for method in &service.methods {
             buf.push_str(
-r#"
+                r#"
     pub struct <RPC_NAME>RpcClient {
         nats_client: async_nats::Client,
     }
@@ -208,11 +225,11 @@ r#"
         }
     }
 "#
-                .replace("<SERVICE_NAME>", service.name.to_ascii_lowercase().as_str())
-                .replace("<RPC_NAME>", method.proto_name.as_str())
-                .replace("<REQUEST_TYPE>", method.input_type.as_str())
-                .replace("<RESPONSE_TYPE>", method.output_type.as_str())
-                .as_str()
+                    .replace("<SERVICE_NAME>", service.name.to_ascii_lowercase().as_str())
+                    .replace("<RPC_NAME>", method.proto_name.as_str())
+                    .replace("<REQUEST_TYPE>", method.input_type.as_str())
+                    .replace("<RESPONSE_TYPE>", method.output_type.as_str())
+                    .as_str()
             );
         }
         buf.push_str("}");

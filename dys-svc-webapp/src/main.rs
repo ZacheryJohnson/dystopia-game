@@ -30,23 +30,17 @@ struct AppState {
 
 #[tracing::instrument(skip(app_state))]
 async fn query_latest_games(State(app_state): State<AppState>) -> Result<Response, StatusCode> {
-    let match_request = dys_protocol::nats::match_results::MatchRequest {
+    let request = proto_nats::match_results::MatchRequest {
         match_ids: vec![], // ZJ-TODO: make this field useful
     };
 
-    let mut client = dys_protocol::nats::match_results::summary_svc::MatchesRpcClient::new(
+    let mut client = proto_nats::match_results::summary_svc::MatchesRpcClient::new(
         app_state.nats_client.clone(),
     );
 
-    match client.send_request(match_request).await {
-        Ok(nats_resp) => {
-            let nats_resp_bytes = postcard::to_allocvec(&nats_resp).unwrap();
-            let http_resp: proto_http::match_results::MatchResponse = postcard::from_bytes(nats_resp_bytes.as_slice()).unwrap();
-            Ok(Json(http_resp).into_response())
-        }
-        Err(err) => {
-            Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())
-        }
+    match client.send_request(request).await {
+        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
+        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
     }
 }
 
@@ -61,14 +55,8 @@ async fn query_world_state(State(app_state): State<AppState>) -> Result<Response
     );
 
     match client.send_request(request).await {
-        Ok(nats_resp) => {
-            let nats_resp_bytes = postcard::to_allocvec(&nats_resp).unwrap();
-            let http_resp: proto_http::world::WorldStateResponse = postcard::from_bytes(nats_resp_bytes.as_slice()).unwrap();
-            Ok(Json(http_resp).into_response())
-        }
-        Err(err) => {
-            Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())
-        }
+        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
+        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
     }
 }
 
@@ -78,16 +66,17 @@ async fn create_account(
     request: Bytes
 ) -> Result<Response, Infallible> {
     let http_request: proto_http::auth::CreateAccountRequest = serde_json::from_slice(request.as_ref()).unwrap();
-    let nats_request = proto_nats::auth::CreateAccountRequest {
+    let request = proto_nats::auth::CreateAccountRequest {
         account_name: http_request.account_name,
     };
 
-    let mut client = proto_nats::auth::account_svc::CreateAccountRpcClient::new(app_state.nats_client.clone());
-    let result = client.send_request(nats_request).await;
+    let mut client = proto_nats::auth::account_svc::CreateAccountRpcClient::new(
+        app_state.nats_client.clone()
+    );
 
-    match result {
-        Ok(resp) => Ok(Json(resp).into_response()),
-        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())
+    match client.send_request(request).await {
+        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
+        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
     }
 }
 
@@ -103,14 +92,8 @@ async fn get_voting_proposals(
     );
 
     match client.send_request(request).await {
-        Ok(nats_resp) => {
-            let nats_resp_bytes = postcard::to_allocvec(&nats_resp).unwrap();
-            let http_resp: proto_http::vote::GetProposalsResponse = postcard::from_bytes(nats_resp_bytes.as_slice()).unwrap();
-            Ok(Json(http_resp).into_response())
-        }
-        Err(err) => {
-            Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())
-        }
+        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
+        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
     }
 }
 
@@ -120,7 +103,7 @@ async fn submit_vote(
     request: Bytes,
 ) -> Result<Response, Infallible> {
     let http_request: proto_http::vote::VoteOnProposalRequest = serde_json::from_slice(request.as_ref()).unwrap();
-    let nats_request = proto_nats::vote::VoteOnProposalRequest {
+    let request = proto_nats::vote::VoteOnProposalRequest {
         proposal_id: http_request.proposal_id,
         option_id: http_request.option_id,
         proposal_payload: http_request.proposal_payload,
@@ -130,15 +113,9 @@ async fn submit_vote(
         app_state.nats_client.clone()
     );
 
-    match client.send_request(nats_request).await {
-        Ok(nats_resp) => {
-            let nats_resp_bytes = postcard::to_allocvec(&nats_resp).unwrap();
-            let http_resp: proto_http::vote::VoteOnProposalResponse = postcard::from_bytes(nats_resp_bytes.as_slice()).unwrap();
-            Ok(Json(http_resp).into_response())
-        }
-        Err(err) => {
-            Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())
-        }
+    match client.send_request(request).await {
+        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
+        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
     }
 }
 
@@ -147,21 +124,15 @@ async fn get_season(
     State(app_state): State<AppState>,
     _: Bytes,
 ) -> Result<Response, Infallible> {
-    let nats_request = proto_nats::world::GetSeasonRequest {};
+    let request = proto_nats::world::GetSeasonRequest {};
 
     let mut client = proto_nats::world::schedule_svc::GetSeasonRpcClient::new(
         app_state.nats_client.clone()
     );
 
-    match client.send_request(nats_request).await {
-        Ok(nats_resp) => {
-            let nats_resp_bytes = postcard::to_allocvec(&nats_resp).unwrap();
-            let http_resp: proto_http::world::GetSeasonResponse = postcard::from_bytes(nats_resp_bytes.as_slice()).unwrap();
-            Ok(Json(http_resp).into_response())
-        }
-        Err(err) => {
-            Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())
-        }
+    match client.send_request(request).await {
+        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
+        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
     }
 }
 
