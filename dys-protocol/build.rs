@@ -47,6 +47,7 @@ fn build_http(output_dir: PathBuf) -> Result<()> {
         .build_client(true)
         .build_transport(true)
         .type_attribute(".", "#[derive(serde::Deserialize, serde::Serialize)]")
+        .type_attribute(".", "#[serde(rename_all = \"camelCase\")]")
         .compile_protos(
             &get_proto_files(),
             &get_proto_includes(),
@@ -92,9 +93,25 @@ pub mod <SERVICE_NAME>_svc {
     use std::task::{Context, Poll};
     use bytes::Bytes;
     use futures::future::BoxFuture;
-    use futures::FutureExt;
     use tower::Service;
 
+    pub(crate) enum HandlerFn<Req, Resp, State> {
+        Stateless(Box<dyn Fn(Req) -> BoxFuture<'static, Result<Resp, dys_nats::error::NatsError>> + Send>),
+        Stateful(Box<dyn Fn(Req, State) -> BoxFuture<'static, Result<Resp, dys_nats::error::NatsError>> + Send>)
+    }
+
+    impl<Req, Resp, State> HandlerFn<Req, Resp, State> {
+        pub(crate) fn exec(
+            &self,
+            request: Req,
+            state: Option<State>
+        ) -> BoxFuture<'static, Result<Resp, dys_nats::error::NatsError>> {
+            match self {
+                HandlerFn::Stateless(func) => (func)(request),
+                HandlerFn::Stateful(func) => (func)(request, state.unwrap()),
+            }
+        }
+    }
 "#
             .replace("<SERVICE_NAME>", service.name.to_ascii_lowercase().as_str())
             .as_str()
@@ -103,24 +120,70 @@ pub mod <SERVICE_NAME>_svc {
         for method in service.methods {
             buf.push_str(
 r#"
-    pub struct <RPC_NAME>RpcService {
-        handler_fn: Box<dyn Fn(super::<REQUEST_TYPE>) -> BoxFuture<'static, Result<super::<RESPONSE_TYPE>, dys_nats::error::NatsError>>>,
+    pub struct <RPC_NAME>RpcClient {
+        nats_client: async_nats::Client,
     }
-    impl <RPC_NAME>RpcService {
+
+    impl <RPC_NAME>RpcClient {
+        pub fn new(nats_client: async_nats::Client) -> Self {
+            Self { nats_client }
+        }
+    }
+
+    impl dys_nats::client::NatsRpcClient for <RPC_NAME>RpcClient {
+        type Request = super::<REQUEST_TYPE>;
+        type Response = super::<RESPONSE_TYPE>;
+
+        const RPC_SUBJECT: &'static str = "rpc.<SERVICE_NAME>.<RPC_NAME>";
+
+        fn client(&self) -> async_nats::Client {
+            self.nats_client.clone()
+        }
+    }
+
+    pub struct <RPC_NAME>RpcServer<State> {
+        handler_fn: HandlerFn<super::<REQUEST_TYPE>, super::<RESPONSE_TYPE>, State>,
+        state: Option<State>,
+    }
+
+    impl<State: Clone> dys_nats::server::NatsRpcServer for <RPC_NAME>RpcServer<State> {
+        type Request = super::<REQUEST_TYPE>;
+        type Response = super::<RESPONSE_TYPE>;
+
+        const RPC_SUBJECT: &'static str = "rpc.<SERVICE_NAME>.<RPC_NAME>";
+    }
+
+    impl<State> <RPC_NAME>RpcServer<State> {
         pub fn with_handler<Func, Fut>(
             handler_fn: Func,
-        ) -> <RPC_NAME>RpcService
+        ) -> <RPC_NAME>RpcServer<State>
         where
             Func: Send + 'static + Fn(super::<REQUEST_TYPE>) -> Fut,
             Fut: Send + 'static + Future<Output = Result<super::<RESPONSE_TYPE>, dys_nats::error::NatsError>>,
         {
-            <RPC_NAME>RpcService {
-                handler_fn: Box::new(move |req| Box::pin(handler_fn(req))),
+            <RPC_NAME>RpcServer {
+                handler_fn: HandlerFn::Stateless(Box::new(move |req| Box::pin(handler_fn(req)))),
+                state: None,
+            }
+        }
+
+        pub fn with_handler_and_state<Func, Fut>(
+            handler_fn: Func,
+            state: State,
+        ) -> <RPC_NAME>RpcServer<State>
+        where
+            Func: Send + 'static + Fn(super::<REQUEST_TYPE>, State) -> Fut,
+            Fut: Send + 'static + Future<Output = Result<super::<RESPONSE_TYPE>, dys_nats::error::NatsError>>,
+
+        {
+            <RPC_NAME>RpcServer {
+                handler_fn: HandlerFn::Stateful(Box::new(move |req, state| Box::pin(handler_fn(req, state)))),
+                state: Some(state),
             }
         }
     }
 
-    impl Service<async_nats::Message> for <RPC_NAME>RpcService {
+    impl<State: Clone> Service<async_nats::Message> for <RPC_NAME>RpcServer<State> {
         type Response = Bytes;
         type Error = dys_nats::error::NatsError;
         type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
@@ -134,17 +197,18 @@ r#"
                 return Box::pin(async { Err(dys_nats::error::NatsError::MalformedRequest) });
             };
 
-            let future = (self.handler_fn)(converted_request);
+            let future = self.handler_fn.exec(converted_request, self.state.clone());
             Box::pin(async move {
                 let response = future.await;
-                let Ok(response_bytes) = postcard::to_allocvec(&response) else {
-                    return Err(dys_nats::error::NatsError::InternalSerializationError);
-                };
-                Ok(response_bytes.to_vec().into())
+                match response {
+                    Ok(response) => Ok(postcard::to_allocvec(&response).unwrap().into()),
+                    Err(err) => Err(err),
+                }
             })
         }
     }
 "#
+                .replace("<SERVICE_NAME>", service.name.to_ascii_lowercase().as_str())
                 .replace("<RPC_NAME>", method.proto_name.as_str())
                 .replace("<REQUEST_TYPE>", method.input_type.as_str())
                 .replace("<RESPONSE_TYPE>", method.output_type.as_str())
@@ -152,8 +216,6 @@ r#"
             );
         }
         buf.push_str("}");
-
-        println!("{buf}");
     }
 }
 
@@ -212,7 +274,10 @@ fn main() -> Result<()> {
     }
     std::fs::create_dir(output_dir.clone())?;
 
+    #[cfg(feature = "http")]
     build_http(output_dir.clone())?;
+
+    #[cfg(feature = "nats")]
     build_nats(output_dir.clone())?;
 
     Ok(())

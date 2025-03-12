@@ -31,7 +31,7 @@ message GetProposalsResponse {
 message VoteOnProposalRequest {
   uint64 proposal_id = 1;
   uint64 option_id = 2;
-  bytes proposal_payload = 3;
+  optional bytes proposal_payload = 3;
 }
 
 message VoteOnProposalResponse {

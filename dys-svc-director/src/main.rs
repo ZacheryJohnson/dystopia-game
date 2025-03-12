@@ -2,61 +2,39 @@ mod match_result;
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use axum::http::{HeaderValue, StatusCode};
-use axum::response::{IntoResponse, Response};
-use axum::{extract::State, routing::get, Json, Router};
-use axum::routing::post;
 use dys_observability::logger::LoggerOptions;
-use dys_observability::middleware::{handle_shutdown_signal, make_span, map_trace_context, record_trace_id};
-use dys_protocol::http::match_results::match_response::MatchSummary;
 use dys_simulation::game::Game;
-use dys_world::arena::Arena;
 use dys_world::schedule::calendar::{Date, Month};
-use dys_world::matches::instance::MatchInstance;
 use dys_world::world::World;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-use rand::{thread_rng, Rng, SeedableRng};
+use rand::SeedableRng;
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
-use tokio::signal;
-use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
-use dys_protocol::http::vote::{GetProposalsResponse, Proposal, ProposalOption, VoteOnProposalRequest, VoteOnProposalResponse};
-use dys_protocol::http::world::GetSeasonResponse;
+use dys_nats::error::NatsError;
+use dys_nats::router::NatsRouter;
+use dys_protocol::nats::match_results::match_response::MatchSummary;
+use dys_protocol::nats::match_results::summary_svc::MatchesRpcServer;
+use dys_protocol::nats::vote::{GetProposalsRequest, GetProposalsResponse, Proposal, ProposalOption, VoteOnProposalRequest, VoteOnProposalResponse};
+use dys_protocol::nats::vote::vote_svc::{GetProposalsRpcServer, VoteOnProposalRpcServer};
+use dys_protocol::nats::world::{GetSeasonRequest, GetSeasonResponse, WorldStateRequest, WorldStateResponse};
+use dys_protocol::nats::world::schedule_svc::GetSeasonRpcServer;
+use dys_protocol::nats::world::world_svc::WorldStateRpcServer;
 use dys_world::combatant::instance::CombatantInstance;
 use dys_world::schedule::calendar::Month::Arguscorp;
 use dys_world::schedule::season::Season;
 use dys_world::schedule::series::SeriesType;
-use crate::match_result::SummaryService;
+use crate::match_result::get_summaries;
 
-// ZJ-TODO: this should also live elsewhere
-#[derive(Clone, Serialize)]
-struct CombatantTeamMember {
-    team_name: String,
-    combatant_name: String,
-}
-
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct WorldState {
     game_world: Arc<Mutex<World>>,
     season: Arc<Mutex<Season>>,
     current_date: Arc<Mutex<Date>>,
     valkey: ValkeyDatastore,
     nats: async_nats::Client,
-    next_match_id: Arc<Mutex<u64>>, // ZJ-TODO: remove
-}
-
-async fn health_check(
-    State(world_state): State<WorldState>
-) -> Result<impl IntoResponse, StatusCode> {
-    if !matches!(world_state.nats.connection_state(), async_nats::connection::State::Connected) {
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-    };
-
-    Ok(StatusCode::OK)
 }
 
 #[tokio::main]
@@ -106,13 +84,12 @@ async fn main() {
         ))),
         valkey: *ValkeyDatastore::connect(valkey_config).await.unwrap(),
         nats: nats_client,
-        next_match_id: Arc::new(Mutex::new(1)),
     };
 
     let world_state_thread_copy = world_state.clone();
     const SLEEP_DURATION: Duration = Duration::from_secs(5 * 60);
 
-    tokio::spawn(async move {
+    tokio::task::spawn(async move {
         loop {
             tracing::info!("Executing simulations...");
             run_simulation(world_state_thread_copy.clone()).await;
@@ -139,39 +116,15 @@ async fn main() {
         }
     });
 
-    let world_state_thread_copy = world_state.clone();
-    tokio::spawn(async move {
-        let mut summary_service = SummaryService::new(
-            world_state_thread_copy.valkey.to_owned(),
-            world_state_thread_copy.nats.to_owned(),
-        );
-
-        summary_service.initialize().await;
-
-        loop {
-            summary_service.process().await;
-        }
-    });
-
-    let trace_middleware_layer = ServiceBuilder::new()
-        .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
-        .map_request(map_trace_context)    
-        .map_request(record_trace_id);
-
-    let app = Router::new()
-        .route("/season", get(get_season))
-        .route("/world_state", get(get_world_state))
-        .route("/get_voting_proposals", get(get_voting_proposals))
-        .route("/vote", post(submit_vote))
-        .route("/health", get(health_check))
-        .layer(trace_middleware_layer)
-        .with_state(world_state);
-
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:6081").await.unwrap();
-    axum::serve(listener, app)
-        .with_graceful_shutdown(handle_shutdown_signal())
+    let nats = NatsRouter::new()
         .await
-        .unwrap();
+        .service(MatchesRpcServer::with_handler_and_state(get_summaries, world_state.clone()))
+        .service(GetSeasonRpcServer::with_handler_and_state(get_season, world_state.clone()))
+        .service(WorldStateRpcServer::with_handler_and_state(get_world_state, world_state.clone()))
+        .service(GetProposalsRpcServer::with_handler_and_state(get_voting_proposals, world_state.clone()))
+        .service(VoteOnProposalRpcServer::with_handler_and_state(submit_vote, world_state.clone()));
+
+    nats.run().await;
 }
 
 fn simulate_matches(world_state: WorldState) -> Vec<MatchSummary> {
@@ -198,7 +151,7 @@ fn simulate_matches(world_state: WorldState) -> Vec<MatchSummary> {
             away_team_score: game_log.away_score() as u32,
             home_team_score: game_log.home_score() as u32,
             game_log_serialized: postcard::to_allocvec(&game_log).expect("failed to serialize game log"),
-            date: Some(dys_protocol::http::common::Date {
+            date: Some(dys_protocol::nats::common::Date {
                 year: current_date.2,
                 month: current_date.0.to_owned() as i32 + 1, // ZJ-TODO: yuck
                 day: current_date.1,
@@ -243,26 +196,30 @@ async fn run_simulation(mut world_state: WorldState) {
     ).await.unwrap();
 }
 
-async fn get_season(State(world_state): State<WorldState>) -> Response {
+#[tracing::instrument(skip(world_state))]
+async fn get_season(
+    _: GetSeasonRequest,
+    world_state: WorldState,
+) -> Result<GetSeasonResponse, NatsError> {
     let season = world_state.season.lock().unwrap();
 
     let proto_series = season
         .all_series
         .iter()
         .map(|rs_series| {
-            dys_protocol::http::world::Series {
+            dys_protocol::nats::world::Series {
                 matches: rs_series
                     .matches
                     .iter()
                     .map(|rs_match| {
                         let rs_match = rs_match.lock().unwrap();
-                        let x = dys_protocol::http::world::MatchInstance {
+                        let x = dys_protocol::nats::world::MatchInstance {
                             match_id: rs_match.match_id.to_owned(),
                             home_team_id: rs_match.home_team.lock().unwrap().id.to_owned(),
                             away_team_id: rs_match.away_team.lock().unwrap().id.to_owned(),
                             arena_id: 0,
                             // arena_id: rs_match.arena.lock().unwrap().id.to_owned(),
-                            date: Some(dys_protocol::http::common::Date {
+                            date: Some(dys_protocol::nats::common::Date {
                                 year: rs_match.date.2,
                                 month: 1, // ZJ-TODO: arguscorp
                                 day: rs_match.date.1,
@@ -272,9 +229,9 @@ async fn get_season(State(world_state): State<WorldState>) -> Response {
                     })
                     .collect::<Vec<_>>(),
                 series_type: if matches!(rs_series.series_type, SeriesType::Normal) {
-                    dys_protocol::http::world::series::SeriesType::Normal
+                    dys_protocol::nats::world::series::SeriesType::Normal
                 } else {
-                    dys_protocol::http::world::series::SeriesType::FirstTo
+                    dys_protocol::nats::world::series::SeriesType::FirstTo
                 } as i32,
                 series_type_payload: vec![], // ZJ-TODO
             }
@@ -283,38 +240,35 @@ async fn get_season(State(world_state): State<WorldState>) -> Response {
 
     let current_date = world_state.current_date.lock().unwrap().to_owned();
 
-    let resp = GetSeasonResponse {
+    Ok(GetSeasonResponse {
         season_id: 1,
-        current_date: Some(dys_protocol::http::common::Date {
+        current_date: Some(dys_protocol::nats::common::Date {
             year: current_date.2,
             month: 1, // ZJ-TODO: arguscorp
             day: current_date.1,
         }),
         all_series: proto_series,
-    };
-
-    let response_data: String = serde_json::to_string(&resp).unwrap();
-    let mut response = response_data.into_response();
-    response.headers_mut()
-        // ZJ-TODO: not *
-        .insert("Access-Control-Allow-Origin", HeaderValue::from_str("*").unwrap());
-
-    response
-}
-
-async fn get_world_state(State(mut world_state): State<WorldState>) -> Response {
-    let mut valkey = world_state.valkey.connection();
-    let response_data: String = valkey.hget("env:dev:world", "data").await.unwrap();
-    let mut response = response_data.into_response();
-    response.headers_mut()
-        // ZJ-TODO: not *
-        .insert("Access-Control-Allow-Origin", HeaderValue::from_str("*").unwrap());
-
-    response
+    })
 }
 
 #[tracing::instrument(skip(world_state))]
-async fn get_voting_proposals(State(mut world_state): State<WorldState>) -> Response {
+async fn get_world_state(
+    _: WorldStateRequest,
+    mut world_state: WorldState,
+) -> Result<WorldStateResponse, NatsError> {
+    let mut valkey = world_state.valkey.connection();
+    let response_data: String = valkey.hget("env:dev:world", "data").await.unwrap();
+
+    Ok(WorldStateResponse {
+        world_state_json: response_data.into_bytes(),
+    })
+}
+
+#[tracing::instrument(skip(world_state))]
+async fn get_voting_proposals(
+    _: GetProposalsRequest,
+    mut world_state: WorldState,
+) -> Result<GetProposalsResponse, NatsError> {
     let mut valkey = world_state.valkey.connection();
     let response_data: String = valkey.hget("env:dev:world", "data").await.unwrap();
     let world: World = serde_json::from_str(&response_data).unwrap();
@@ -357,20 +311,14 @@ async fn get_voting_proposals(State(mut world_state): State<WorldState>) -> Resp
         ],
     };
 
-    let response_data = serde_json::to_string(&response).unwrap();
-    let mut response = response_data.into_response();
-    response.headers_mut()
-        // ZJ-TODO: not *
-        .insert("Access-Control-Allow-Origin", HeaderValue::from_str("*").unwrap());
-
-    response
+    Ok(response)
 }
 
 #[tracing::instrument(skip(world_state, request))]
 async fn submit_vote(
-    State(mut world_state): State<WorldState>,
-    Json(request): Json<VoteOnProposalRequest>
-) -> Response {
+    request: VoteOnProposalRequest,
+    mut world_state: WorldState,
+) -> Result<VoteOnProposalResponse, NatsError> {
     let mut valkey = world_state.valkey.connection();
 
     let _: i32 = valkey.hincr(
@@ -379,11 +327,5 @@ async fn submit_vote(
         1,
     ).await.unwrap();
 
-    let response_data = serde_json::to_string(&VoteOnProposalResponse{}).unwrap();
-    let mut response = response_data.into_response();
-    response.headers_mut()
-        // ZJ-TODO: not *
-        .insert("Access-Control-Allow-Origin", HeaderValue::from_str("*").unwrap());
-
-    response
+    Ok(VoteOnProposalResponse {})
 }

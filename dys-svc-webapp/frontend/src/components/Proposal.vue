@@ -15,12 +15,10 @@ const sendVote = async (proposalId: number, optionId: number) => {
   const request = VoteOnProposalRequest.create();
   request.proposalId = proposalId;
   request.optionId = optionId;
-  request.proposalPayload = new Uint8Array();
 
-  // ZJ-TODO: impl this
   const response = await fetch("/api/vote", {
     method: "POST",
-    body: JSON.stringify(request)
+    body: JSON.stringify(VoteOnProposalRequest.toJSON(request)),
   });
 
   if (response.status === 200) {

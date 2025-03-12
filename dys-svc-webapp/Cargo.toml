@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+dys-nats = { path = "../dys-nats" }
 dys-observability = { path = "../dys-observability" }
-dys-protocol = { path = "../dys-protocol" }
+dys-protocol = { path = "../dys-protocol", features = ["http", "nats"] }
 
 async-nats.workspace = true
 axum.workspace = true

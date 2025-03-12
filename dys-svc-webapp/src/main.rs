@@ -1,15 +1,16 @@
 use std::convert::Infallible;
-use std::time::Duration;
-use axum::{extract::Request, http::{header, HeaderValue, StatusCode}, middleware::{self, Next}, response::{IntoResponse, Response}, Router};
-use axum::extract::{Path, State};
-use axum::http::Method;
-use axum::routing::get;
-use tonic::codegen::tokio_stream::StreamExt;
-use dys_observability::{logger::LoggerOptions, middleware::{make_span, map_trace_context, record_trace_id}};
+use axum::{extract::Request, http::{header, HeaderValue, StatusCode}, middleware::{self, Next}, response::{IntoResponse, Response}, Json, Router};
+use axum::body::Bytes;
+use axum::extract::State;
+use axum::routing::{get, post};
+use dys_observability::logger::LoggerOptions;
 use tower::ServiceBuilder;
-use tower_http::{services::{ServeDir, ServeFile}, trace::TraceLayer};
+use tower_http::services::{ServeDir, ServeFile};
+use dys_nats::client::NatsRpcClient;
 use dys_observability::middleware::handle_shutdown_signal;
-use dys_protocol::http::match_results::{MatchRequest, MatchResponse};
+
+use dys_protocol::http as proto_http;
+use dys_protocol::nats as proto_nats;
 
 const DEFAULT_DIST_PATH: &str = "dys-svc-webapp/frontend/dist";
 
@@ -29,210 +30,139 @@ struct AppState {
 
 #[tracing::instrument(skip(app_state))]
 async fn query_latest_games(State(app_state): State<AppState>) -> Result<Response, StatusCode> {
-    let match_request = MatchRequest {
+    let match_request = dys_protocol::nats::match_results::MatchRequest {
         match_ids: vec![], // ZJ-TODO: make this field useful
     };
 
-    let payload = postcard::to_allocvec(&match_request).unwrap();
+    let mut client = dys_protocol::nats::match_results::summary_svc::MatchesRpcClient::new(
+        app_state.nats_client.clone(),
+    );
 
-    let reply_subject = "rpc.testing";
-    let result = app_state.nats_client.subscribe(
-        reply_subject
-    ).await;
-
-    let Ok(mut reply_subscriber) = result else {
-        tracing::error!("failed to subscribe to reply topic {reply_subject}");
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-    };
-
-    let result = app_state.nats_client.publish_with_reply(
-        format!("rpc.{}", dys_protocol::http::match_results::summary_server::SERVICE_NAME),
-        reply_subject,
-        payload.into()
-    ).await;
-
-    if result.is_err() {
-        tracing::error!("failed to publish summary request");
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-    }
-
-   let Ok(response) = tokio::time::timeout(Duration::from_millis(500), async {
-        loop {
-            let Some(response) = reply_subscriber.next().await else {
-                continue;
-            };
-
-            return response;
+    match client.send_request(match_request).await {
+        Ok(nats_resp) => {
+            let nats_resp_bytes = postcard::to_allocvec(&nats_resp).unwrap();
+            let http_resp: proto_http::match_results::MatchResponse = postcard::from_bytes(nats_resp_bytes.as_slice()).unwrap();
+            Ok(Json(http_resp).into_response())
         }
-    }).await else {
-        tracing::error!("timed out waiting for reply");
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-    };
-
-    let response: MatchResponse = postcard::from_bytes(&response.payload).unwrap();
-    let response_json = serde_json::to_string(&response).unwrap();
-
-    let json = axum::Json(response_json);
-    Ok(json.into_response())
-}
-
-#[tracing::instrument(skip(request))]
-async fn query_combatants(request: Request) -> Result<Response, Infallible> {
-    let director_api_base_uri = std::env::var("SVC_DIRECTOR_API_BASE_URI").unwrap_or(String::from("http://localhost:6081"));
-    let request_url = format!("{director_api_base_uri}/combatants");
-
-    tracing::info!("Requesting combatants from director...");
-    let maybe_response = dys_observability::reqwest::get(request_url).await;
-    if let Err(err) = maybe_response {
-        tracing::warn!("Failed to get combatants from {}: {err:?}", director_api_base_uri);
-        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get combatants").into_response());
-    };
-
-    let response = maybe_response.unwrap();
-
-    let Ok(response_body) = response.text().await else {
-        tracing::warn!("Failed to get combatants response content");
-        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get combatants").into_response());
-    };
-
-    tracing::info!("Sending response...");
-    let json = axum::Json(response_body);
-    Ok(json.into_response())
-}
-
-#[tracing::instrument(skip(request))]
-async fn query_world_state(request: Request) -> Result<Response, Infallible> {
-    let director_api_base_uri = std::env::var("SVC_DIRECTOR_API_BASE_URI").unwrap_or(String::from("http://localhost:6081"));
-    let request_url = format!("{director_api_base_uri}/world_state");
-
-    tracing::info!("Requesting world_state from director...");
-    let maybe_response = dys_observability::reqwest::get(request_url).await;
-    if let Err(err) = maybe_response {
-        tracing::warn!("Failed to get world_state from {}: {err:?}", director_api_base_uri);
-        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get world_state").into_response());
-    };
-
-    let response = maybe_response.unwrap();
-
-    let Ok(response_body) = response.text().await else {
-        tracing::warn!("Failed to get world_state response content");
-        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get world_state").into_response());
-    };
-
-    tracing::info!("Sending response...");
-    let json = axum::Json(response_body);
-    Ok(json.into_response())
-}
-
-#[tracing::instrument(skip(request))]
-async fn create_account(request: Request) -> Result<Response, Infallible> {
-    if request.method() != Method::POST {
-        return Ok((StatusCode::METHOD_NOT_ALLOWED, "method not allowed").into_response());
-    };
-
-    let auth_api_base_uri = std::env::var("SVC_AUTH_API_BASE_URI").unwrap_or(String::from("http://localhost:6082"));
-    let request_url = format!("{auth_api_base_uri}/create_account");
-
-    let body = request.into_body();
-    let bytes = axum::body::to_bytes(body, 256usize).await.unwrap();
-    let body_str = String::from_utf8(bytes.to_vec()).unwrap().replace("accountName", "account_name");
-
-    let maybe_response = dys_observability::reqwest::post(request_url, body_str).await;
-    if let Err(err) = maybe_response {
-        tracing::warn!("Failed to create account: {err:?}");
-        return Ok((StatusCode::BAD_REQUEST, "failed to get create account").into_response());
-    };
-
-    let Ok(response_body) = maybe_response.unwrap().text().await else {
-        tracing::warn!("Failed to get create account response content");
-        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get create account response").into_response());
-    };
-
-    tracing::info!("Sending response...");
-    let json = axum::Json(response_body);
-    Ok(json.into_response())
-}
-
-#[tracing::instrument(skip(request))]
-async fn get_voting_proposals(request: Request) -> Result<Response, Infallible> {
-    if request.method() != Method::GET {
-        return Ok((StatusCode::METHOD_NOT_ALLOWED, "method not allowed").into_response());
-    };
-
-    let director_api_base_uri = std::env::var("SVC_DIRECTOR_API_BASE_URI").unwrap_or(String::from("http://localhost:6081"));
-    let request_url = format!("{director_api_base_uri}/get_voting_proposals");
-
-    let maybe_response = dys_observability::reqwest::get(request_url).await;
-    if let Err(err) = maybe_response {
-        tracing::warn!("Failed to get voting proposals: {err:?}");
-        return Ok((StatusCode::BAD_REQUEST, "failed to get voting proposals").into_response());
-    };
-
-    let Ok(response_body) = maybe_response.unwrap().text().await else {
-        tracing::warn!("Failed to get voting proposals content");
-        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get voting proposals response").into_response());
-    };
-
-    tracing::info!("Sending response...");
-    let json = axum::Json(response_body);
-    Ok(json.into_response())
-}
-
-#[tracing::instrument(skip(request))]
-async fn submit_vote(request: Request) -> Result<Response, Infallible> {
-    if request.method() != Method::POST {
-        return Ok((StatusCode::METHOD_NOT_ALLOWED, "method not allowed").into_response());
-    };
-
-    let director_api_base_uri = std::env::var("SVC_DIRECTOR_API_BASE_URI").unwrap_or(String::from("http://localhost:6081"));
-    let request_url = format!("{director_api_base_uri}/vote");
-
-    let body = request.into_body();
-    let bytes = axum::body::to_bytes(body, 256usize).await.unwrap();
-    let body_str = String::from_utf8(bytes.to_vec()).unwrap()
-        .replace("proposalId", "proposal_id")
-        .replace("optionId", "option_id")
-        .replace("\"proposalPayload\":{}", "\"proposal_payload\":[]");
-
-    let maybe_response = dys_observability::reqwest::post(request_url, body_str).await;
-    if let Err(err) = maybe_response {
-        tracing::warn!("Failed to post vote: {err:?}");
-        return Ok((StatusCode::BAD_REQUEST, "failed to post vote").into_response());
-    };
-
-    let Ok(response_body) = maybe_response.unwrap().text().await else {
-        tracing::warn!("Failed to parse vote response content");
-        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to parse vote response").into_response());
-    };
-
-    tracing::info!("Sending response {response_body}");
-    let json = axum::Json(response_body);
-    Ok(json.into_response())
-}
-
-#[tracing::instrument(skip(request))]
-async fn get_season(request: Request) -> Result<Response, Infallible> {
-    if request.method() != Method::GET {
-        return Ok((StatusCode::METHOD_NOT_ALLOWED, "method not allowed").into_response());
+        Err(err) => {
+            Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())
+        }
     }
+}
 
-    let director_api_base_uri = std::env::var("SVC_DIRECTOR_API_BASE_URI").unwrap_or(String::from("http://localhost:6081"));
-    let request_url = format!("{director_api_base_uri}/season");
-
-    let maybe_response = dys_observability::reqwest::get(request_url).await;
-    if let Err(err) = maybe_response {
-        tracing::warn!("Failed to get season: {err:?}");
-        return Ok((StatusCode::BAD_REQUEST, "failed to get season").into_response());
+#[tracing::instrument(skip(app_state))]
+async fn query_world_state(State(app_state): State<AppState>) -> Result<Response, Infallible> {
+    let request = proto_nats::world::WorldStateRequest {
+        revision: 0,
     };
 
-    let Ok(response_body) = maybe_response.unwrap().text().await else {
-        tracing::warn!("Failed to get season response content");
-        return Ok((StatusCode::INTERNAL_SERVER_ERROR, "failed to get season response").into_response());
+    let mut client = proto_nats::world::world_svc::WorldStateRpcClient::new(
+        app_state.nats_client.clone(),
+    );
+
+    match client.send_request(request).await {
+        Ok(nats_resp) => {
+            let nats_resp_bytes = postcard::to_allocvec(&nats_resp).unwrap();
+            let http_resp: proto_http::world::WorldStateResponse = postcard::from_bytes(nats_resp_bytes.as_slice()).unwrap();
+            Ok(Json(http_resp).into_response())
+        }
+        Err(err) => {
+            Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())
+        }
+    }
+}
+
+#[tracing::instrument(skip(app_state, request))]
+async fn create_account(
+    State(app_state): State<AppState>,
+    request: Bytes
+) -> Result<Response, Infallible> {
+    let http_request: proto_http::auth::CreateAccountRequest = serde_json::from_slice(request.as_ref()).unwrap();
+    let nats_request = proto_nats::auth::CreateAccountRequest {
+        account_name: http_request.account_name,
     };
 
-    tracing::info!("Sending response {response_body}");
-    let json = axum::Json(response_body);
-    Ok(json.into_response())
+    let mut client = proto_nats::auth::account_svc::CreateAccountRpcClient::new(app_state.nats_client.clone());
+    let result = client.send_request(nats_request).await;
+
+    match result {
+        Ok(resp) => Ok(Json(resp).into_response()),
+        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())
+    }
+}
+
+#[tracing::instrument(skip(app_state))]
+async fn get_voting_proposals(
+    State(app_state): State<AppState>,
+    _: Bytes,
+) -> Result<Response, Infallible> {
+    let request = proto_nats::vote::GetProposalsRequest {};
+
+    let mut client = proto_nats::vote::vote_svc::GetProposalsRpcClient::new(
+        app_state.nats_client.clone()
+    );
+
+    match client.send_request(request).await {
+        Ok(nats_resp) => {
+            let nats_resp_bytes = postcard::to_allocvec(&nats_resp).unwrap();
+            let http_resp: proto_http::vote::GetProposalsResponse = postcard::from_bytes(nats_resp_bytes.as_slice()).unwrap();
+            Ok(Json(http_resp).into_response())
+        }
+        Err(err) => {
+            Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())
+        }
+    }
+}
+
+#[tracing::instrument(skip(app_state, request))]
+async fn submit_vote(
+    State(app_state): State<AppState>,
+    request: Bytes,
+) -> Result<Response, Infallible> {
+    let http_request: proto_http::vote::VoteOnProposalRequest = serde_json::from_slice(request.as_ref()).unwrap();
+    let nats_request = proto_nats::vote::VoteOnProposalRequest {
+        proposal_id: http_request.proposal_id,
+        option_id: http_request.option_id,
+        proposal_payload: http_request.proposal_payload,
+    };
+
+    let mut client = proto_nats::vote::vote_svc::VoteOnProposalRpcClient::new(
+        app_state.nats_client.clone()
+    );
+
+    match client.send_request(nats_request).await {
+        Ok(nats_resp) => {
+            let nats_resp_bytes = postcard::to_allocvec(&nats_resp).unwrap();
+            let http_resp: proto_http::vote::VoteOnProposalResponse = postcard::from_bytes(nats_resp_bytes.as_slice()).unwrap();
+            Ok(Json(http_resp).into_response())
+        }
+        Err(err) => {
+            Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())
+        }
+    }
+}
+
+#[tracing::instrument(skip(app_state))]
+async fn get_season(
+    State(app_state): State<AppState>,
+    _: Bytes,
+) -> Result<Response, Infallible> {
+    let nats_request = proto_nats::world::GetSeasonRequest {};
+
+    let mut client = proto_nats::world::schedule_svc::GetSeasonRpcClient::new(
+        app_state.nats_client.clone()
+    );
+
+    match client.send_request(nats_request).await {
+        Ok(nats_resp) => {
+            let nats_resp_bytes = postcard::to_allocvec(&nats_resp).unwrap();
+            let http_resp: proto_http::world::GetSeasonResponse = postcard::from_bytes(nats_resp_bytes.as_slice()).unwrap();
+            Ok(Json(http_resp).into_response())
+        }
+        Err(err) => {
+            Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())
+        }
+    }
 }
 
 async fn health_check(_: Request) -> Result<impl IntoResponse, Infallible> {
@@ -272,58 +202,37 @@ async fn main() {
             "/api/summaries",
             Router::new()
                 .fallback(get(query_latest_games))
-                .with_state(app_state)
-        )
-        .nest_service(
-            "/api/combatants",
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
-                .map_request(map_trace_context)
-                .map_request(record_trace_id)
-                .layer(middleware::from_fn(static_cache_control))
-                .service_fn(query_combatants)
+                .with_state(app_state.clone())
         )
         .nest_service(
             "/api/world_state",
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
-                .map_request(map_trace_context)
-                .map_request(record_trace_id)
-                .layer(middleware::from_fn(static_cache_control))
-                .service_fn(query_world_state)
+            Router::new()
+                .fallback(get(query_world_state))
+                .with_state(app_state.clone())
         )
         .nest_service(
             "/api/season",
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
-                .map_request(map_trace_context)
-                .map_request(record_trace_id)
-                .layer(middleware::from_fn(static_cache_control))
-                .service_fn(get_season)
+            Router::new()
+                .fallback(get(get_season))
+                .with_state(app_state.clone())
         )
         .nest_service(
             "/api/create_account",
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
-                .map_request(map_trace_context)
-                .map_request(record_trace_id)
-                .service_fn(create_account)
+            Router::new()
+                .fallback(post(create_account))
+                .with_state(app_state.clone())
         )
         .nest_service(
             "/api/get_voting_proposals",
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
-                .map_request(map_trace_context)
-                .map_request(record_trace_id)
-                .service_fn(get_voting_proposals)
+            Router::new()
+                .fallback(get(get_voting_proposals))
+                .with_state(app_state.clone())
         )
         .nest_service(
             "/api/vote",
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_grpc().make_span_with(make_span))
-                .map_request(map_trace_context)
-                .map_request(record_trace_id)
-                .service_fn(submit_vote)
+            Router::new()
+                .fallback(post(submit_vote))
+                .with_state(app_state.clone())
         )
         .nest_service(
             "/assets",

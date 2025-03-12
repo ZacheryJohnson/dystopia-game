@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {computed, inject, onMounted, type Ref, ref} from "vue";
-import {Proposal as ProposalT, ProposalOption} from "%/services/vote/vote.ts";
+import {type GetProposalsResponse, Proposal as ProposalT, ProposalOption} from "%/services/vote/vote.ts";
 import Proposal from "@/components/Proposal.vue";
 import {getAuthStore} from "@/stores/Auth.ts";
 
@@ -10,28 +10,8 @@ const authStore = getAuthStore();
 const isAuthed = computed(() => authStore.cookie.length > 0);
 
 onMounted(async () => {
-  const proposalObjects = JSON.parse(await (await fetch("/api/get_voting_proposals")).json());
-  let proposalArray = [];
-  for (let proposalObj of proposalObjects["proposals"]) {
-    proposalObj["proposalId"] = proposalObj["proposal_id"];
-    proposalObj["proposalName"] = proposalObj["proposal_name"];
-    proposalObj["proposalDesc"] = proposalObj["proposal_desc"];
-
-    let newOptionsArray = [];
-    for (let option of proposalObj["proposal_options"]) {
-      option["optionId"] = option["option_id"];
-      option["optionName"] = option["option_name"];
-      option["optionDesc"] = option["option_desc"];
-      delete option["option_id"];
-      delete option["option_name"];
-      delete option["option_desc"];
-      newOptionsArray.push(ProposalOption.fromJSON(option));
-    }
-    proposalObj["proposalOptions"] = newOptionsArray;
-    proposalArray.push(ProposalT.fromJSON(proposalObj));
-  }
-
-  proposals.value = proposalArray;
+  const getProposalsResponse: GetProposalsResponse = await (await fetch("/api/get_voting_proposals")).json();
+  proposals.value = getProposalsResponse.proposals;
 });
 </script>
 

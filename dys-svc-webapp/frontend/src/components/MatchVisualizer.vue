@@ -2,6 +2,7 @@
   import {onMounted, onUnmounted, onUpdated} from "vue";
   import init, { exit, initializeWithCanvas, loadGameLog } from "@/assets/matchvisualizer.js"
   import {getMatchVisualizerStore} from "@/stores/MatchVisualizer";
+  import type {WorldStateResponse} from "%/services/world/world.ts";
   const matchVisualizerStore = getMatchVisualizerStore();
 
   const props = defineProps([
@@ -12,7 +13,8 @@
 
   onMounted(async () => {
     if (!matchVisualizerStore.hasWasmLoaded) {
-      matchVisualizerStore.worldState = (await (await fetch(`api/world_state`)).json());
+      const worldStateResponse: WorldStateResponse = (await (await fetch(`api/world_state`)).json());
+      matchVisualizerStore.worldStateBytes = worldStateResponse.worldStateJson;
       await init(await fetch("/matchvisualizer_opt.wasm"))
         .catch(err => {
           if (!err.message.startsWith("Using exceptions for control flow,")) {
@@ -38,8 +40,7 @@
       return;
     }
 
-    const bytes = Uint8Array.from(Array.from(matchVisualizerStore.worldState.valueOf()).map(letter => letter.charCodeAt(0)));
-    loadGameLog(props.gameLogData, bytes);
+    loadGameLog(props.gameLogData, matchVisualizerStore.worldStateBytes.valueOf());
   });
 </script>
 

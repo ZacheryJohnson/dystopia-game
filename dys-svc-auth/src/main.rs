@@ -1,21 +1,14 @@
 use async_nats::ConnectOptions;
-use axum::extract::{Request, State};
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
-use axum::{Json, Router};
-use axum::routing::{get, post};
 use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
 use dys_nats::error::NatsError;
 use dys_nats::router::NatsRouter;
 use dys_observability::logger::LoggerOptions;
-use dys_observability::middleware::{handle_shutdown_signal, make_span, map_trace_context, record_trace_id};
-use dys_protocol::nats::auth::account_svc::{CreateAccountRpcService, LoginRpcService};
+use dys_protocol::nats::auth::account_svc::{CreateAccountRpcServer, LoginRpcServer};
 use dys_protocol::nats::auth::{CreateAccountRequest, CreateAccountResponse, LoginRequest, LoginResponse};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct AppState {
     valkey: ValkeyDatastore,
 }
@@ -44,35 +37,29 @@ async fn main() {
 
     let nats = NatsRouter::new()
         .await
-        .service(CreateAccountRpcService::with_handler(create_account))
-        .service(LoginRpcService::with_handler(login));
+        .service(CreateAccountRpcServer::with_handler_and_state(create_account, app_state.clone()))
+        .service(LoginRpcServer::with_handler_and_state(login, app_state.clone()));
     nats.run().await;
 }
 
-async fn health_check(
-    State(_): State<AppState>
-) -> Result<impl IntoResponse, StatusCode> {
-    Ok(StatusCode::OK)
-}
-
+#[tracing::instrument(skip(app_state))]
 async fn create_account(
     request: CreateAccountRequest,
+    mut app_state: AppState,
 ) -> Result<CreateAccountResponse, NatsError> {
-    tracing::info!("Creating account!");
-    // let mut valkey = app_state.valkey.connection();
-    //
-    // let _: i32 = valkey.sadd(
-    //     "env:dev:auth:accounts",
-    //     request.account_name,
-    // ).await.unwrap();
+    let mut valkey = app_state.valkey.connection();
+
+    let _: i32 = valkey.sadd(
+        "env:dev:auth:accounts",
+        request.account_name,
+    ).await.unwrap();
 
     Ok(CreateAccountResponse{})
 }
 
 async fn login(
     request: LoginRequest,
+    mut app_state: AppState,
 ) -> Result<LoginResponse, NatsError> {
-    tracing::info!("Logging in!");
-
     Ok(LoginResponse{})
 }

@@ -4,22 +4,19 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+dys-nats = { path = "../dys-nats" }
 dys-simulation = { path = "../dys-simulation" }
 dys-observability = { path = "../dys-observability" }
-dys-protocol = { path = "../dys-protocol" }
+dys-protocol = { path = "../dys-protocol", features = ["nats"] }
 dys-world = { path = "../dys-world" }
 
 dys-datastore = { path = "../dys-datastore" }
 dys-datastore-valkey = { path = "../dys-datastore-valkey" }
 
 async-nats.workspace = true
-axum.workspace = true
-futures.workspace = true
 postcard.workspace = true
 rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
-tower.workspace = true
-tower-http.workspace = true
 tracing.workspace = true

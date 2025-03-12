@@ -5,7 +5,7 @@ pub use redis::ExpireOption;
 use redis::{Client, ConnectionAddr, ConnectionInfo, IntoConnectionInfo, RedisConnectionInfo, RedisResult};
 use dys_datastore::datastore::Datastore;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ValkeyDatastore {
     connection: MultiplexedConnection
 }

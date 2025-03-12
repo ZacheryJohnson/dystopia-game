@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import {ref, onMounted, type Ref, computed} from "vue";
   import GameCarouselElement from "./GameCarouselElement.vue";
-  import {MatchResponse_MatchSummary as MatchSummary} from "%/services/match_results/summary.ts";
+import {
+  MatchResponse_MatchSummary as MatchSummary
+} from "%/services/match_results/summary.ts";
 import {date_MonthToJSON, DateMessage} from "%/common/date.ts";
 
   type DateAndMatchesT = Map<string, MatchSummary[]>;
@@ -28,25 +30,15 @@ import {date_MonthToJSON, DateMessage} from "%/common/date.ts";
   };
 
   onMounted(async () => {
-    const match_summaries = JSON.parse((await (await fetch(`api/summaries`)).json()))["match_summaries"];
+    const matchSummaries: MatchSummary[] = (await (await fetch(`api/summaries`)).json()).matchSummaries;
 
     dateAndMatches.value = new Map();
-    for (const match of match_summaries) {
-      const newMatch = MatchSummary.create({
-        matchId: match["match_id"],
-        awayTeamName: match["away_team_name"].substring(0, 3).toUpperCase(),
-        homeTeamName: match["home_team_name"].substring(0, 3).toUpperCase(),
-        awayTeamScore: match["away_team_score"],
-        homeTeamScore: match["home_team_score"],
-        gameLogSerialized: match["game_log_serialized"],
-        date: match["date"],
-      });
-
-      const dateStr = dateToStr(newMatch.date!);
+    for (const match of matchSummaries) {
+      const dateStr = dateToStr(match.date!);
       if (dateAndMatches.value.has(dateStr)) {
-        dateAndMatches.value.get(dateStr)!.push(newMatch);
+        dateAndMatches.value.get(dateStr)!.push(match);
       } else {
-        dateAndMatches.value.set(dateStr, [newMatch]);
+        dateAndMatches.value.set(dateStr, [match]);
       }
     }
   });
@@ -64,8 +56,8 @@ import {date_MonthToJSON, DateMessage} from "%/common/date.ts";
     <GameCarouselElement
         v-for="match of matches"
         :key="match.matchId"
-        :awayAbbr="match.awayTeamName"
-        :homeAbbr="match.homeTeamName"
+        :awayAbbr="match.awayTeamName.substring(0, 3).toUpperCase()"
+        :homeAbbr="match.homeTeamName.substring(0, 3).toUpperCase()"
         :awayScore="match.awayTeamScore"
         :homeScore="match.homeTeamScore"
         :gameLogData="match.gameLogSerialized"
