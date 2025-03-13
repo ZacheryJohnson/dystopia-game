@@ -54,7 +54,7 @@ const homeTeamImgPath = `/images/teams/team_wip_${getTeamNameFn(props.homeAbbr)}
     </div>
 </template>
 
-<style>
+<style scoped>
 p {
     font-family: 'VarelaRound';
 }

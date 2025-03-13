@@ -41,7 +41,7 @@ pub trait NatsRpcClient {
             return Err(NatsError::PublishError);
         }
 
-        let Ok(response) = tokio::time::timeout(Duration::from_millis(500), async {
+        let Ok(response) = tokio::time::timeout(Duration::from_millis(10000), async {
             loop {
                 let Some(response) = reply_subscriber.next().await else {
                     continue;
