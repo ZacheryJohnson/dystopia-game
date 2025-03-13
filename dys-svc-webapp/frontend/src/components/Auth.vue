@@ -50,5 +50,6 @@ onMounted(() => {
 <style scoped>
 div {
   margin-left: auto;
+  text-align: right;
 }
 </style>

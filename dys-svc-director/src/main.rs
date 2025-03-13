@@ -1,7 +1,9 @@
 mod match_result;
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use bytes::Bytes;
 use dys_observability::logger::LoggerOptions;
 use dys_simulation::game::Game;
 use dys_world::schedule::calendar::{Date, Month};
@@ -16,7 +18,7 @@ use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatasto
 use dys_nats::error::NatsError;
 use dys_nats::router::NatsRouter;
 use dys_protocol::nats::match_results::match_response::MatchSummary;
-use dys_protocol::nats::match_results::summary_svc::MatchesRpcServer;
+use dys_protocol::nats::match_results::summary_svc::{GetGameLogRpcServer, MatchesRpcServer};
 use dys_protocol::nats::vote::{GetProposalsRequest, GetProposalsResponse, Proposal, ProposalOption, VoteOnProposalRequest, VoteOnProposalResponse};
 use dys_protocol::nats::vote::vote_svc::{GetProposalsRpcServer, VoteOnProposalRpcServer};
 use dys_protocol::nats::world::{GetSeasonRequest, GetSeasonResponse, WorldStateRequest, WorldStateResponse};
@@ -26,10 +28,10 @@ use dys_world::combatant::instance::CombatantInstance;
 use dys_world::schedule::calendar::Month::Arguscorp;
 use dys_world::schedule::season::Season;
 use dys_world::schedule::series::SeriesType;
-use crate::match_result::get_summaries;
+use crate::match_result::{get_game_log, get_summaries};
 
 #[derive(Clone, Debug)]
-struct WorldState {
+struct AppState {
     game_world: Arc<Mutex<World>>,
     season: Arc<Mutex<Season>>,
     current_date: Arc<Mutex<Date>>,
@@ -76,7 +78,7 @@ async fn main() {
         .await
         .expect("failed to connect to NATS server");
 
-    let world_state = WorldState {
+    let app_state = AppState {
         game_world: game_world.clone(),
         season: Arc::new(Mutex::new(season)),
         current_date: Arc::new(Mutex::new(Date(
@@ -86,17 +88,17 @@ async fn main() {
         nats: nats_client,
     };
 
-    let world_state_thread_copy = world_state.clone();
+    let app_state_thread_copy = app_state.clone();
     const SLEEP_DURATION: Duration = Duration::from_secs(5 * 60);
 
     tokio::task::spawn(async move {
         loop {
             tracing::info!("Executing simulations...");
-            run_simulation(world_state_thread_copy.clone()).await;
+            run_simulation(app_state_thread_copy.clone()).await;
 
-            let mut world_state = world_state_thread_copy.clone();
-            let mut valkey = world_state.valkey.connection();
-            let world = world_state.game_world.lock().unwrap().to_owned();
+            let mut app_state = app_state_thread_copy.clone();
+            let mut valkey = app_state.valkey.connection();
+            let world = app_state.game_world.lock().unwrap().to_owned();
 
             tracing::info!("Saving world state in valkey...");
             let _: i32 = valkey.hset(
@@ -118,18 +120,19 @@ async fn main() {
 
     let nats = NatsRouter::new()
         .await
-        .service(MatchesRpcServer::with_handler_and_state(get_summaries, world_state.clone()))
-        .service(GetSeasonRpcServer::with_handler_and_state(get_season, world_state.clone()))
-        .service(WorldStateRpcServer::with_handler_and_state(get_world_state, world_state.clone()))
-        .service(GetProposalsRpcServer::with_handler_and_state(get_voting_proposals, world_state.clone()))
-        .service(VoteOnProposalRpcServer::with_handler_and_state(submit_vote, world_state.clone()));
+        .service(MatchesRpcServer::with_handler_and_state(get_summaries, app_state.clone()))
+        .service(GetGameLogRpcServer::with_handler_and_state(get_game_log, app_state.clone()))
+        .service(GetSeasonRpcServer::with_handler_and_state(get_season, app_state.clone()))
+        .service(WorldStateRpcServer::with_handler_and_state(get_world_state, app_state.clone()))
+        .service(GetProposalsRpcServer::with_handler_and_state(get_voting_proposals, app_state.clone()))
+        .service(VoteOnProposalRpcServer::with_handler_and_state(submit_vote, app_state.clone()));
 
     nats.run().await;
 }
 
-fn simulate_matches(world_state: WorldState) -> Vec<MatchSummary> {
-    let current_date = world_state.current_date.lock().unwrap().to_owned();
-    let match_instances = world_state.season.lock().unwrap().matches_on_date(&current_date);
+fn simulate_matches(app_state: AppState) -> Vec<(MatchSummary, Bytes)> {
+    let current_date = app_state.current_date.lock().unwrap().to_owned();
+    let match_instances = app_state.season.lock().unwrap().matches_on_date(&current_date);
 
     // Simulate matches
     let mut match_results = vec![];
@@ -144,22 +147,23 @@ fn simulate_matches(world_state: WorldState) -> Vec<MatchSummary> {
         let game = Game { match_instance };
         let game_log = game.simulate();
 
-        match_results.push(MatchSummary {
+        match_results.push((MatchSummary {
             match_id,
             away_team_name,
             home_team_name,
             away_team_score: game_log.away_score() as u32,
             home_team_score: game_log.home_score() as u32,
-            game_log_serialized: postcard::to_allocvec(&game_log).expect("failed to serialize game log"),
             date: Some(dys_protocol::nats::common::Date {
                 year: current_date.2,
                 month: current_date.0.to_owned() as i32 + 1, // ZJ-TODO: yuck
                 day: current_date.1,
             }),
-        });
+            home_team_record: String::new(),
+            away_team_record: String::new(),
+        }, postcard::to_allocvec(&game_log).expect("failed to serialize game log").into()));
     }
 
-    *world_state.current_date.lock().unwrap() = Date(
+    *app_state.current_date.lock().unwrap() = Date(
         current_date.0,
         current_date.1 + 1,
         current_date.2
@@ -169,19 +173,72 @@ fn simulate_matches(world_state: WorldState) -> Vec<MatchSummary> {
 }
 
 #[tracing::instrument(skip_all)]
-async fn run_simulation(mut world_state: WorldState) {
+async fn run_simulation(mut world_state: AppState) {
     let match_summary = simulate_matches(world_state.clone());
 
     let mut latest_ids = vec![];
     let mut valkey = world_state.valkey.connection();
-    for summary in match_summary {
+    for (mut summary, serialized_game_log) in match_summary {
         latest_ids.push(summary.match_id);
+
+        let home_win = summary.home_team_score > summary.away_team_score;
+
+        let _: i32 = valkey.hincr(
+            // ZJ-TODO: should be team ID
+            format!("env:dev:season:record:team:{}", summary.away_team_name),
+            if home_win { "losses" } else { "wins" },
+            1
+        ).await.unwrap();
+
+        let _: i32 = valkey.hincr(
+            // ZJ-TODO: should be team ID
+            format!("env:dev:season:record:team:{}", summary.home_team_name),
+            if home_win { "wins" } else { "losses" },
+            1
+        ).await.unwrap();
+
+        let away_team_record: Vec<String> = valkey.hgetall(
+            format!("env:dev:season:record:team:{}", summary.away_team_name)
+        ).await.unwrap();
+        assert_eq!(away_team_record.len() % 2, 0);
+        let away_team_record = away_team_record
+            .chunks(2)
+            .map(|vals| (vals[0].to_owned(), vals[1].parse::<i32>().unwrap()))
+            .collect::<HashMap<_, _>>();
+        let away_team_record = format!(
+            "{}-{}",
+            away_team_record.get(&String::from("wins")).unwrap_or(&0),
+            away_team_record.get(&String::from("losses")).unwrap_or(&0),
+        );
+
+        let home_team_record: Vec<String> = valkey.hgetall(
+            format!("env:dev:season:record:team:{}", summary.home_team_name)
+        ).await.unwrap();
+        assert_eq!(home_team_record.len() % 2, 0);
+        let home_team_record = home_team_record
+            .chunks(2)
+            .map(|vals| (vals[0].to_owned(), vals[1].parse::<i32>().unwrap()))
+            .collect::<HashMap<_, _>>();
+        let home_team_record = format!(
+            "{}-{}",
+            home_team_record.get(&String::from("wins")).unwrap_or(&0),
+            home_team_record.get(&String::from("losses")).unwrap_or(&0),
+        );
+
+        summary.away_team_record = away_team_record;
+        summary.home_team_record = home_team_record;
 
         let match_summary_json = serde_json::to_string(&summary).unwrap();
         let _: i32 = valkey.hset(
             format!("env:dev:match.results:id:{}", summary.match_id),
-            "data",
+            "summary",
             match_summary_json,
+        ).await.unwrap();
+
+        let _: i32 = valkey.hset(
+            format!("env:dev:match.results:id:{}", summary.match_id),
+            "game_log",
+            serialized_game_log.as_ref(),
         ).await.unwrap();
 
         let _: i32 = valkey.expire(
@@ -190,18 +247,24 @@ async fn run_simulation(mut world_state: WorldState) {
         ).await.unwrap();
     }
 
-    let _: String = valkey.set(
+    let _: u32 = valkey.lpush(
         "env:dev:match.results:latest",
-        serde_json::to_string(&latest_ids).unwrap(),
+        latest_ids,
+    ).await.unwrap();
+
+    let _: String = valkey.ltrim(
+        "env:dev:match.results:latest",
+        0,
+        10,
     ).await.unwrap();
 }
 
-#[tracing::instrument(skip(world_state))]
+#[tracing::instrument(skip(app_state))]
 async fn get_season(
     _: GetSeasonRequest,
-    world_state: WorldState,
+    app_state: AppState,
 ) -> Result<GetSeasonResponse, NatsError> {
-    let season = world_state.season.lock().unwrap();
+    let season = app_state.season.lock().unwrap();
 
     let proto_series = season
         .all_series
@@ -238,7 +301,7 @@ async fn get_season(
         })
         .collect::<Vec<_>>();
 
-    let current_date = world_state.current_date.lock().unwrap().to_owned();
+    let current_date = app_state.current_date.lock().unwrap().to_owned();
 
     Ok(GetSeasonResponse {
         season_id: 1,
@@ -251,12 +314,12 @@ async fn get_season(
     })
 }
 
-#[tracing::instrument(skip(world_state))]
+#[tracing::instrument(skip(app_state))]
 async fn get_world_state(
     _: WorldStateRequest,
-    mut world_state: WorldState,
+    mut app_state: AppState,
 ) -> Result<WorldStateResponse, NatsError> {
-    let mut valkey = world_state.valkey.connection();
+    let mut valkey = app_state.valkey.connection();
     let response_data: String = valkey.hget("env:dev:world", "data").await.unwrap();
 
     Ok(WorldStateResponse {
@@ -264,12 +327,12 @@ async fn get_world_state(
     })
 }
 
-#[tracing::instrument(skip(world_state))]
+#[tracing::instrument(skip(app_state))]
 async fn get_voting_proposals(
     _: GetProposalsRequest,
-    mut world_state: WorldState,
+    mut app_state: AppState,
 ) -> Result<GetProposalsResponse, NatsError> {
-    let mut valkey = world_state.valkey.connection();
+    let mut valkey = app_state.valkey.connection();
     let response_data: String = valkey.hget("env:dev:world", "data").await.unwrap();
     let world: World = serde_json::from_str(&response_data).unwrap();
     let team = world.teams.choose(&mut rand::thread_rng()).unwrap();
@@ -314,12 +377,12 @@ async fn get_voting_proposals(
     Ok(response)
 }
 
-#[tracing::instrument(skip(world_state, request))]
+#[tracing::instrument(skip(app_state, request))]
 async fn submit_vote(
     request: VoteOnProposalRequest,
-    mut world_state: WorldState,
+    mut app_state: AppState,
 ) -> Result<VoteOnProposalResponse, NatsError> {
-    let mut valkey = world_state.valkey.connection();
+    let mut valkey = app_state.valkey.connection();
 
     let _: i32 = valkey.hincr(
         format!("env:dev:votes:proposal:{}", request.proposal_id),

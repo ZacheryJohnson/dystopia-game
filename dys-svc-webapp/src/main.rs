@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 use axum::{extract::Request, http::{header, HeaderValue, StatusCode}, middleware::{self, Next}, response::{IntoResponse, Response}, Json, Router};
 use axum::body::Bytes;
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::routing::{get, post};
 use dys_observability::logger::LoggerOptions;
 use tower::ServiceBuilder;
@@ -136,6 +136,25 @@ async fn get_season(
     }
 }
 
+#[tracing::instrument(skip(app_state))]
+async fn get_game_log(
+    State(app_state): State<AppState>,
+    Path(match_id): Path<u64>,
+) -> Result<Response, Infallible> {
+    let request = proto_nats::match_results::GetGameLogRequest {
+        match_id
+    };
+
+    let mut client = proto_nats::match_results::summary_svc::GetGameLogRpcClient::new(
+        app_state.nats_client.clone()
+    );
+
+    match client.send_request(request).await {
+        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
+        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
+    }
+}
+
 async fn health_check(_: Request) -> Result<impl IntoResponse, Infallible> {
     Ok(StatusCode::OK)
 }
@@ -173,6 +192,12 @@ async fn main() {
             "/api/summaries",
             Router::new()
                 .fallback(get(query_latest_games))
+                .with_state(app_state.clone())
+        )
+        .nest_service(
+            "/api/game_log",
+            Router::new()
+                .route("/:match_id", get(get_game_log))
                 .with_state(app_state.clone())
         )
         .nest_service(

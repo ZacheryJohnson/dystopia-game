@@ -2,12 +2,14 @@
 import {ref, onMounted, type Ref, computed} from "vue";
   import GameCarouselElement from "./GameCarouselElement.vue";
 import {
+  type GetGameLogResponse,
   MatchResponse_MatchSummary as MatchSummary
 } from "%/services/match_results/summary.ts";
 import {date_MonthToJSON, DateMessage} from "%/common/date.ts";
 
   type DateAndMatchesT = Map<string, MatchSummary[]>;
   const dateAndMatches: Ref<DateAndMatchesT> = ref(new Map());
+  const gameLogs: Ref<Map<number, Uint8Array>> = ref(new Map());
   const hasMatches = computed(() => dateAndMatches.value.size > 0);
 
   const dateToStr = (date: DateMessage) => {
@@ -33,7 +35,11 @@ import {date_MonthToJSON, DateMessage} from "%/common/date.ts";
     const matchSummaries: MatchSummary[] = (await (await fetch(`api/summaries`)).json()).matchSummaries;
 
     dateAndMatches.value = new Map();
+    gameLogs.value = new Map();
     for (const match of matchSummaries) {
+      const response: GetGameLogResponse = (await (await fetch(`api/game_log/${match.matchId}`)).json());
+      gameLogs.value.set(match.matchId, response.gameLogSerialized);
+
       const dateStr = dateToStr(match.date!);
       if (dateAndMatches.value.has(dateStr)) {
         dateAndMatches.value.get(dateStr)!.push(match);
@@ -45,26 +51,31 @@ import {date_MonthToJSON, DateMessage} from "%/common/date.ts";
 </script>
 
 <template>
-  <div class="carousel-frame" v-if="hasMatches" v-for="[dateStr, matches] of dateAndMatches">
-    <div class="date-block" :id="dateStr">
-      <span class="date-year">{{dateFromStr(dateStr).year}}</span>
-      <br>
-      <span class="date-month">{{date_MonthToJSON(dateFromStr(dateStr).month)}}</span>
-      <br>
-      <span class="date-day">{{dateFromStr(dateStr).day}}</span>
-    </div>
-    <GameCarouselElement
-        v-for="match of matches"
-        :key="match.matchId"
-        :awayAbbr="match.awayTeamName.substring(0, 3).toUpperCase()"
-        :homeAbbr="match.homeTeamName.substring(0, 3).toUpperCase()"
-        :awayScore="match.awayTeamScore"
-        :homeScore="match.homeTeamScore"
-        :gameLogData="match.gameLogSerialized"
-    />
-  </div>
-  <div class="carousel-frame" v-else>
-    <p>No matches! Check back soon.</p>
+  <div class="carousel-frame">
+    <template v-if="hasMatches" v-for="[dateStr, matches] of dateAndMatches">
+      <div class="date-block" :id="dateStr">
+        <span class="date-year">{{dateFromStr(dateStr).year}}</span>
+        <br>
+        <span class="date-month">{{date_MonthToJSON(dateFromStr(dateStr).month)}}</span>
+        <br>
+        <span class="date-day">{{dateFromStr(dateStr).day}}</span>
+      </div>
+      <GameCarouselElement
+          v-for="match of matches"
+          :key="match.matchId"
+          :awayAbbr="match.awayTeamName.substring(0, 3).toUpperCase()"
+          :homeAbbr="match.homeTeamName.substring(0, 3).toUpperCase()"
+          :awayScore="match.awayTeamScore"
+          :homeScore="match.homeTeamScore"
+          :awayRecord="match.awayTeamRecord"
+          :homeRecord="match.homeTeamRecord"
+          :gameLogData="gameLogs.get(match.matchId)"
+      />
+    </template>
+    <template v-else>
+      <div></div>
+      <p>No matches! Check back soon.</p>
+    </template>
   </div>
 </template>
 
@@ -72,7 +83,7 @@ import {date_MonthToJSON, DateMessage} from "%/common/date.ts";
 .carousel-frame {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(75px, .033fr);
+  grid-auto-columns: minmax(60px, .0264fr);
   grid-gap: 5px;
   min-height: 100px;
 
@@ -89,8 +100,6 @@ import {date_MonthToJSON, DateMessage} from "%/common/date.ts";
   width: max-content;
   border-style: solid;
   border-width: 1px;
-  padding: 5px;
-  margin: 0 5px;
   text-align: center;
 }
 
