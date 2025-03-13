@@ -1,9 +1,12 @@
 use std::fmt::Debug;
 use std::time::Duration;
+use async_nats::HeaderMap;
 use futures::StreamExt;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+
 use crate::error::NatsError;
+use crate::otel::propagate_otel_context;
 
 pub trait NatsRpcClient {
     type Request: Serialize + DeserializeOwned + Debug;
@@ -13,7 +16,6 @@ pub trait NatsRpcClient {
 
     fn client(&self) -> async_nats::Client;
 
-    #[tracing::instrument(skip(self))]
     async fn send_request(
         &mut self,
         request: Self::Request,
@@ -29,10 +31,14 @@ pub trait NatsRpcClient {
             return Err(NatsError::ReplySubjectSubscribeError);
         };
 
+        let mut headers = HeaderMap::new();
+        propagate_otel_context(&mut headers);
+
         let payload = postcard::to_allocvec(&request).unwrap();
-        let result = nats_client.publish_with_reply(
+        let result = nats_client.publish_with_reply_and_headers(
             Self::RPC_SUBJECT,
             reply_subject,
+            headers,
             payload.into()
         ).await;
 

@@ -5,7 +5,7 @@ services:
       context: ..
       dockerfile: ./dys-svc-director/Dockerfile
     environment:
-      - OTEL_ENDPOINT=http://jaeger:4317
+      - OTEL_ENDPOINT=http://otel-collector:4317
       - RUST_BACKTRACE=1
     ports:
       - "6081:6081"
@@ -20,32 +20,10 @@ services:
     environment:
       - SVC_DIRECTOR_API_BASE_URI=http://director:6081
       - SVC_AUTH_API_BASE_URI=http://auth:6082
-      - OTEL_ENDPOINT=http://jaeger:4317
+      - OTEL_ENDPOINT=http://otel-collector:4317
       - RUST_BACKTRACE=1
     ports:
       - "6080:6080"
-    depends_on:
-      valkey:
-        condition: service_started
-  webapp-hot-reload:
-    container_name: "webapp-frontend-hot-reload"
-    build:
-      context: ..
-      dockerfile: ./dys-svc-webapp/Frontend.Dockerfile
-    environment:
-      - SVC_DIRECTOR_API_BASE_URI=http://director:6081
-      - OTEL_ENDPOINT=http://jaeger:4317
-      - RUST_BACKTRACE=1
-    develop:
-      watch:
-        - action: sync
-          path: ../dys-svc-webapp/frontend
-          target: /frontend
-          ignore:
-            - node_modules/
-    ports:
-      - "5173:5173"
-      - "5174:5174"
     depends_on:
       valkey:
         condition: service_started
@@ -55,28 +33,56 @@ services:
       context: ..
       dockerfile: ./dys-svc-auth/Dockerfile
     environment:
-      - OTEL_ENDPOINT=http://jaeger:4317
+      - OTEL_ENDPOINT=http://otel-collector:4317
       - RUST_BACKTRACE=1
     ports:
       - "6082:6082"
     depends_on:
       valkey:
         condition: service_started
-  jaeger:
-    container_name: "jaeger"
-    image: "jaegertracing/all-in-one:1.61.0"
-    entrypoint: /go/bin/all-in-one-linux --log-level=warn
+  openobserve:
+    container_name: "openobserve"
+    image: "public.ecr.aws/zinclabs/openobserve:latest"
+    environment:
+      - ZO_ROOT_USER_EMAIL=dax@determinism.dev
+      - ZO_ROOT_USER_PASSWORD=local-dev
     ports:
-      - "6831:6831/udp" # agent: Thrift-compact protocol
-      - "6832:6832/udp" # agent: Thrift-binary protocol
-      - "5775:5775" # agent: deprecated
-      - "5778:5778" # agent: serve configs
-      - "16686:16686" # query: serve HTTP frontend
-      - "4317:4317" # collector: OTLP over gRPC
-      - "4318:4318" # collector: OTLP over HTTP
-      - "14268:14268" # collector: thrift directly from clients
-      - "14250:14250" # collector: model.proto
-      - "9411:9411" # collector: optional Zipkin endpoint
+      - "5080:5080"
+      - "5082:5082"
+      - "5514:5514/tcp"
+      - "5514:5514/udp"
+  get-openobserve-secret:
+    image: alpine
+    command:
+      - "/bin/sh"
+      - "-c"
+      - |
+        apk add --no-cache curl jq
+        sleep 3
+        ACCESS_TOKEN=$(echo "dax@determinism.dev:local-dev" | base64)
+        OPENOBSERVE_SECRET=$(curl -s -H "Cookie: auth_tokens={\"access_token\":\"Basic $$ACCESS_TOKEN\",\"refresh_token\":\"\"}" http://172.18.0.1:5080/api/default/passcode | jq '.data.passcode' | tr -d '\"')
+        BASIC_AUTH_TOKEN=$(echo "dax@determinism.dev:$$OPENOBSERVE_SECRET" | base64)
+        sed -E "s/Authorization: Basic ([a-zA-Z0-9\+\/=]+)/Authorization: Basic $$BASIC_AUTH_TOKEN/g" /opt/otel-collector.yaml > /opt/otel-config/config.yaml
+    volumes:
+      - ./config/otel-collector.yaml:/opt/otel-collector.yaml
+      - otelcollector:/opt/otel-config
+    depends_on:
+      openobserve:
+        condition: service_started
+  otel-collector:
+    container_name: "otel-collector"
+    image: "otel/opentelemetry-collector-contrib:0.121.0"
+    ports:
+      - "8888:8888" # Prometheus metrics exposed by the Collector
+      - "8889:8889" # Prometheus exporter metrics
+      - "13133:13133" # health_check extension
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP http receiver
+    depends_on:
+      get-openobserve-secret:
+        condition: service_completed_successfully
+    volumes:
+      - otelcollector:/etc/otelcol-contrib
   valkey:
     container_name: "valkey"
     image: "valkey/valkey"
@@ -103,3 +109,4 @@ services:
       - "8222"
 volumes:
   redisinsight:
+  otelcollector:

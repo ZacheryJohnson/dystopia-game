@@ -13,8 +13,8 @@ pub async fn get(request_url: impl Into<String>) -> Result<Response, Error> {
         .request(Method::GET, request_url.into())
         .build()?;
     
-    opentelemetry::global::get_text_map_propagator(|propogator| {
-        propogator.inject_context(&Span::current().context(), &mut HeaderInjector(request.headers_mut()));
+    opentelemetry::global::get_text_map_propagator(|propagator| {
+        propagator.inject_context(&Span::current().context(), &mut HeaderInjector(request.headers_mut()));
     });
     
     http_client.execute(request).await

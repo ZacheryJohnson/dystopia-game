@@ -4,7 +4,9 @@ use std::time::Duration;
 use async_nats::HeaderMap;
 use bytes::Bytes;
 use futures::stream::StreamExt;
+use tracing::Instrument;
 use crate::error::NatsError;
+use crate::otel::create_span_from;
 use crate::server::NatsRpcServer;
 
 struct NatsServiceInstance {
@@ -100,12 +102,18 @@ impl NatsRouter {
                     // If we go some duration without new messages, look for shutdown signals
                     while let Ok(Some(message)) = tokio::time::timeout(Duration::from_millis(10), subscriber.next()).await {
                         let reply_subject = message.reply.as_ref().unwrap().to_owned();
+                        let span = create_span_from(&message).expect("failed to create span");
+
                         let (response_payload, headers) = {
-                            match service.dispatch_message(message).await {
+                            match service
+                                .dispatch_message(message)
+                                .instrument(span)
+                                .await
+                            {
                                 Ok(response_payload) => (response_payload, HeaderMap::new()),
                                 Err(err) => {
                                     let mut headers = HeaderMap::new();
-                                    headers.insert("error", "true");
+                                    headers.insert("X-Dys-Error", err.to_string());
                                     (postcard::to_allocvec(&err).unwrap().into(), headers)
                                 },
                             }

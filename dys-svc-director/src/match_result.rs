@@ -3,6 +3,7 @@ use dys_nats::error::NatsError;
 use dys_protocol::nats::match_results::{GetGameLogRequest, GetGameLogResponse, MatchRequest, MatchResponse};
 use crate::AppState;
 
+#[tracing::instrument(skip_all)]
 pub async fn get_summaries(
     request: MatchRequest,
     mut app_state: AppState
@@ -39,6 +40,7 @@ pub async fn get_summaries(
     Ok(response)
 }
 
+#[tracing::instrument(skip_all)]
 pub async fn get_game_log(
     request: GetGameLogRequest,
     mut app_state: AppState,

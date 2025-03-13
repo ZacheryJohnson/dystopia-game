@@ -2519,11 +2519,13 @@ dependencies = [
  "async-nats",
  "bytes",
  "futures",
+ "opentelemetry",
  "postcard",
  "serde",
  "tokio",
  "tower 0.4.13",
  "tracing",
+ "tracing-opentelemetry",
 ]
 
 [[package]]
@@ -2559,6 +2561,7 @@ dependencies = [
  "tonic",
  "tonic-build",
  "tower 0.4.13",
+ "tracing",
  "walkdir",
 ]
 
