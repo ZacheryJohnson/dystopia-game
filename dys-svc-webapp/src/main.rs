@@ -2,6 +2,7 @@ use std::convert::Infallible;
 use axum::{extract::Request, http::{header, HeaderValue, StatusCode}, middleware::{self, Next}, response::{IntoResponse, Response}, Json, Router};
 use axum::body::Bytes;
 use axum::extract::{Path, State};
+use axum::response::Redirect;
 use axum::routing::{get, post};
 use dys_observability::logger::LoggerOptions;
 use tower::ServiceBuilder;
@@ -189,68 +190,30 @@ async fn main() {
 
     let app = Router::new()
         .nest_service(
-            "/api/summaries",
+            "/api",
             Router::new()
-                .fallback(get(query_latest_games))
+                .route("/summaries", get(query_latest_games))
+                .route("/game_log/:match_id", get(get_game_log))
+                .route("/world_state", get(query_world_state))
+                .route("/season", get(get_season))
+                .route("/create_account", post(create_account))
+                .route("/get_voting_proposals", get(get_voting_proposals))
+                .route("/vote", post(submit_vote))
                 .with_state(app_state.clone())
-        )
-        .nest_service(
-            "/api/game_log",
-            Router::new()
-                .route("/:match_id", get(get_game_log))
-                .with_state(app_state.clone())
-        )
-        .nest_service(
-            "/api/world_state",
-            Router::new()
-                .fallback(get(query_world_state))
-                .with_state(app_state.clone())
-        )
-        .nest_service(
-            "/api/season",
-            Router::new()
-                .fallback(get(get_season))
-                .with_state(app_state.clone())
-        )
-        .nest_service(
-            "/api/create_account",
-            Router::new()
-                .fallback(post(create_account))
-                .with_state(app_state.clone())
-        )
-        .nest_service(
-            "/api/get_voting_proposals",
-            Router::new()
-                .fallback(get(get_voting_proposals))
-                .with_state(app_state.clone())
-        )
-        .nest_service(
-            "/api/vote",
-            Router::new()
-                .fallback(post(submit_vote))
-                .with_state(app_state.clone())
-        )
-        .nest_service(
-            "/assets",
-            ServiceBuilder::new()
-                .layer(middleware::from_fn(static_cache_control))
-                .service(ServeDir::new(format!("{dist_path}/assets")))
-        )
-        .nest_service(
-            "/",
-            ServiceBuilder::new()
-                .layer(middleware::from_fn(static_cache_control))
-                .service(ServeDir::new(format!("{dist_path}/")))
         )
         .nest_service(
             "/health",
             ServiceBuilder::new()
                 .service_fn(health_check)
         )
+        .route_service("/", ServeFile::new(format!("{dist_path}/index.html")))
         .fallback_service(
             ServiceBuilder::new()
                 .layer(middleware::from_fn(static_cache_control))
-                .service(ServeFile::new(format!("{dist_path}/index.html")))
+                .service(
+                    ServeDir::new(format!("{dist_path}"))
+                        .not_found_service(ServeFile::new(format!("{dist_path}/index.html")))
+                )
         );
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:6080").await.unwrap();

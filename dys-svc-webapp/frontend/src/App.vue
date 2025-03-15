@@ -15,6 +15,7 @@ const matchVisualizerStore = getMatchVisualizerStore();
       <GameCarousel />
       <nav>
         <RouterLink to="/"><h1>DAX</h1></RouterLink>
+        <RouterLink to="/schedule"><h1>Schedule</h1></RouterLink>
         <Auth></Auth>
       </nav>
     </div>
@@ -32,10 +33,6 @@ const matchVisualizerStore = getMatchVisualizerStore();
 </template>
 
 <style>
-body {
-  overflow: clip;
-}
-
 nav {
   display: flex;
 }
@@ -45,5 +42,20 @@ nav a {
   display: block;
   font-family: "Teko";
   font-size: 28px;
+}
+
+RouterView {
+  /* Same size as ticker
+   * ZJ-TODO: set once?
+   */
+  margin-bottom: min(6%, 30px);
+}
+
+h1 {
+  font-size: 48px;
+}
+
+h2 {
+  font-size: 32px;
 }
 </style>

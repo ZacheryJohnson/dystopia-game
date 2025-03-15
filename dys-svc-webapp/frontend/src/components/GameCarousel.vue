@@ -6,11 +6,11 @@ import {
   MatchResponse_MatchSummary as MatchSummary
 } from "%/services/match_results/summary.ts";
 import {date_MonthToJSON, DateMessage} from "%/common/date.ts";
+import {getSeasonStore} from "@/stores/Season.ts";
 
-  type DateAndMatchesT = Map<string, MatchSummary[]>;
-  const dateAndMatches: Ref<DateAndMatchesT> = ref(new Map());
+  const seasonStore = getSeasonStore();
   const gameLogs: Ref<Map<number, Uint8Array>> = ref(new Map());
-  const hasMatches = computed(() => dateAndMatches.value.size > 0);
+  const hasMatches = computed(() => seasonStore.matchesByDate.size > 0);
 
   const dateToStr = (date: DateMessage) => {
     return `${date.year}-${date.month.valueOf()}-${date.day}`;
@@ -34,17 +34,17 @@ import {date_MonthToJSON, DateMessage} from "%/common/date.ts";
   onMounted(async () => {
     const matchSummaries: MatchSummary[] = (await (await fetch(`api/summaries`)).json()).matchSummaries;
 
-    dateAndMatches.value = new Map();
+    seasonStore.matchesByDate = new Map();
     gameLogs.value = new Map();
     for (const match of matchSummaries) {
       const response: GetGameLogResponse = (await (await fetch(`api/game_log/${match.matchId}`)).json());
       gameLogs.value.set(match.matchId, response.gameLogSerialized);
 
       const dateStr = dateToStr(match.date!);
-      if (dateAndMatches.value.has(dateStr)) {
-        dateAndMatches.value.get(dateStr)!.push(match);
+      if (seasonStore.matchesByDate.has(dateStr)) {
+        seasonStore.matchesByDate.get(dateStr)!.push(match);
       } else {
-        dateAndMatches.value.set(dateStr, [match]);
+        seasonStore.matchesByDate.set(dateStr, [match]);
       }
     }
   });
@@ -52,7 +52,7 @@ import {date_MonthToJSON, DateMessage} from "%/common/date.ts";
 
 <template>
   <div class="carousel-frame">
-    <template v-if="hasMatches" v-for="[dateStr, matches] of dateAndMatches">
+    <template v-if="hasMatches" v-for="[dateStr, matches] of seasonStore.matchesByDate">
       <div class="date-block" :id="dateStr">
         <span class="date-year">{{dateFromStr(dateStr).year}}</span>
         <br>

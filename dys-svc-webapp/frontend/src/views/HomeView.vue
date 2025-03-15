@@ -36,6 +36,10 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+main {
+  overflow: clip;
+}
+
 #proposals {
   padding-left: 5px;
 }
