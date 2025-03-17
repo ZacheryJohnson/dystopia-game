@@ -147,7 +147,7 @@ pub mod <SERVICE_NAME>_svc {
         }
     }
 
-    impl dys_nats::client::NatsRpcClient for <RPC_NAME>RpcClient {
+    impl dys_nats::rpc::client::NatsRpcClient for <RPC_NAME>RpcClient {
         type Request = super::<REQUEST_TYPE>;
         type Response = super::<RESPONSE_TYPE>;
 
@@ -163,7 +163,7 @@ pub mod <SERVICE_NAME>_svc {
         state: Option<State>,
     }
 
-    impl<State: Clone> dys_nats::server::NatsRpcServer for <RPC_NAME>RpcServer<State> {
+    impl<State: Clone> dys_nats::rpc::server::NatsRpcServer for <RPC_NAME>RpcServer<State> {
         type Request = super::<REQUEST_TYPE>;
         type Response = super::<RESPONSE_TYPE>;
 

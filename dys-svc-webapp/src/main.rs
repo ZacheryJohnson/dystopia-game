@@ -2,12 +2,12 @@ use std::convert::Infallible;
 use axum::{extract::Request, http::{header, HeaderValue, StatusCode}, middleware::{self, Next}, response::{IntoResponse, Response}, Json, Router};
 use axum::body::Bytes;
 use axum::extract::{Path, State};
-use axum::response::Redirect;
 use axum::routing::{get, post};
 use dys_observability::logger::LoggerOptions;
 use tower::ServiceBuilder;
 use tower_http::services::{ServeDir, ServeFile};
-use dys_nats::client::NatsRpcClient;
+use dys_nats::rpc::client::NatsRpcClient;
+use dys_nats::connection::make_client;
 use dys_observability::middleware::handle_shutdown_signal;
 
 use dys_protocol::http as proto_http;
@@ -172,17 +172,7 @@ async fn main() {
     tracing::info!("Starting server...");
     let dist_path = std::env::var("DIST_PATH").unwrap_or(DEFAULT_DIST_PATH.to_string());
 
-    let nats_server_str = format!(
-        "{}:{}",
-        std::env::var("NATS_HOST").unwrap_or(String::from("172.18.0.1")),
-        std::env::var("NATS_PORT").unwrap_or(String::from("4222")).parse::<u16>().unwrap(),
-    );
-
-    let nats_client = async_nats::ConnectOptions::new()
-        .token(std::env::var("NATS_TOKEN").unwrap_or(String::from("replaceme")))
-        .connect(nats_server_str)
-        .await
-        .expect("failed to connect to NATS server");
+    let nats_client = make_client(Default::default()).await;
 
     let app_state = AppState {
         nats_client,

@@ -3,7 +3,7 @@ use tower::ServiceBuilder;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
 use dys_nats::error::NatsError;
-use dys_nats::router::NatsRouter;
+use dys_nats::rpc::router::NatsRouter;
 use dys_observability::logger::LoggerOptions;
 use dys_protocol::nats::auth::account_svc::{CreateAccountRpcServer, LoginRpcServer};
 use dys_protocol::nats::auth::{CreateAccountRequest, CreateAccountResponse, LoginRequest, LoginResponse};

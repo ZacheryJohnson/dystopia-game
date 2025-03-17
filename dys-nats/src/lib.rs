@@ -1,6 +1,7 @@
 pub mod error;
-pub mod router;
+pub mod connection;
 
-pub mod client;
-pub mod server;
+pub mod rpc;
+pub mod event;
+
 mod otel;

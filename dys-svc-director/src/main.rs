@@ -15,8 +15,9 @@ use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
+use dys_nats::connection::make_client;
 use dys_nats::error::NatsError;
-use dys_nats::router::NatsRouter;
+use dys_nats::rpc::router::NatsRouter;
 use dys_protocol::nats::match_results::match_response::MatchSummary;
 use dys_protocol::nats::match_results::summary_svc::{GetGameLogRpcServer, MatchesRpcServer};
 use dys_protocol::nats::vote::{GetProposalsRequest, GetProposalsResponse, Proposal, ProposalOption, VoteOnProposalRequest, VoteOnProposalResponse};
@@ -36,7 +37,6 @@ struct AppState {
     season: Arc<Mutex<Season>>,
     current_date: Arc<Mutex<Date>>,
     valkey: ValkeyDatastore,
-    nats: async_nats::Client,
 }
 
 #[tokio::main]
@@ -66,18 +66,6 @@ async fn main() {
         std::env::var("VALKEY_PORT").unwrap_or(String::from("6379")).parse::<u16>().unwrap()
     );
 
-    let nats_server_str = format!(
-        "{}:{}",
-        std::env::var("NATS_HOST").unwrap_or(String::from("172.18.0.1")),
-        std::env::var("NATS_PORT").unwrap_or(String::from("4222")).parse::<u16>().unwrap(),
-    );
-
-    let nats_client = async_nats::ConnectOptions::new()
-        .token(std::env::var("NATS_TOKEN").unwrap_or(String::from("replaceme")))
-        .connect(nats_server_str)
-        .await
-        .expect("failed to connect to NATS server");
-
     let app_state = AppState {
         game_world: game_world.clone(),
         season: Arc::new(Mutex::new(season)),
@@ -85,7 +73,6 @@ async fn main() {
             Arguscorp, 1, 10000
         ))),
         valkey: *ValkeyDatastore::connect(valkey_config).await.unwrap(),
-        nats: nats_client,
     };
 
     let app_state_thread_copy = app_state.clone();

@@ -5,9 +5,10 @@ use async_nats::HeaderMap;
 use bytes::Bytes;
 use futures::stream::StreamExt;
 use tracing::Instrument;
+use crate::connection::make_client;
 use crate::error::NatsError;
 use crate::otel::create_span_from;
-use crate::server::NatsRpcServer;
+use crate::rpc::server::NatsRpcServer;
 
 struct NatsServiceInstance {
     service: Box<(dyn tower::Service<
@@ -36,18 +37,7 @@ pub struct NatsRouter {
 
 impl NatsRouter {
     pub async fn new() -> NatsRouter {
-        let nats_server_str = format!(
-            "{}:{}",
-            std::env::var("NATS_HOST").unwrap_or(String::from("172.18.0.1")),
-            std::env::var("NATS_PORT").unwrap_or(String::from("4222")).parse::<u16>().unwrap(),
-        );
-
-        let client = async_nats::ConnectOptions::new()
-            .token(std::env::var("NATS_TOKEN").unwrap_or(String::from("replaceme")))
-            .connect(nats_server_str)
-            .await
-            .unwrap();
-
+        let client = make_client(Default::default()).await;
         NatsRouter { client, services: Vec::new() }
     }
 
