@@ -16,6 +16,11 @@ use dys_protocol::nats as proto_nats;
 const DEFAULT_DIST_PATH: &str = "dys-svc-webapp/frontend/dist";
 
 async fn static_cache_control(request: Request, next: Next) -> Response {
+    // Allow wasm to be cached - too big
+    if request.uri().path().ends_with(".wasm.gz") {
+        return next.run(request).await;
+    }
+
     let mut response = next.run(request).await;
     response.headers_mut().insert(
         header::CACHE_CONTROL,

@@ -30,18 +30,20 @@ COPY $WORKING_DIR/dys-simulation/ /opt/dystopia/dys-simulation/
 COPY $WORKING_DIR/dys-world/ /opt/dystopia/dys-world/
 COPY $WORKING_DIR/dys-matchvisualizer/ /opt/dystopia/dys-matchvisualizer/
 
-RUN cargo build -p $RUST_PROJECT_NAME --release --target wasm32-unknown-unknown
+RUN cargo build -p $RUST_PROJECT_NAME --profile wasm --target wasm32-unknown-unknown
 RUN mkdir $OUT_DIR
 RUN wasm-bindgen --target web \
     --out-dir $OUT_DIR \
     --out-name $BIN_NAME \
-    target/wasm32-unknown-unknown/release/$RUST_PROJECT_NAME.wasm
+    target/wasm32-unknown-unknown/wasm/$RUST_PROJECT_NAME.wasm
 
 RUN wasm-opt -Oz -o $OUT_DIR/${BIN_NAME}_opt.wasm $OUT_DIR/${BIN_NAME}_bg.wasm
 
+RUN gzip -f $OUT_DIR/${BIN_NAME}_opt.wasm
+
 COPY $WORKING_DIR/dys-observability/ /opt/dystopia/dys-observability/
 COPY $WORKING_DIR/dys-svc-webapp/ /opt/dystopia/dys-svc-webapp/
-RUN cp $OUT_DIR/matchvisualizer_opt.wasm /opt/dystopia/$WEBAPP_PUBLIC_DIR_PATH/matchvisualizer_opt.wasm
+RUN cp $OUT_DIR/matchvisualizer_opt.wasm.gz /opt/dystopia/$WEBAPP_PUBLIC_DIR_PATH/matchvisualizer_opt.wasm.gz
 RUN cp $OUT_DIR/matchvisualizer.d.ts /opt/dystopia/$WEBAPP_INTERNAL_DIR_PATH/matchvisualizer.d.ts
 RUN cp $OUT_DIR/matchvisualizer.js /opt/dystopia/$WEBAPP_INTERNAL_DIR_PATH/matchvisualizer.js
 

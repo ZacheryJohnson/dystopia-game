@@ -2641,6 +2641,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "dys-svc-history"
+version = "0.1.0"
+
+[[package]]
 name = "dys-svc-webapp"
 version = "0.1.0"
 dependencies = [

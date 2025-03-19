@@ -1,22 +1,28 @@
 <script setup lang="ts">
 import { getMatchVisualizerStore } from '@/stores/MatchVisualizer'
 import { computed } from 'vue'
+import type {GetGameLogResponse} from "%/services/match_results/summary.ts";
 const matchVisualizerStore = getMatchVisualizerStore()
 
 const props = defineProps([
+    'matchId',
     'awayAbbr',
     'homeAbbr',
     'awayScore',
     'homeScore',
     'awayRecord',
-    'homeRecord',
-    'gameLogData'
+    'homeRecord'
 ])
 
-const isSelected = computed(() => matchVisualizerStore.gameLogData == props.gameLogData)
+const isSelected = computed(() => matchVisualizerStore.selectedMatchId == props.matchId)
 
-function onElementClicked() {
-    matchVisualizerStore.gameLogData = props.gameLogData
+async function onElementClicked() {
+  const response: GetGameLogResponse = await (
+      await fetch(`api/game_log/${props.matchId}`)
+  ).json();
+
+  matchVisualizerStore.gameLogData = response.gameLogSerialized;
+  matchVisualizerStore.selectedMatchId = props.matchId;
 }
 
 const gameOver = true // ZJ-TODO: calculate this
@@ -41,7 +47,7 @@ const homeTeamImgPath = `/images/teams/team_wip_${getTeamNameFn(props.homeAbbr)}
 </script>
 
 <template>
-    <div class="game" :class="{ selected: isSelected }" @click="onElementClicked()">
+    <div class="game" :class="{ selected: isSelected }" @click="async () => await onElementClicked()">
         <img :src="awayTeamImgPath" alt="Away Team Logo" />
         <p class="teamName" :class="{ 'winner-text': awayWin }">{{ awayAbbr }}</p>
         <p class="record" :class="{ 'winner-text': awayWin }">({{ props.awayRecord }})</p>

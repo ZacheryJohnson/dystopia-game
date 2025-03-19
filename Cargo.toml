@@ -8,6 +8,11 @@ resolver = "2"
 opt-level = 3
 
 # For smaller + faster WASM artifacts: https://bevy-cheatbook.github.io/platforms/wasm/size-opt.html#link-time-optimization-lto
+[profile.wasm]
+inherits = "release"
+lto = true
+codegen-units = 1
+
 [profile.release.package.dys-matchvisualizer]
 opt-level = "z"
 

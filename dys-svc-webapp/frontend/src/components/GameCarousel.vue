@@ -9,7 +9,6 @@ import {date_MonthToJSON, DateMessage} from "%/common/date.ts";
 import {getSeasonStore} from "@/stores/Season.ts";
 
   const seasonStore = getSeasonStore();
-  const gameLogs: Ref<Map<number, Uint8Array>> = ref(new Map());
   const hasMatches = computed(() => seasonStore.matchesByDate.size > 0);
 
   const dateToStr = (date: DateMessage) => {
@@ -35,11 +34,7 @@ import {getSeasonStore} from "@/stores/Season.ts";
     const matchSummaries: MatchSummary[] = (await (await fetch(`api/summaries`)).json()).matchSummaries;
 
     seasonStore.matchesByDate = new Map();
-    gameLogs.value = new Map();
     for (const match of matchSummaries) {
-      const response: GetGameLogResponse = (await (await fetch(`api/game_log/${match.matchId}`)).json());
-      gameLogs.value.set(match.matchId, response.gameLogSerialized);
-
       const dateStr = dateToStr(match.date!);
       if (seasonStore.matchesByDate.has(dateStr)) {
         seasonStore.matchesByDate.get(dateStr)!.push(match);
@@ -63,13 +58,13 @@ import {getSeasonStore} from "@/stores/Season.ts";
       <GameCarouselElement
           v-for="match of matches"
           :key="match.matchId"
+          :matchId="match.matchId"
           :awayAbbr="match.awayTeamName.substring(0, 3).toUpperCase()"
           :homeAbbr="match.homeTeamName.substring(0, 3).toUpperCase()"
           :awayScore="match.awayTeamScore"
           :homeScore="match.homeTeamScore"
           :awayRecord="match.awayTeamRecord"
           :homeRecord="match.homeTeamRecord"
-          :gameLogData="gameLogs.get(match.matchId)"
       />
     </template>
     <template v-else>

@@ -3,6 +3,9 @@
   import init, { exit, initializeWithCanvas, loadGameLog } from "@/assets/matchvisualizer.js"
   import {getMatchVisualizerStore} from "@/stores/MatchVisualizer";
   import type {WorldStateResponse} from "%/services/world/world.ts";
+
+  import * as pako from "pako";
+
   const matchVisualizerStore = getMatchVisualizerStore();
 
   const props = defineProps([
@@ -15,7 +18,11 @@
     if (!matchVisualizerStore.hasWasmLoaded) {
       const worldStateResponse: WorldStateResponse = (await (await fetch(`api/world_state`)).json());
       matchVisualizerStore.worldStateBytes = worldStateResponse.worldStateJson;
-      await init(await fetch("/matchvisualizer_opt.wasm"))
+
+      const compressedWasm = await (await fetch("/matchvisualizer_opt.wasm.gz")).bytes();
+      const decompressedWasm = pako.ungzip(compressedWasm);
+
+      await init(decompressedWasm)
         .catch(err => {
           if (!err.message.startsWith("Using exceptions for control flow,")) {
             throw err;
