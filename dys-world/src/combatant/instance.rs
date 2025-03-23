@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use crate::attribute::attribute_source::AttributeSource;
 use crate::attribute::attribute_type::AttributeType;
 use crate::attribute::instance::AttributeValueT;
@@ -6,7 +7,8 @@ use crate::combatant::limb::Limb;
 
 pub type CombatantInstanceId = u64;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, TS)]
+#[ts(export)]
 pub struct CombatantInstance {
     pub id: CombatantInstanceId,
     pub name: String,

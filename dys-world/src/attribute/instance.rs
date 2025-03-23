@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use crate::attribute::attribute_type::AttributeType;
 
 pub type AttributeValueT = f32;
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, TS)]
+#[ts(export)]
 pub struct AttributeInstance(AttributeType, AttributeValueT);
 
 impl AttributeInstance {

@@ -60,14 +60,12 @@ redis = { version = "0.28.2", features = ["tokio-rustls-comp"] }
 reqwest = { version = "0.12.12", default-features = false, features = ["charset", "http2", "rustls-tls"] }
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = { version = "1.0.120" }
-strum = { version = "0.26" }
-strum_macros = { version = "0.26" }
+ts-rs = { version = "10.1.0", features = ["serde-json-impl"] }
 tokio = { version = "1.40", features = ["full"] }
 tonic = "0.12"
 tower = { version = "0.4.13", features = ["full"] }
 tower-http = { version = "0.5.2", features = ["fs", "trace"] }
 tracing = { version = "0.1.40", features = ["attributes", "log"] }
-tracing-bunyan-formatter = "0.3"
 tracing-opentelemetry = "0.25"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter", "json"] }
 wasm-bindgen = "0.2.100"

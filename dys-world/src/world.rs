@@ -1,12 +1,14 @@
 use std::sync::{Arc, Mutex};
 use serde::Serialize;
+use ts_rs::TS;
 use crate::{
     combatant::instance::CombatantInstance,
     serde::{serialize_combatants, serialize_teams},
     team::instance::TeamInstance,
 };
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, TS)]
+#[ts(export)]
 pub struct World {
     #[serde(serialize_with = "serialize_combatants")]
     pub combatants: Vec<Arc<Mutex<CombatantInstance>>>,

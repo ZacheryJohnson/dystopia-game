@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 /// Each combatant has a collection of attributes which dictate their strengths and weaknesses.
 /// Attributes can be provided through limbs or through mental quirks
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize, TS)]
+#[ts(export)]
 pub enum AttributeType {
     /// Overpower opponents.
     Strength,

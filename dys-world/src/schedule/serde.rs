@@ -1,9 +1,7 @@
 use std::sync::{Arc, Mutex};
-use serde::de::DeserializeSeed;
 use serde::ser::SerializeSeq;
 use serde::{Deserializer, Serializer};
 use crate::matches::instance::MatchInstance;
-use crate::schedule::series::Series;
 
 pub(crate) fn serialize_match_instances<S>(
     matches: &Vec<Arc<Mutex<MatchInstance>>>,

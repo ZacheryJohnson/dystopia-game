@@ -3,6 +3,7 @@
 .wasm_out/
 
 dys-protocol/generated/
+dys-*/bindings/
 
 infra/.terraform/
 infra/terraform.tfstate
