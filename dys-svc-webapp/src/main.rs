@@ -108,6 +108,7 @@ async fn submit_vote(
     State(app_state): State<AppState>,
     request: Bytes,
 ) -> Result<Response, Infallible> {
+    tracing::info!("{}", String::from_utf8(request.to_vec()).unwrap());
     let http_request: proto_http::vote::VoteOnProposalRequest = serde_json::from_slice(request.as_ref()).unwrap();
     let request = proto_nats::vote::VoteOnProposalRequest {
         proposal_id: http_request.proposal_id,

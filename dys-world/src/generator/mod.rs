@@ -13,6 +13,7 @@ use rand::seq::SliceRandom;
 use rand_distr::Normal;
 use crate::arena::Arena;
 use crate::matches::instance::MatchInstance;
+use crate::proposal::{Proposal, ProposalOption};
 use crate::schedule::calendar::{Date, Month};
 use crate::schedule::season::Season;
 use crate::schedule::series::{Series, SeriesType};
@@ -496,6 +497,59 @@ impl Generator {
         Season {
             all_series,
         }
+    }
+
+    pub fn generate_proposals(
+        &self,
+        rng: &mut impl Rng,
+        world: &World
+    ) -> Vec<Proposal> {
+        let mut proposals = vec![];
+
+        let mut proposal_id = 0;
+        for team in &world.teams {
+            proposal_id += 1;
+
+            let team_instance = team.lock().unwrap();
+            let team_name = team_instance.name.to_owned();
+
+            let combatants = team_instance.combatants.clone().into_iter()
+                .take(3)
+                .collect::<Vec<Arc<Mutex<CombatantInstance>>>>();
+            let combatant_1_name = combatants[0].lock().unwrap().name.to_owned();
+            let combatant_2_name = combatants[1].lock().unwrap().name.to_owned();
+            let combatant_3_name = combatants[2].lock().unwrap().name.to_owned();
+
+            proposals.push(
+                Proposal {
+                    id: proposal_id,
+                    name: format!("Supercharge {team_name} Player"),
+                    description: "Pick a combatant to supercharge for a match.".to_string(),
+                    options: vec![
+                        ProposalOption {
+                            id: 1,
+                            name: combatant_1_name,
+                            description: "".to_string(),
+                            effects: vec![],
+                        },
+                        ProposalOption {
+                            id: 2,
+                            name: combatant_2_name,
+                            description: "".to_string(),
+                            effects: vec![],
+                        },
+                        ProposalOption {
+                            id: 3,
+                            name: combatant_3_name,
+                            description: "".to_string(),
+                            effects: vec![],
+                        },
+                    ],
+                }
+            )
+        }
+
+        proposals
     }
 }
 

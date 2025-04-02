@@ -99,6 +99,21 @@ async fn main() {
                 450,
             ).await.unwrap();
 
+            // Generate new proposals for the upcoming matches
+            let generator = dys_world::generator::Generator::new();
+            let proposals = generator.generate_proposals(&mut StdRng::from_entropy(), &world);
+
+            let mut zj_todo_id = 1;
+            for proposal in proposals {
+                let _: i32 = valkey.hset(
+                    "env:dev:proposals:latest",
+                    zj_todo_id.to_string(),
+                    serde_json::to_string(&proposal).unwrap(),
+                ).await.unwrap();
+
+                zj_todo_id += 1;
+            }
+
             // Sleep before simulating more matches
             tracing::info!("Sleeping for {} seconds before simulating more matches...", SLEEP_DURATION.as_secs());
             tokio::time::sleep(SLEEP_DURATION).await;
@@ -320,45 +335,39 @@ async fn get_voting_proposals(
     mut app_state: AppState,
 ) -> Result<GetProposalsResponse, NatsError> {
     let mut valkey = app_state.valkey.connection();
-    let response_data: String = valkey.hget("env:dev:world", "data").await.unwrap();
-    let world: World = serde_json::from_str(&response_data).unwrap();
-    let team = world.teams.choose(&mut rand::thread_rng()).unwrap();
 
-    let team_instance = team.lock().unwrap();
-    let team_name = team_instance.name.to_owned();
+    let proposal_jsons: Vec<String> = valkey.hvals(
+        "env:dev:proposals:latest"
+    ).await.unwrap();
 
-    let combatants = team_instance.combatants.clone().into_iter()
-        .take(3)
-        .collect::<Vec<Arc<Mutex<CombatantInstance>>>>();
-    let combatant_1_name = combatants[0].lock().unwrap().name.to_owned();
-    let combatant_2_name = combatants[1].lock().unwrap().name.to_owned();
-    let combatant_3_name = combatants[2].lock().unwrap().name.to_owned();
+    let proposals = proposal_jsons
+        .iter()
+        .map(|proposal_str| serde_json::from_str(&proposal_str).unwrap())
+        .collect::<Vec<dys_world::proposal::Proposal>>();
+
+    // ZJ-TODO: don't marshal just send
+
+    let mut marshalled_proposals = vec![];
+    for proposal in proposals {
+        let mut marshalled_options = vec![];
+        for option in &proposal.options {
+            marshalled_options.push(ProposalOption {
+                option_id: option.id,
+                option_name: option.name.clone(),
+                option_desc: option.description.clone(),
+            });
+        }
+
+        marshalled_proposals.push(Proposal {
+            proposal_id: proposal.id,
+            proposal_name: proposal.name.clone(),
+            proposal_desc: proposal.description.clone(),
+            proposal_options: marshalled_options,
+        });
+    }
 
     let response = GetProposalsResponse {
-        proposals: vec![
-            Proposal {
-                proposal_id: 1,
-                proposal_name: format!("Supercharge {} Player", team_name),
-                proposal_desc: "Pick a combatant to supercharge for a match.".to_string(),
-                proposal_options: vec![
-                    ProposalOption {
-                        option_id: 1,
-                        option_name: combatant_1_name,
-                        option_desc: "".to_string(),
-                    },
-                    ProposalOption {
-                        option_id: 2,
-                        option_name: combatant_2_name,
-                        option_desc: "".to_string(),
-                    },
-                    ProposalOption {
-                        option_id: 3,
-                        option_name: combatant_3_name,
-                        option_desc: "".to_string(),
-                    }
-                ],
-            },
-        ],
+        proposals: marshalled_proposals
     };
 
     Ok(response)
