@@ -25,10 +25,12 @@ use dys_protocol::nats::vote::vote_svc::{GetProposalsRpcServer, VoteOnProposalRp
 use dys_protocol::nats::world::{GetSeasonRequest, GetSeasonResponse, WorldStateRequest, WorldStateResponse};
 use dys_protocol::nats::world::schedule_svc::GetSeasonRpcServer;
 use dys_protocol::nats::world::world_svc::WorldStateRpcServer;
-use dys_world::combatant::instance::CombatantInstance;
+use dys_world::combatant::instance::{CombatantInstance, EffectDuration};
+use dys_world::proposal::ProposalEffect;
 use dys_world::schedule::calendar::Month::Arguscorp;
 use dys_world::schedule::season::Season;
 use dys_world::schedule::series::SeriesType;
+use dys_world::team::instance::TeamInstance;
 use crate::match_result::{get_game_log, get_summaries};
 
 #[derive(Clone, Debug)]
@@ -132,7 +134,16 @@ async fn main() {
     nats.run().await;
 }
 
-fn simulate_matches(app_state: AppState) -> Vec<(MatchSummary, Bytes)> {
+async fn simulate_matches(mut app_state: AppState) -> Vec<(MatchSummary, Bytes)> {
+    let proposal_jsons: Vec<String> = app_state.valkey.connection().hvals(
+        "env:dev:proposals:latest"
+    ).await.unwrap();
+
+    let proposals = proposal_jsons
+        .iter()
+        .map(|proposal_str| serde_json::from_str(&proposal_str).unwrap())
+        .collect::<Vec<dys_world::proposal::Proposal>>();
+
     let current_date = app_state.current_date.lock().unwrap().to_owned();
     let match_instances = app_state.season.lock().unwrap().matches_on_date(&current_date);
 
@@ -145,9 +156,103 @@ fn simulate_matches(app_state: AppState) -> Vec<(MatchSummary, Bytes)> {
 
         tracing::info!("Simulating {} vs {} on {:?}", away_team_name, home_team_name, current_date);
 
+        let apply_most_voted_option = |
+            votes: Vec<String>,
+            proposal: &dys_world::proposal::Proposal,
+            team: Arc<Mutex<TeamInstance>>,
+        | {
+            let mut most_voted_option: (Option<u64>, u32) = (None, 0);
+            for option_and_votes_str in votes.chunks(2) {
+                let option_str = option_and_votes_str.get(0);
+                let option_id = option_str.unwrap().split(":").collect::<Vec<_>>()[1].parse::<u64>().unwrap();
+                let vote_count = option_and_votes_str.get(1).unwrap().parse::<u32>().unwrap();
+
+                if vote_count > most_voted_option.1 {
+                    most_voted_option = (Some(option_id), vote_count);
+                }
+            }
+
+            if let Some(option_id) = most_voted_option.0 {
+                let chosen_option = proposal
+                    .options
+                    .iter()
+                    .find(|option| option.id == option_id)
+                    .unwrap();
+
+                for effect in &chosen_option.effects {
+                    match effect {
+                        ProposalEffect::CombatantTemporaryAttributeBonus { combatant_instance_id, attribute_instance_bonus } => {
+                            let team = team.lock().unwrap();
+                            let mut target_combatant = team
+                                .combatants
+                                .iter()
+                                .find(|com| com.lock().unwrap().id == *combatant_instance_id)
+                                .unwrap()
+                                .lock()
+                                .unwrap();
+
+                            tracing::info!(
+                                "Applying bonus {:?} to combatant instance ID {}",
+                                attribute_instance_bonus,
+                                combatant_instance_id
+                            );
+
+                            target_combatant.apply_effect(
+                                attribute_instance_bonus.clone(),
+                                EffectDuration::NumberOfMatches(1),
+                            );
+                        }
+                    }
+                }
+            }
+        };
+
+        // ZJ-TODO: use IDs instead of string comparison
+        if let Some(away_team_proposal) = proposals.iter().find(|prop| prop.name.contains(&away_team_name)) {
+            let away_team_proposal_id = away_team_proposal.id;
+            let away_team_proposal_votes: Vec<String> = app_state.valkey.connection().hgetall(
+                format!("env:dev:votes:proposal:{}", away_team_proposal_id),
+            ).await.unwrap();
+
+            apply_most_voted_option(
+                away_team_proposal_votes,
+                away_team_proposal,
+                match_instance.away_team.clone()
+            );
+
+            // ZJ-TODO: don't delete, just archive
+            let _: u32 = app_state.valkey.connection()
+                .del(format!("env:dev:votes:proposal:{}", away_team_proposal_id))
+                .await
+                .unwrap();
+        }
+
+        if let Some(home_team_proposal) = proposals.iter().find(|prop| prop.name.contains(&home_team_name)) {
+            let home_team_proposal_id = home_team_proposal.id;
+            let home_team_proposal_votes: Vec<String> = app_state.valkey.connection().hgetall(
+                format!("env:dev:votes:proposal:{}", home_team_proposal_id),
+            ).await.unwrap();
+
+            apply_most_voted_option(home_team_proposal_votes, home_team_proposal, match_instance.home_team.clone());
+
+            // ZJ-TODO: don't delete, just archive
+            let _: u32 = app_state.valkey.connection()
+                .del(format!("env:dev:votes:proposal:{}", home_team_proposal_id))
+                .await
+                .unwrap();
+        }
+
         let match_id = match_instance.match_id.to_owned();
         let game = Game { match_instance };
         let game_log = game.simulate();
+
+        let all_combatants = [
+            game.match_instance.home_team.lock().unwrap().combatants.clone().as_slice(),
+            game.match_instance.away_team.lock().unwrap().combatants.clone().as_slice()].concat();
+
+        for combatant in all_combatants {
+            combatant.lock().unwrap().tick_effects();
+        }
 
         match_results.push((MatchSummary {
             match_id,
@@ -176,7 +281,7 @@ fn simulate_matches(app_state: AppState) -> Vec<(MatchSummary, Bytes)> {
 
 #[tracing::instrument(skip_all)]
 async fn run_simulation(mut world_state: AppState) {
-    let match_summary = simulate_matches(world_state.clone());
+    let match_summary = simulate_matches(world_state.clone()).await;
 
     let mut latest_ids = vec![];
     let mut valkey = world_state.valkey.connection();

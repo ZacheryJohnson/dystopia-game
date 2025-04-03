@@ -46,6 +46,7 @@ impl TestAgent {
                         id: 1,
                         name: String::from("TestCombatant"),
                         limbs: vec![],
+                        effect_modifiers: vec![],
                     })
                 )),
                 combatant_state: Arc::new(Mutex::new(settings.combatant_state_override.unwrap_or_default())),

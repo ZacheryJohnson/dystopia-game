@@ -13,7 +13,7 @@ use rand::seq::SliceRandom;
 use rand_distr::Normal;
 use crate::arena::Arena;
 use crate::matches::instance::MatchInstance;
-use crate::proposal::{Proposal, ProposalOption};
+use crate::proposal::{Proposal, ProposalEffect, ProposalOption};
 use crate::schedule::calendar::{Date, Month};
 use crate::schedule::season::Season;
 use crate::schedule::series::{Series, SeriesType};
@@ -363,6 +363,7 @@ impl Generator {
             id,
             name: combatant_name,
             limbs: combatant_limbs,
+            effect_modifiers: vec![]
         }
     }
     
@@ -530,23 +531,38 @@ impl Generator {
                             id: 1,
                             name: combatant_1_name,
                             description: "".to_string(),
-                            effects: vec![],
+                            effects: vec![
+                                ProposalEffect::CombatantTemporaryAttributeBonus {
+                                    combatant_instance_id: combatants[0].lock().unwrap().id,
+                                    attribute_instance_bonus: AttributeInstance::new(AttributeType::Dexterity, 100.0),
+                                }
+                            ],
                         },
                         ProposalOption {
                             id: 2,
                             name: combatant_2_name,
                             description: "".to_string(),
-                            effects: vec![],
+                            effects: vec![
+                                ProposalEffect::CombatantTemporaryAttributeBonus {
+                                    combatant_instance_id: combatants[1].lock().unwrap().id,
+                                    attribute_instance_bonus: AttributeInstance::new(AttributeType::Dexterity, 100.0),
+                                }
+                            ],
                         },
                         ProposalOption {
                             id: 3,
                             name: combatant_3_name,
                             description: "".to_string(),
-                            effects: vec![],
+                            effects: vec![
+                                ProposalEffect::CombatantTemporaryAttributeBonus {
+                                    combatant_instance_id: combatants[2].lock().unwrap().id,
+                                    attribute_instance_bonus: AttributeInstance::new(AttributeType::Dexterity, 100.0),
+                                }
+                            ],
                         },
                     ],
                 }
-            )
+            );
         }
 
         proposals

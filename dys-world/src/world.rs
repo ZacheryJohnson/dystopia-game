@@ -45,6 +45,7 @@ mod tests {
                             child_limbs: vec![],
                         }
                     ],
+                    effect_modifiers: vec![],
                 }
             )),
             Arc::new(Mutex::new(
@@ -65,6 +66,7 @@ mod tests {
                             child_limbs: vec![],
                         }
                     ],
+                    effect_modifiers: vec![],
                 }
             )),
         ];
