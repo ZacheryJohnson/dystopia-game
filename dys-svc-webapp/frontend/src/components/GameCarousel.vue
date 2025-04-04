@@ -2,7 +2,6 @@
 import {ref, onMounted, type Ref, computed} from "vue";
   import GameCarouselElement from "./GameCarouselElement.vue";
 import {
-  type GetGameLogResponse,
   MatchResponse_MatchSummary as MatchSummary
 } from "%/services/match_results/summary.ts";
 import {date_MonthToJSON, DateMessage} from "%/common/date.ts";
@@ -31,9 +30,21 @@ import {getSeasonStore} from "@/stores/Season.ts";
   };
 
   onMounted(async () => {
-    const matchSummaries: MatchSummary[] = (await (await fetch(`api/summaries`)).json()).matchSummaries;
+    const payload = await (await fetch(`api/summaries`)).json();
+    const matchSummaries: MatchSummary[] = payload.matchSummaries;
+    const nextMatches: MatchSummary[] = payload.nextMatches;
 
     seasonStore.matchesByDate = new Map();
+
+    for (const match of nextMatches) {
+      const dateStr = dateToStr(match.date!);
+      if (seasonStore.matchesByDate.has(dateStr)) {
+        seasonStore.matchesByDate.get(dateStr)!.push(match);
+      } else {
+        seasonStore.matchesByDate.set(dateStr, [match]);
+      }
+    }
+
     for (const match of matchSummaries) {
       const dateStr = dateToStr(match.date!);
       if (seasonStore.matchesByDate.has(dateStr)) {

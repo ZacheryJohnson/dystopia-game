@@ -1,6 +1,7 @@
 use dys_datastore_valkey::datastore::AsyncCommands;
 use dys_nats::error::NatsError;
 use dys_protocol::nats::match_results::{GetGameLogRequest, GetGameLogResponse, MatchRequest, MatchResponse};
+use dys_protocol::nats::match_results::match_response::MatchSummary;
 use crate::AppState;
 
 #[tracing::instrument(skip_all)]
@@ -34,8 +35,33 @@ pub async fn get_summaries(
         match_summaries.push(serde_json::from_str(&response_data).unwrap());
     }
 
+    let mut next_matches = Vec::new();
+    {
+        let season = app_state.season.lock().unwrap();
+        let current_date = app_state.current_date.lock().unwrap();
+
+        for match_instance in season.matches_on_date(&*current_date) {
+            let match_instance = match_instance.lock().unwrap();
+            next_matches.push(MatchSummary {
+                match_id: match_instance.match_id,
+                away_team_name: match_instance.away_team.lock().unwrap().name.clone(),
+                home_team_name: match_instance.home_team.lock().unwrap().name.clone(),
+                away_team_score: 0,
+                home_team_score: 0,
+                date: Some(dys_protocol::nats::common::Date {
+                    year: current_date.2,
+                    month: current_date.0.to_owned() as i32 + 1,
+                    day: current_date.1,
+                }),
+                home_team_record: "ZJ-TODO".to_string(),
+                away_team_record: "ZJ-TODO".to_string(),
+            });
+        }
+    }
+
     let response = MatchResponse {
         match_summaries,
+        next_matches
     };
     Ok(response)
 }

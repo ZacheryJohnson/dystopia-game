@@ -51,12 +51,12 @@ const homeTeamImgPath = `/images/teams/team_wip_${getTeamNameFn(props.homeAbbr)}
         <img :src="awayTeamImgPath" alt="Away Team Logo" />
         <p class="teamName" :class="{ 'winner-text': awayWin }">{{ awayAbbr }}</p>
         <p class="record" :class="{ 'winner-text': awayWin }">({{ props.awayRecord }})</p>
-        <p :class="{ 'winner-text': awayWin }">{{ awayScore }}</p>
+        <p :class="{ 'winner-text': awayWin }">{{ awayScore ? awayScore : ""  }}</p>
 
         <img :src="homeTeamImgPath" alt="Home Team Logo" />
         <p class="teamName" :class="{ 'winner-text': homeWin }">{{ homeAbbr }}</p>
         <p class="record" :class="{ 'winner-text': homeWin }">({{ props.homeRecord }})</p>
-        <p :class="{ 'winner-text': homeWin }">{{ homeScore }}</p>
+        <p :class="{ 'winner-text': homeWin }">{{ homeScore ? homeScore : "" }}</p>
     </div>
 </template>
 

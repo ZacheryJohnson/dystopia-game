@@ -26,6 +26,7 @@ message MatchResponse {
   }
 
   repeated MatchSummary match_summaries = 1;
+  repeated MatchSummary next_matches = 2;
 }
 
 message GetGameLogRequest {
