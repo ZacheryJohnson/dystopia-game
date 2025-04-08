@@ -53,7 +53,7 @@ async fn query_latest_games(State(app_state): State<AppState>) -> Result<Respons
 #[tracing::instrument(skip(app_state))]
 async fn query_world_state(State(app_state): State<AppState>) -> Result<Response, Infallible> {
     let request = proto_nats::world::WorldStateRequest {
-        revision: 0,
+        revision: Some(0),
     };
 
     let mut client = proto_nats::world::world_svc::WorldStateRpcClient::new(
@@ -149,7 +149,7 @@ async fn get_game_log(
     Path(match_id): Path<u64>,
 ) -> Result<Response, Infallible> {
     let request = proto_nats::match_results::GetGameLogRequest {
-        match_id
+        match_id: Some(match_id)
     };
 
     let mut client = proto_nats::match_results::summary_svc::GetGameLogRpcClient::new(

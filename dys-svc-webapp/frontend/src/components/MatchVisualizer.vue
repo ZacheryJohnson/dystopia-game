@@ -17,7 +17,7 @@
   onMounted(async () => {
     if (!matchVisualizerStore.hasWasmLoaded) {
       const worldStateResponse: WorldStateResponse = (await (await fetch(`api/world_state`)).json());
-      matchVisualizerStore.worldStateBytes = worldStateResponse.worldStateJson;
+      matchVisualizerStore.worldStateBytes = worldStateResponse.worldStateJson!;
 
       const compressedWasm = await (await fetch("/matchvisualizer_opt.wasm.gz")).bytes();
       const decompressedWasm = pako.ungzip(compressedWasm);

@@ -38,7 +38,7 @@ onMounted(async () => {
           :class="[isCurrentDate(getDateFromDateStr(dateStr), getSeasonStore().currentDate) ? 'is-current-day' : '']"
       >
         <p class="schedule-day-date">{{getDateFromDateStr(dateStr).day}}</p>
-        <p v-for="match in scheduled_matches">{{resolveTeamIdToName(match.awayTeamId)}} @ {{resolveTeamIdToName(match.homeTeamId)}}</p>
+        <p v-for="match in scheduled_matches">{{resolveTeamIdToName(match!.awayTeamId!)}} @ {{resolveTeamIdToName(match!.homeTeamId!)}}</p>
       </div>
     </div>
   </main>

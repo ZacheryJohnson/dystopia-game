@@ -1,5 +1,6 @@
 pub use redis::aio::MultiplexedConnection;
 pub use redis::AsyncCommands;
+pub use redis::AsyncIter;
 pub use redis::ExpireOption;
 
 use redis::{Client, ConnectionAddr, ConnectionInfo, IntoConnectionInfo, RedisConnectionInfo, RedisResult};

@@ -495,9 +495,7 @@ impl Generator {
             rotating_teams.push(alt_opponent_2);
         }
 
-        Season {
-            all_series,
-        }
+        Season::new(all_series)
     }
 
     pub fn generate_proposals(

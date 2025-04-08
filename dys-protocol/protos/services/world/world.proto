@@ -9,10 +9,10 @@ service World {
 message WorldStateRequest {
   // Revision of the world state.
   // Omitting this value implies the latest possible world state.
-  uint64 revision = 1;
+  optional uint64 revision = 1;
 }
 
 message WorldStateResponse {
   // World state object, serialized as JSON.
-  bytes world_state_json = 1;
+  optional bytes world_state_json = 1;
 }

@@ -36,7 +36,7 @@ onMounted(async () => {
   <p><strong>{{proposal?.proposalName}}</strong></p>
   <p>{{proposal?.proposalDesc}}</p>
   <button
-      v-for="option in proposal?.proposalOptions" @click="sendVote(proposal!.proposalId, option.optionId)"
+      v-for="option in proposal?.proposalOptions" @click="sendVote(proposal!.proposalId!, option!.optionId!)"
       :key="option.optionId"
       :disabled="hasVoted"
       :class="[votedOnOption === option.optionId ? 'chosen' : '']"

@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use bytes::Bytes;
+use chrono::DateTime;
 use dys_observability::logger::LoggerOptions;
 use dys_simulation::game::Game;
 use dys_world::schedule::calendar::{Date, Month};
@@ -13,6 +14,7 @@ use serde::Serialize;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
+use tokio::time::Instant;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
 use dys_nats::connection::make_client;
@@ -82,9 +84,6 @@ async fn main() {
 
     tokio::task::spawn(async move {
         loop {
-            tracing::info!("Executing simulations...");
-            run_simulation(app_state_thread_copy.clone()).await;
-
             let mut app_state = app_state_thread_copy.clone();
             let mut valkey = app_state.valkey.connection();
             let world = app_state.game_world.lock().unwrap().to_owned();
@@ -98,7 +97,7 @@ async fn main() {
 
             let _: i32 = valkey.expire(
                 "env:dev:world",
-                450,
+                60 * 60, // 1 hour
             ).await.unwrap();
 
             // Generate new proposals for the upcoming matches
@@ -117,8 +116,22 @@ async fn main() {
             }
 
             // Sleep before simulating more matches
-            tracing::info!("Sleeping for {} seconds before simulating more matches...", SLEEP_DURATION.as_secs());
-            tokio::time::sleep(SLEEP_DURATION).await;
+            let next_time = {
+                let season = app_state.season.lock().unwrap();
+                let match_times = season.simulation_timings.values().to_owned();
+                match_times
+                    .filter(|time| time.timestamp() >= chrono::Utc::now().timestamp())
+                    .min()
+                    .map_or(DateTime::default(), |time| time.to_owned())
+            };
+
+            let offset = next_time.timestamp()- chrono::Utc::now().timestamp();
+            let instant = Instant::now() + Duration::from_secs(offset as u64);
+            tracing::info!("Sleeping until {} before simulating more matches...", next_time.to_rfc3339());
+            tokio::time::sleep_until(instant).await;
+
+            tracing::info!("Executing simulations...");
+            run_simulation(app_state_thread_copy.clone()).await;
         }
     });
 
@@ -255,18 +268,18 @@ async fn simulate_matches(mut app_state: AppState) -> Vec<(MatchSummary, Bytes)>
         }
 
         match_results.push((MatchSummary {
-            match_id,
-            away_team_name,
-            home_team_name,
-            away_team_score: game_log.away_score() as u32,
-            home_team_score: game_log.home_score() as u32,
+            match_id: Some(match_id),
+            away_team_name: Some(away_team_name),
+            home_team_name: Some(home_team_name),
+            away_team_score: Some(game_log.away_score() as u32),
+            home_team_score: Some(game_log.home_score() as u32),
             date: Some(dys_protocol::nats::common::Date {
                 year: current_date.2,
                 month: current_date.0.to_owned() as i32 + 1, // ZJ-TODO: yuck
                 day: current_date.1,
             }),
-            home_team_record: String::new(),
-            away_team_record: String::new(),
+            home_team_record: None,
+            away_team_record: None,
         }, postcard::to_allocvec(&game_log).expect("failed to serialize game log").into()));
     }
 
@@ -292,20 +305,20 @@ async fn run_simulation(mut world_state: AppState) {
 
         let _: i32 = valkey.hincr(
             // ZJ-TODO: should be team ID
-            format!("env:dev:season:record:team:{}", summary.away_team_name),
+            format!("env:dev:season:record:team:{}", summary.away_team_name.as_ref().unwrap_or(&String::new())),
             if home_win { "losses" } else { "wins" },
             1
         ).await.unwrap();
 
         let _: i32 = valkey.hincr(
             // ZJ-TODO: should be team ID
-            format!("env:dev:season:record:team:{}", summary.home_team_name),
+            format!("env:dev:season:record:team:{}", summary.home_team_name.as_ref().unwrap_or(&String::new())),
             if home_win { "wins" } else { "losses" },
             1
         ).await.unwrap();
 
         let away_team_record: Vec<String> = valkey.hgetall(
-            format!("env:dev:season:record:team:{}", summary.away_team_name)
+            format!("env:dev:season:record:team:{}", summary.away_team_name.as_ref().unwrap_or(&String::new())),
         ).await.unwrap();
         assert_eq!(away_team_record.len() % 2, 0);
         let away_team_record = away_team_record
@@ -319,7 +332,7 @@ async fn run_simulation(mut world_state: AppState) {
         );
 
         let home_team_record: Vec<String> = valkey.hgetall(
-            format!("env:dev:season:record:team:{}", summary.home_team_name)
+            format!("env:dev:season:record:team:{}", summary.home_team_name.as_ref().unwrap_or(&String::new()))
         ).await.unwrap();
         assert_eq!(home_team_record.len() % 2, 0);
         let home_team_record = home_team_record
@@ -332,24 +345,24 @@ async fn run_simulation(mut world_state: AppState) {
             home_team_record.get(&String::from("losses")).unwrap_or(&0),
         );
 
-        summary.away_team_record = away_team_record;
-        summary.home_team_record = home_team_record;
+        summary.away_team_record = Some(away_team_record);
+        summary.home_team_record = Some(home_team_record);
 
         let match_summary_json = serde_json::to_string(&summary).unwrap();
         let _: i32 = valkey.hset(
-            format!("env:dev:match.results:id:{}", summary.match_id),
+            format!("env:dev:match.results:id:{}", summary.match_id.as_ref().unwrap_or(&0)),
             "summary",
             match_summary_json,
         ).await.unwrap();
 
         let _: i32 = valkey.hset(
-            format!("env:dev:match.results:id:{}", summary.match_id),
+            format!("env:dev:match.results:id:{}", summary.match_id.as_ref().unwrap_or(&0)),
             "game_log",
             serialized_game_log.as_ref(),
         ).await.unwrap();
 
         let _: i32 = valkey.expire(
-            format!("env:dev:match.results:id:{}", summary.match_id),
+            format!("env:dev:match.results:id:{}", summary.match_id.as_ref().unwrap_or(&0)),
             60 * 60 // 1 hour
         ).await.unwrap();
     }
@@ -384,26 +397,27 @@ async fn get_season(
                     .map(|rs_match| {
                         let rs_match = rs_match.lock().unwrap();
                         let x = dys_protocol::nats::world::MatchInstance {
-                            match_id: rs_match.match_id.to_owned(),
-                            home_team_id: rs_match.home_team.lock().unwrap().id.to_owned(),
-                            away_team_id: rs_match.away_team.lock().unwrap().id.to_owned(),
-                            arena_id: 0,
+                            match_id: Some(rs_match.match_id.to_owned()),
+                            home_team_id: Some(rs_match.home_team.lock().unwrap().id.to_owned()),
+                            away_team_id: Some(rs_match.away_team.lock().unwrap().id.to_owned()),
+                            arena_id: Some(0),
                             // arena_id: rs_match.arena.lock().unwrap().id.to_owned(),
                             date: Some(dys_protocol::nats::common::Date {
                                 year: rs_match.date.2,
                                 month: 1, // ZJ-TODO: arguscorp
                                 day: rs_match.date.1,
-                            })
+                            }),
+                            utc_scheduled_time: Some(season.simulation_timings.get(&rs_match.match_id).unwrap().timestamp() as u64)
                         };
                         x
                     })
                     .collect::<Vec<_>>(),
-                series_type: if matches!(rs_series.series_type, SeriesType::Normal) {
+                series_type: Some(if matches!(rs_series.series_type, SeriesType::Normal) {
                     dys_protocol::nats::world::series::SeriesType::Normal
                 } else {
                     dys_protocol::nats::world::series::SeriesType::FirstTo
-                } as i32,
-                series_type_payload: vec![], // ZJ-TODO
+                } as i32),
+                series_type_payload: None
             }
         })
         .collect::<Vec<_>>();
@@ -411,7 +425,7 @@ async fn get_season(
     let current_date = app_state.current_date.lock().unwrap().to_owned();
 
     Ok(GetSeasonResponse {
-        season_id: 1,
+        season_id: Some(1),
         current_date: Some(dys_protocol::nats::common::Date {
             year: current_date.2,
             month: 1, // ZJ-TODO: arguscorp
@@ -430,7 +444,7 @@ async fn get_world_state(
     let response_data: String = valkey.hget("env:dev:world", "data").await.unwrap();
 
     Ok(WorldStateResponse {
-        world_state_json: response_data.into_bytes(),
+        world_state_json: Some(response_data.into_bytes()),
     })
 }
 
@@ -457,16 +471,16 @@ async fn get_voting_proposals(
         let mut marshalled_options = vec![];
         for option in &proposal.options {
             marshalled_options.push(ProposalOption {
-                option_id: option.id,
-                option_name: option.name.clone(),
-                option_desc: option.description.clone(),
+                option_id: Some(option.id),
+                option_name: Some(option.name.clone()),
+                option_desc: Some(option.description.clone()),
             });
         }
 
         marshalled_proposals.push(Proposal {
-            proposal_id: proposal.id,
-            proposal_name: proposal.name.clone(),
-            proposal_desc: proposal.description.clone(),
+            proposal_id: Some(proposal.id),
+            proposal_name: Some(proposal.name.clone()),
+            proposal_desc: Some(proposal.description.clone()),
             proposal_options: marshalled_options,
         });
     }
@@ -486,8 +500,8 @@ async fn submit_vote(
     let mut valkey = app_state.valkey.connection();
 
     let _: i32 = valkey.hincr(
-        format!("env:dev:votes:proposal:{}", request.proposal_id),
-        format!("option:{}", request.option_id),
+        format!("env:dev:votes:proposal:{}", request.proposal_id.unwrap_or_default()),
+        format!("option:{}", request.option_id.unwrap_or_default()),
         1,
     ).await.unwrap();
 

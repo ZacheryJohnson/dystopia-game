@@ -70,12 +70,13 @@ import {getSeasonStore} from "@/stores/Season.ts";
           v-for="match of matches"
           :key="match.matchId"
           :matchId="match.matchId"
-          :awayAbbr="match.awayTeamName.substring(0, 3).toUpperCase()"
-          :homeAbbr="match.homeTeamName.substring(0, 3).toUpperCase()"
+          :awayAbbr="match.awayTeamName?.substring(0, 3).toUpperCase()"
+          :homeAbbr="match.homeTeamName?.substring(0, 3).toUpperCase()"
           :awayScore="match.awayTeamScore"
           :homeScore="match.homeTeamScore"
           :awayRecord="match.awayTeamRecord"
           :homeRecord="match.homeTeamRecord"
+          :dateStr="dateStr"
       />
     </template>
     <template v-else>

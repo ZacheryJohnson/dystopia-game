@@ -8,15 +8,15 @@ service Vote {
 }
 
 message ProposalOption {
-  uint64 option_id = 1;
-  string option_name = 2;
-  string option_desc = 3;
+  optional uint64 option_id = 1;
+  optional string option_name = 2;
+  optional string option_desc = 3;
 }
 
 message Proposal {
-  uint64 proposal_id = 1;
-  string proposal_name = 2;
-  string proposal_desc = 3;
+  optional uint64 proposal_id = 1;
+  optional string proposal_name = 2;
+  optional string proposal_desc = 3;
   repeated ProposalOption proposal_options = 4;
 }
 
@@ -29,8 +29,8 @@ message GetProposalsResponse {
 }
 
 message VoteOnProposalRequest {
-  uint64 proposal_id = 1;
-  uint64 option_id = 2;
+  optional uint64 proposal_id = 1;
+  optional uint64 option_id = 2;
   optional bytes proposal_payload = 3;
 }
 

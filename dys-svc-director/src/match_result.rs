@@ -1,4 +1,5 @@
-use dys_datastore_valkey::datastore::AsyncCommands;
+use std::collections::HashMap;
+use dys_datastore_valkey::datastore::{AsyncCommands, AsyncIter};
 use dys_nats::error::NatsError;
 use dys_protocol::nats::match_results::{GetGameLogRequest, GetGameLogResponse, MatchRequest, MatchResponse};
 use dys_protocol::nats::match_results::match_response::MatchSummary;
@@ -35,6 +36,29 @@ pub async fn get_summaries(
         match_summaries.push(serde_json::from_str(&response_data).unwrap());
     }
 
+    // Get team records
+    let mut team_records: HashMap<String, (u32, u32)> = HashMap::new();
+    let mut keys = vec![];
+    {
+        let mut iter: AsyncIter<String> = valkey.scan_match("env:dev:season:record:team:*").await.unwrap();
+        while let Some(record_key) = iter.next_item().await {
+            keys.push(record_key);
+        }
+    }
+
+    for key in keys {
+        // ZJ-TODO: pipeline this
+        let raw_values: Vec<Option<u32>> = valkey.hget(
+            key.clone(),
+            vec!["wins", "losses"]
+        ).await.unwrap();
+
+        let wins = raw_values[0].unwrap_or(0);
+        let losses = raw_values[1].unwrap_or(0);
+
+        team_records.insert(key.rsplit(":").next().unwrap().to_string(), (wins, losses));
+    }
+
     let mut next_matches = Vec::new();
     {
         let season = app_state.season.lock().unwrap();
@@ -42,19 +66,29 @@ pub async fn get_summaries(
 
         for match_instance in season.matches_on_date(&*current_date) {
             let match_instance = match_instance.lock().unwrap();
+            let home_team = match_instance.home_team.lock().unwrap();
+            let away_team = match_instance.away_team.lock().unwrap();
             next_matches.push(MatchSummary {
-                match_id: match_instance.match_id,
-                away_team_name: match_instance.away_team.lock().unwrap().name.clone(),
-                home_team_name: match_instance.home_team.lock().unwrap().name.clone(),
-                away_team_score: 0,
-                home_team_score: 0,
+                match_id: Some(match_instance.match_id),
+                away_team_name: Some(away_team.name.clone()),
+                home_team_name: Some(home_team.name.clone()),
+                away_team_score: None,
+                home_team_score: None,
                 date: Some(dys_protocol::nats::common::Date {
                     year: current_date.2,
                     month: current_date.0.to_owned() as i32 + 1,
                     day: current_date.1,
                 }),
-                home_team_record: "ZJ-TODO".to_string(),
-                away_team_record: "ZJ-TODO".to_string(),
+                home_team_record: Some(format!(
+                    "{}-{}",
+                    team_records.get(&home_team.name).unwrap_or(&(0, 0)).0,
+                    team_records.get(&home_team.name).unwrap_or(&(0, 0)).1,
+                )),
+                away_team_record: Some(format!(
+                    "{}-{}",
+                    team_records.get(&away_team.name).unwrap_or(&(0, 0)).0,
+                    team_records.get(&away_team.name).unwrap_or(&(0, 0)).1,
+                )),
             });
         }
     }
@@ -73,12 +107,12 @@ pub async fn get_game_log(
 ) -> Result<GetGameLogResponse, NatsError> {
     let mut valkey = app_state.valkey.connection();
     let game_log_serialized: Vec<u8> = valkey.hget(
-        format!("env:dev:match.results:id:{}", request.match_id),
+        format!("env:dev:match.results:id:{}", request.match_id.as_ref().unwrap_or(&0)),
         "game_log"
     ).await.unwrap();
 
     let response = GetGameLogResponse {
-        game_log_serialized
+        game_log_serialized: Some(game_log_serialized),
     };
 
     Ok(response)

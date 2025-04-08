@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { getMatchVisualizerStore } from '@/stores/MatchVisualizer'
-import { computed } from 'vue'
+import {computed, onMounted, ref} from 'vue'
 import type {GetGameLogResponse} from "%/services/match_results/summary.ts";
+import {getSeasonStore} from "@/stores/Season.ts";
 const matchVisualizerStore = getMatchVisualizerStore()
+const seasonStore = getSeasonStore();
 
 const props = defineProps([
     'matchId',
@@ -11,23 +13,53 @@ const props = defineProps([
     'awayScore',
     'homeScore',
     'awayRecord',
-    'homeRecord'
+    'homeRecord',
+    'dateStr',
 ])
 
-const isSelected = computed(() => matchVisualizerStore.selectedMatchId == props.matchId)
+const isSelected = computed(() => matchVisualizerStore.selectedMatchId == props.matchId);
+
+const timeFormat = new Intl.DateTimeFormat(
+  undefined, // undefined = runtime default
+  {
+    "hour": "numeric",
+    "minute": "2-digit",
+  }
+);
 
 async function onElementClicked() {
   const response: GetGameLogResponse = await (
       await fetch(`api/game_log/${props.matchId}`)
   ).json();
 
-  matchVisualizerStore.gameLogData = response.gameLogSerialized;
+  matchVisualizerStore.gameLogData = response.gameLogSerialized!;
   matchVisualizerStore.selectedMatchId = props.matchId;
 }
+
+onMounted(async() => {
+  await seasonStore.fetchSeason();
+});
 
 const gameOver = true // ZJ-TODO: calculate this
 const awayWin = gameOver && props.awayScore > props.homeScore
 const homeWin = gameOver && props.homeScore > props.awayScore
+
+const getScheduledTimeFn = () => {
+  const matches = getSeasonStore().season.get(props.dateStr);
+  if (!matches) {
+    return "";
+  }
+
+  for (const match of matches) {
+    if (match.matchId === props.matchId) {
+      const utcSeconds = match.utcScheduledTime || 0;
+      const time = new Date(utcSeconds * 1000);
+      return utcSeconds ? timeFormat.format(time) : "";
+    }
+  }
+
+  return "";
+}
 
 const getTeamNameFn = (abbr: string) => {
     switch (abbr) {
@@ -48,15 +80,42 @@ const homeTeamImgPath = `/images/teams/team_wip_${getTeamNameFn(props.homeAbbr)}
 
 <template>
     <div class="game" :class="{ selected: isSelected }" @click="async () => await onElementClicked()">
-        <img :src="awayTeamImgPath" alt="Away Team Logo" />
-        <p class="teamName" :class="{ 'winner-text': awayWin }">{{ awayAbbr }}</p>
-        <p class="record" :class="{ 'winner-text': awayWin }">({{ props.awayRecord }})</p>
-        <p :class="{ 'winner-text': awayWin }">{{ awayScore ? awayScore : ""  }}</p>
+      <div class="game-schedule-time" :class="!awayScore && !awayScore ? 'upcoming-match' : ''">
+        <span>{{!awayScore && !homeScore && getScheduledTimeFn().length > 0 ? getScheduledTimeFn() : ""}}</span>
+      </div>
 
-        <img :src="homeTeamImgPath" alt="Home Team Logo" />
-        <p class="teamName" :class="{ 'winner-text': homeWin }">{{ homeAbbr }}</p>
+      <img :src="awayTeamImgPath" alt="Away Team Logo" />
+      <p class="teamName" :class="{ 'winner-text': awayWin }">{{ awayAbbr }}</p>
+      <template v-if="awayScore">
+        <p class="record" :class="{ 'winner-text': awayWin }">({{ props.awayRecord }})</p>
+        <p :class="{ 'winner-text': awayWin }">{{ awayScore ? awayScore : "" }}</p>
+      </template>
+      <template v-else>
+        <p
+          class="record"
+          :class="{ 'winner-text': awayWin }"
+          style="grid-area: auto / span 2;"
+        >
+          ({{ props.awayRecord }})
+        </p>
+      </template>
+
+      <img :src="homeTeamImgPath" alt="Home Team Logo" />
+      <p class="teamName" :class="{ 'winner-text': homeWin }">{{ homeAbbr }}</p>
+
+      <template v-if="homeScore">
         <p class="record" :class="{ 'winner-text': homeWin }">({{ props.homeRecord }})</p>
-        <p :class="{ 'winner-text': homeWin }">{{ homeScore ? homeScore : "" }}</p>
+        <p :class="{ 'winner-text': homeWin }" :style="homeScore ? '' : 'span 0'">{{ homeScore ? homeScore : "" }}</p>
+      </template>
+      <template v-else>
+        <p
+            class="record"
+            :class="{ 'winner-text': homeWin }"
+            style="grid-area: auto / span 2;"
+        >
+          ({{ props.homeRecord }})
+        </p>
+      </template>
     </div>
 </template>
 
@@ -77,14 +136,25 @@ p {
     }
 }
 
+.upcoming-match {
+  background-color: #00bd7e;
+  border-width: 1px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.game-schedule-time {
+  grid-area: auto / span 2 / auto / 5;
+}
+
 .game {
     border-width: 1px;
     border-style: solid;
     border-radius: 10px;
 
     display: grid;
-    grid-template-rows: 50% 50%;
-    grid-template-columns: 11% 28% 30.5% 30.5%;
+    grid-template-rows: 14% 43% 43%;
+    grid-template-columns: 9% 31% 36.5% 23.5%;
     column-gap: 3%;
 
     align-items: center;

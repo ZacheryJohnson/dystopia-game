@@ -15,6 +15,7 @@ dys-datastore-valkey = { path = "../dys-datastore-valkey" }
 
 async-nats.workspace = true
 bytes.workspace = true
+chrono.workspace = true
 postcard.workspace = true
 rand.workspace = true
 serde.workspace = true

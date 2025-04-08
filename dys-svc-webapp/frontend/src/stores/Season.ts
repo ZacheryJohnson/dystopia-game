@@ -66,7 +66,7 @@ export const getSeasonStore = defineStore('season', () => {
 
   const fetchLatestWorldState = async () => {
     const response: WorldStateResponse = await (await fetch("/api/world_state")).json();
-    const responseObject = JSON.parse(String.fromCharCode(...response.worldStateJson));
+    const responseObject = JSON.parse(String.fromCharCode(...response.worldStateJson!));
     worldState.value = {};
     for (const key in responseObject) {
       // ZJ-TODO: handle world state values that aren't arrays
