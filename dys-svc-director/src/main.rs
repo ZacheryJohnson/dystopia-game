@@ -363,7 +363,7 @@ async fn run_simulation(mut world_state: AppState) {
 
         let _: i32 = valkey.expire(
             format!("env:dev:match.results:id:{}", summary.match_id.as_ref().unwrap_or(&0)),
-            60 * 60 // 1 hour
+            60 * 60 * 2 // 2 hours
         ).await.unwrap();
     }
 
