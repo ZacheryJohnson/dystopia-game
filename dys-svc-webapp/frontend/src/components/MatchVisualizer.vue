@@ -62,6 +62,7 @@
 <style scoped>
   .hidden {
     transform: translateY(-100%);
+    display: none;
   }
 
   .modal {
