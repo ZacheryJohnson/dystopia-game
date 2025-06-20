@@ -11,11 +11,11 @@ ARG WEBAPP_PUBLIC_DIR_PATH="dys-svc-webapp/frontend/public"
 ARG WEBAPP_INTERNAL_DIR_PATH="dys-svc-webapp/frontend/src/assets"
 
 # Bevy has special requirements on Linux
-RUN apt update
-RUN apt install -y g++ pkg-config libx11-dev libasound2-dev libudev-dev protobuf-compiler
+RUN apt-get update
+RUN apt-get install -y g++ pkg-config libx11-dev libasound2-dev libudev-dev protobuf-compiler
 
 # Install nodejs, which includes npm
-RUN apt install -y nodejs npm
+RUN apt-get install -y nodejs npm
 
 # Add WASM dependencies
 RUN rustup target add wasm32-unknown-unknown
@@ -66,7 +66,7 @@ RUN cargo build --release -p dys-svc-webapp
 FROM debian:bookworm-slim AS runtime
 EXPOSE 6080/tcp
 
-RUN apt update
+RUN apt-get update
 
 # Copy the binary
 COPY --from=builder /opt/dystopia/target/release/dys-svc-webapp /dys-svc-webapp

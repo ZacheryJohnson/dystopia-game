@@ -6,8 +6,8 @@ FROM rust:1.85-bookworm AS builder
 ARG WORKING_DIR="."
 
 # Bevy has special requirements on Linux
-RUN apt update
-RUN apt install -y g++ pkg-config libx11-dev libasound2-dev libudev-dev protobuf-compiler
+RUN apt-get update
+RUN apt-get install -y g++ pkg-config libx11-dev libasound2-dev libudev-dev protobuf-compiler
 
 COPY $WORKING_DIR/Cargo.toml /opt/dystopia/Cargo.toml
 COPY $WORKING_DIR/dys-datastore/ /opt/dystopia/dys-datastore/
