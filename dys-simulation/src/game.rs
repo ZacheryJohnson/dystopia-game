@@ -124,7 +124,7 @@ mod tests {
 
     #[test]
     fn test_deterministic_simulations() {
-        let world = Generator::new().generate_world(&mut StdRng::from_entropy());
+        let world = Generator::new().generate_world(&mut StdRng::from_os_rng());
 
         let game = Game {
             match_instance: MatchInstance {

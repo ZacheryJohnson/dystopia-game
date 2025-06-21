@@ -9,6 +9,7 @@ ARG WORKING_DIR="."
 RUN apt-get update
 RUN apt-get install -y g++ pkg-config libx11-dev libasound2-dev libudev-dev protobuf-compiler
 
+COPY $WORKING_DIR/.cargo/config.toml /opt/dystopia/.cargo/config.toml
 COPY $WORKING_DIR/Cargo.toml /opt/dystopia/Cargo.toml
 COPY $WORKING_DIR/dys-datastore/ /opt/dystopia/dys-datastore/
 COPY $WORKING_DIR/dys-datastore-valkey/ /opt/dystopia/dys-datastore-valkey/

@@ -56,9 +56,9 @@ async fn main() {
 
     let (game_world, season) = {
         let generator = dys_world::generator::Generator::new();
-        let world = generator.generate_world(&mut StdRng::from_entropy());
+        let world = generator.generate_world(&mut StdRng::from_os_rng());
 
-        let season = generator.generate_season(&mut StdRng::from_entropy(), &world);
+        let season = generator.generate_season(&mut StdRng::from_os_rng(), &world);
 
         (Arc::new(Mutex::new(world)), season)
     };
@@ -102,7 +102,7 @@ async fn main() {
 
             // Generate new proposals for the upcoming matches
             let generator = dys_world::generator::Generator::new();
-            let proposals = generator.generate_proposals(&mut StdRng::from_entropy(), &world);
+            let proposals = generator.generate_proposals(&mut StdRng::from_os_rng(), &world);
 
             let mut zj_todo_id = 1;
             for proposal in proposals {

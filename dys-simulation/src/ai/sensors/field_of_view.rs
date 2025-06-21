@@ -228,7 +228,7 @@ mod tests {
 
     #[test]
     fn should_see_combatant_directly_in_front() {
-        let world = Generator::new().generate_world(&mut StdRng::from_entropy());
+        let world = Generator::new().generate_world(&mut StdRng::from_os_rng());
         let (combatant_1_instance, combatant_2_instance, combatant_3_instance) = {
             (world.combatants[0].clone(), world.combatants[1].clone(), world.combatants[2].clone())
         };
@@ -394,7 +394,7 @@ mod tests {
 
     #[test]
     fn should_not_see_through_walls() {
-        let world = Generator::new().generate_world(&mut StdRng::from_entropy());
+        let world = Generator::new().generate_world(&mut StdRng::from_os_rng());
         let (combatant_1_instance, combatant_2_instance) = {
             (world.combatants[0].clone(), world.combatants[1].clone())
         };

@@ -1,8 +1,8 @@
 use std::ops::RangeInclusive;
 use std::sync::{Arc, Mutex};
-use rand::distributions::Distribution;
 use rand::prelude::IteratorRandom;
 use rand::Rng;
+use rand_distr::Distribution;
 use crate::combatant::instance::CombatantInstance;
 use crate::combatant::limb::{Limb, LimbModifier, LimbType};
 use crate::attribute::instance::AttributeInstance;
@@ -350,8 +350,8 @@ impl Generator {
     } 
 
     fn generate_combatant(&self, id: u64, rng: &mut impl Rng) -> CombatantInstance {
-        let combatant_given_name = self.given_names.choose(rng).unwrap().to_owned();
-        let combatant_surname = self.surnames.choose(rng).unwrap().to_owned();
+        let combatant_given_name = self.given_names.iter().choose(rng).unwrap().to_owned();
+        let combatant_surname = self.surnames.iter().choose(rng).unwrap().to_owned();
 
         // ZJ-TODO: add small chance for hyphenated surnames
 

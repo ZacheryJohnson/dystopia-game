@@ -7,7 +7,6 @@ use bevy::prelude::Color::Srgba;
 use bevy::render::camera::ScalingMode;
 use bevy::sprite::AlphaMode2d;
 use bevy::window::WindowResolution;
-use bevy_ui_debug_overlay::{UiDebugOverlay, UiDebugOverlayPlugin};
 use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_time::{Duration, Instant};
@@ -158,7 +157,6 @@ pub fn initialize_with_canvas(
                     meta_check: AssetMetaCheck::Never,
                     ..default()
                 }),
-            UiDebugOverlayPlugin::start_disabled().with_line_width(2.0),
         ))
         .insert_resource(VisualizationState {
             should_exit: false,
@@ -183,7 +181,6 @@ pub fn initialize_with_canvas(
             update_plate_visualizers,
             update_scoring_text_visualizers.after(update),
             update_combatant_id_text,
-            debug_ui,
             try_reload_vis_state.before(update),
             update_postgame_scoreboard.after(try_reload_vis_state),
         ))
@@ -255,7 +252,7 @@ fn setup(
 ) {
     commands.spawn((
         Camera2d,
-        OrthographicProjection {
+        Projection::Orthographic(OrthographicProjection{
             near: -100.0, // Default sets this to zero, when it should be negative
             far: 1000.0,
             scale: 0.13,
@@ -265,7 +262,7 @@ fn setup(
                 height: 900.0,
             },
             area: Default::default(),
-        },
+        }),
         Transform::from_xyz(-8.0, -6.0, 0.0),
     ));
 
@@ -1046,33 +1043,6 @@ fn update_combatant_id_text(
         } else {
             *text_color = TextColor(Color::WHITE);
         }
-    }
-}
-
-fn debug_ui(
-    input: Res<ButtonInput<KeyCode>>,
-    mut vis_state: ResMut<VisualizationState>,
-    mut ui_debug_overlay: ResMut<UiDebugOverlay>,
-) {
-    if vis_state.should_exit {
-        return;
-    }
-
-    if input.just_pressed(KeyCode::KeyO) {
-        ui_debug_overlay.toggle();
-    }
-
-    if input.just_pressed(KeyCode::KeyC) {
-        ui_debug_overlay.show_clipped = !ui_debug_overlay.show_clipped;
-    }
-
-    if input.just_pressed(KeyCode::KeyV) {
-        ui_debug_overlay.show_hidden = !ui_debug_overlay.show_hidden;
-    }
-
-    #[cfg(not(target_family="wasm"))]
-    if input.just_pressed(KeyCode::Escape) {
-        vis_state.should_exit = true;
     }
 }
 
