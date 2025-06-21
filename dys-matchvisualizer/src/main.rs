@@ -188,9 +188,12 @@ pub fn initialize_with_canvas(
 }
 
 fn restart_with_local_game_log() {
-    let game_log_bytes = include_bytes!("../data/game_log.bin");
-    let world_state_bytes = include_bytes!("../data/world_state.bin");
-    load_game_log(game_log_bytes.to_vec(), world_state_bytes.to_vec());
+    #[cfg(not(target_family = "wasm"))]
+    {
+        let game_log_bytes = include_bytes!("../data/game_log.bin");
+        let world_state_bytes = include_bytes!("../data/world_state.bin");
+        load_game_log(game_log_bytes.to_vec(), world_state_bytes.to_vec());
+    }
 }
 
 #[wasm_bindgen(js_name = loadGameLog)]
