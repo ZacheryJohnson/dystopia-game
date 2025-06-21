@@ -33,9 +33,9 @@ pub fn propagate_otel_context(header_map: &mut HeaderMap) {
 }
 
 pub fn create_span_from(message: &async_nats::Message) -> Option<Span> {
-    let Some(headers) = &message.headers else {
-        tracing::warn!("Received message without headers!");
-        return None;
+    let headers = match &message.headers {
+        Some(headers) => headers,
+        None => &HeaderMap::default(),
     };
 
     let context = opentelemetry::global::get_text_map_propagator(|propagator| {

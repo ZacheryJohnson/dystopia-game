@@ -1,8 +1,11 @@
-use opentelemetry_otlp::{self, WithExportConfig};
-use opentelemetry::{trace::TracerProvider, KeyValue};
-use opentelemetry_sdk::{propagation::TraceContextPropagator, trace::Config, Resource};
+use opentelemetry_otlp::{self, SpanExporter, WithExportConfig};
+use opentelemetry::KeyValue;
+use opentelemetry::trace::{Tracer, TracerProvider};
+use opentelemetry_sdk::{propagation::TraceContextPropagator, runtime, trace::Config, Resource};
+use opentelemetry_sdk::trace::TracerProviderBuilder;
 use tracing::Level;
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Layer, Registry};
+use tracing_subscriber::filter::FilterExt;
 
 pub struct LoggerOptions {
     pub application_name: String,
@@ -24,31 +27,6 @@ pub fn initialize(logger_options: LoggerOptions) {
     let env_filter = EnvFilter::from_default_env()
         .add_directive(logger_options.log_level.into());
 
-    let application_name = logger_options.application_name;
-    let otel_endpoint = std::env::var("OTEL_ENDPOINT").unwrap_or_default();
-    let telemetry_layer = if !otel_endpoint.is_empty() {
-        // ZJ-TODO: fix
-        // let tracer = opentelemetry_otlp::new_pipeline()
-        //     .tracing()
-        //     .with_exporter(opentelemetry_otlp::new_exporter()
-        //         .tonic()
-        //         .with_endpoint(otel_endpoint.clone())
-        //     )
-        //     .with_trace_config(Config::default()
-        //         .with_resource(Resource::new(vec![
-        //             KeyValue::new("service.name", application_name.clone())
-        //         ]))
-        //     )
-        //     .install_batch(opentelemetry_sdk::runtime::Tokio)
-        //     .expect("Couldn't create OTLP tracer")
-        //     .tracer(application_name);
-        tracing_opentelemetry::layer()
-            // .with_tracer(tracer)
-            .boxed()
-    } else {
-        tracing_opentelemetry::layer().boxed()
-    };
-
     let format = tracing_subscriber::fmt::format().with_ansi(
         std::env::var("NO_FMT").is_err()
     );
@@ -56,10 +34,34 @@ pub fn initialize(logger_options: LoggerOptions) {
 
     let subscriber = Registry::default()
         .with(env_filter)
-        .with(format_layer)
-        .with(telemetry_layer);
+        .with(format_layer);
 
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set subscriber");
+
+    let application_name = logger_options.application_name;
+    let otel_endpoint = std::env::var("OTEL_ENDPOINT").unwrap_or_default();
+    let tracer_provider = {
+        let exporter = SpanExporter::builder()
+            .with_tonic()
+            .with_endpoint(otel_endpoint.clone())
+            .build()
+            .expect("failed to build span exporter");
+
+        let provider = TracerProviderBuilder::default()
+            .with_resource(
+                Resource::builder_empty()
+                    .with_attribute(
+                        KeyValue::new("service.name", application_name.clone())
+                    )
+                    .build()
+            )
+            .with_batch_exporter(exporter)
+            .build();
+
+        provider
+    };
+
+    opentelemetry::global::set_tracer_provider(tracer_provider);
 
     tracing::info!("Using OTEL_ENDPOINT={otel_endpoint}");
 }
