@@ -115,6 +115,7 @@ services:
     container_name: "cloudflared"
     image: "cloudflare/cloudflared"
     command:
+      - "tunnel"
       - "--no-autoupdate"
       - "run"
       - "--url"
