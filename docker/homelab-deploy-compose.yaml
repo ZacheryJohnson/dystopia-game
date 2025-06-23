@@ -117,6 +117,8 @@ services:
     command:
       - "--no-autoupdate"
       - "run"
+      - "--url"
+      - "http://localhost:6080"
       - "--token"
       - "${CLOUDFLARED_TOKEN}"
 volumes:
