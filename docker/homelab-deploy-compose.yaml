@@ -119,7 +119,7 @@ services:
       - "--no-autoupdate"
       - "run"
       - "--url"
-      - "http://localhost:6080"
+      - "http://webapp:6080"
       - "--token"
       - "${CLOUDFLARED_TOKEN}"
 volumes:
