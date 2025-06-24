@@ -8,9 +8,9 @@ receivers:
 
 exporters:
   otlphttp/openobserve:
-    endpoint: http://172.18.0.1:5080/api/default
+    endpoint: _ENDPOINT_
     headers:
-      Authorization: Basic replacedatruntime
+      Authorization: Basic _AUTH_
       organization: default
       stream-name: default
 
