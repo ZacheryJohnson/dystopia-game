@@ -40,37 +40,6 @@ services:
     depends_on:
       valkey:
         condition: service_started
-  # ZJ-TODO: remove
-  openobserve:
-    container_name: "openobserve"
-    image: "public.ecr.aws/zinclabs/openobserve:latest"
-    environment:
-      - ZO_ROOT_USER_EMAIL=dax@determinism.dev
-      - ZO_ROOT_USER_PASSWORD=local-dev
-    ports:
-      - "5080:5080"
-      - "5082:5082"
-      - "5514:5514/tcp"
-      - "5514:5514/udp"
-  # ZJ-TODO: remove
-  get-openobserve-secret:
-    image: alpine
-    command:
-      - "/bin/sh"
-      - "-c"
-      - |
-        apk add --no-cache curl jq
-        sleep 3
-        ACCESS_TOKEN=$(echo "dax@determinism.dev:local-dev" | base64)
-        OPENOBSERVE_SECRET=$(curl -s -H "Cookie: auth_tokens={\"access_token\":\"Basic $$ACCESS_TOKEN\",\"refresh_token\":\"\"}" http://172.18.0.1:5080/api/default/passcode | jq '.data.passcode' | tr -d '\"')
-        BASIC_AUTH_TOKEN=$(echo "dax@determinism.dev:$$OPENOBSERVE_SECRET" | base64)
-        sed -E "s/Authorization: Basic ([a-zA-Z0-9\+\/=]+)/Authorization: Basic $$BASIC_AUTH_TOKEN/g" /opt/otel-collector.yaml > /opt/otel-config/config.yaml
-    volumes:
-      - ./config/otel-collector.yaml:/opt/otel-collector.yaml
-      - otelcollector:/opt/otel-config
-    depends_on:
-      openobserve:
-        condition: service_started
   otel-collector:
     container_name: "otel-collector"
     image: "otel/opentelemetry-collector-contrib:0.121.0"
