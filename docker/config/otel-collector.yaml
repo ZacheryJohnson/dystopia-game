@@ -11,6 +11,7 @@ exporters:
     endpoint: http://172.18.0.1:5080/api/default
     headers:
       Authorization: Basic replacedatruntime
+      organization: default
       stream-name: default
 
 service:

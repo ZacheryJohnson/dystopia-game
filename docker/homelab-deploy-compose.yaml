@@ -40,6 +40,16 @@ services:
     depends_on:
       valkey:
         condition: service_started
+  get-openobserve-secret:
+    image: alpine
+    command:
+      - "/bin/sh"
+      - "-c"
+      - |
+        sed -E "s/Authorization: Basic ([a-zA-Z0-9\+\/=]+)/Authorization: Basic $$OPENOBSERVE_BASIC_AUTH_TOKEN/g" /opt/otel-collector.yaml > /opt/otel-config/config.yaml
+    volumes:
+      - ./config/otel-collector.yaml:/opt/otel-collector.yaml
+      - otelcollector:/opt/otel-config
   otel-collector:
     container_name: "otel-collector"
     image: "otel/opentelemetry-collector-contrib:0.121.0"
