@@ -47,6 +47,7 @@ services:
       - "-c"
       - |
         sed -E "s/Authorization: Basic ([a-zA-Z0-9\+\/=]+)/Authorization: Basic $$OPENOBSERVE_BASIC_AUTH_TOKEN/g" /opt/otel-collector.yaml > /opt/otel-config/config.yaml
+        cat /opt/otel-config/config.yaml
     volumes:
       - ./config/otel-collector.yaml:/opt/otel-collector.yaml
       - otelcollector:/opt/otel-config
