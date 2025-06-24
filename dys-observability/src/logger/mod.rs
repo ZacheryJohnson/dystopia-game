@@ -1,11 +1,11 @@
-use opentelemetry_otlp::{self, SpanExporter, WithExportConfig};
+use opentelemetry_otlp::{self, Protocol, SpanExporter, WithExportConfig};
 use opentelemetry::KeyValue;
-use opentelemetry::trace::{Tracer, TracerProvider};
-use opentelemetry_sdk::{propagation::TraceContextPropagator, runtime, trace::Config, Resource};
+use opentelemetry::trace::{TraceContextExt, Tracer, TracerProvider};
+use opentelemetry_sdk::{propagation::TraceContextPropagator, Resource};
 use opentelemetry_sdk::trace::TracerProviderBuilder;
 use tracing::Level;
-use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Layer, Registry};
-use tracing_subscriber::filter::FilterExt;
+use tracing_subscriber::{layer::SubscriberExt, EnvFilter};
+use tracing_subscriber::util::SubscriberInitExt;
 
 pub struct LoggerOptions {
     pub application_name: String,
@@ -23,20 +23,6 @@ impl Default for LoggerOptions {
 
 pub fn initialize(logger_options: LoggerOptions) {
     opentelemetry::global::set_text_map_propagator(TraceContextPropagator::default());
-
-    let env_filter = EnvFilter::from_default_env()
-        .add_directive(logger_options.log_level.into());
-
-    let format = tracing_subscriber::fmt::format().with_ansi(
-        std::env::var("NO_FMT").is_err()
-    );
-    let format_layer = tracing_subscriber::fmt::layer().event_format(format);
-
-    let subscriber = Registry::default()
-        .with(env_filter)
-        .with(format_layer);
-
-    tracing::subscriber::set_global_default(subscriber).expect("Failed to set subscriber");
 
     let application_name = logger_options.application_name;
     let otel_endpoint = std::env::var("OTEL_ENDPOINT").unwrap_or_default();
@@ -60,6 +46,23 @@ pub fn initialize(logger_options: LoggerOptions) {
 
         provider
     };
+
+    let env_filter = EnvFilter::from_default_env()
+        .add_directive(logger_options.log_level.into());
+
+    let format = tracing_subscriber::fmt::format().with_ansi(
+        std::env::var("NO_FMT").is_err()
+    );
+    let format_layer = tracing_subscriber::fmt::layer().event_format(format);
+
+    let telemetry_layer = tracing_opentelemetry::layer()
+        .with_tracer(tracer_provider.tracer(application_name.clone()));
+
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(format_layer)
+        .with(telemetry_layer)
+        .init();
 
     opentelemetry::global::set_tracer_provider(tracer_provider);
 

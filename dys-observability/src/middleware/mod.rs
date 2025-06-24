@@ -25,6 +25,8 @@ pub fn record_trace_id(request: Request<Body>) -> Request<Body> {
 }
 
 pub fn make_span(request: &Request<Body>) -> Span {
+    tracing::info!("temp: making span!");
+
     let headers = request.headers();
     info_span!("incoming http request", ?headers, trace_id = tracing::field::Empty)
 }
