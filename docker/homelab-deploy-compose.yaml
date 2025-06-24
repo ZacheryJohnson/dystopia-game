@@ -46,10 +46,8 @@ services:
       - "/bin/sh"
       - "-c"
       - |
-        echo $OPENOBSERVE_API_ENDPOINT
-        echo $OPENOBSERVE_BASIC_AUTH_TOKEN
-        sed -E "s/endpoint: (_ENDPOINT_)/endpoint: ${OPENOBSERVE_API_ENDPOINT}/g" /opt/otel-collector.yaml > /opt/otel-collector.tmp.yaml
-        sed -E "s/Authorization: Basic (_AUTH_)/Authorization: Basic ${OPENOBSERVE_BASIC_AUTH_TOKEN}/g" /opt/otel-collector.tmp.yaml > /opt/otel-config/config.yaml
+        sed -E "s~endpoint: (_ENDPOINT_)~endpoint: ${OPENOBSERVE_API_ENDPOINT}~g" /opt/otel-collector.yaml > /opt/otel-collector.tmp.yaml
+        sed -E "s~Authorization: Basic (_AUTH_)~Authorization: Basic ${OPENOBSERVE_BASIC_AUTH_TOKEN}~g" /opt/otel-collector.tmp.yaml > /opt/otel-config/config.yaml
         cat /opt/otel-config/config.yaml
     volumes:
       - ./config/otel-collector.yaml:/opt/otel-collector.yaml
