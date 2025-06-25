@@ -7,8 +7,6 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 exporters:
-  debug:
-    verbosity: detailed
   otlphttp/openobserve:
     endpoint: _ENDPOINT_
     headers:
@@ -17,15 +15,10 @@ exporters:
       stream-name: default
 
 service:
-  telemetry:
-    logs:
-      level: "DEBUG"
-    traces:
-      level: detailed
   pipelines:
     traces:
       receivers: [otlp]
-      exporters: [otlphttp/openobserve, debug]
+      exporters: [otlphttp/openobserve]
     metrics:
       receivers: [otlp]
       exporters: [otlphttp/openobserve]
