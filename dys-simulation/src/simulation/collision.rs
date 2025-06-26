@@ -69,8 +69,15 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
                 let ball_obj = balls.get(ball_id).expect("Received invalid ball ID");
 
                 if let BallState::ThrownAtTarget { direction: _, thrower_id, target_id: _ } = ball_obj.state {
-                    // ZJ-TODO: check team of hit combatant, and only explode if enemy
-                    new_simulation_events.push(SimulationEvent::BallCollisionEnemy { thrower_id, enemy_id: *combatant_id, ball_id: *ball_id });
+                    let game_state = game_state.lock().unwrap();
+                    let thrower_team = game_state.combatants.get(&thrower_id).unwrap().team;
+                    let hit_combatant_team = game_state.combatants.get(combatant_id).unwrap().team;
+
+                    if thrower_team != hit_combatant_team {
+                        new_simulation_events.push(SimulationEvent::BallCollisionEnemy { thrower_id, enemy_id: *combatant_id, ball_id: *ball_id });
+                    }
+
+                    // ZJ-TODO: need to handle case of same team (catch pass?)
                 }
             }
         }

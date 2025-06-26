@@ -54,6 +54,11 @@ impl GameLog {
                 .filter(|evt| matches!(evt, SimulationEvent::BallThrownAtEnemy { thrower_id: cid, .. } if cid == combatant_id ))
                 .count() as u16;
 
+            let throws_hit = events
+                .iter()
+                .filter(|evt| matches!(evt, SimulationEvent::BallCollisionEnemy { thrower_id: cid, .. } if cid == combatant_id ))
+                .count() as u16;
+
             let combatants_shoved = events
                 .iter()
                 .filter(|evt| matches!(evt, SimulationEvent::CombatantShoveForceApplied { shover_combatant_id: cid, .. } if cid == combatant_id ))
@@ -63,7 +68,7 @@ impl GameLog {
                 combatant_id: *combatant_id,
                 points_scored,
                 balls_thrown,
-                throws_hit: 0, // ZJ-TODO
+                throws_hit,
                 combatants_shoved,
             });
         }
