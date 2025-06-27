@@ -59,6 +59,12 @@ pub enum SimulationEvent {
         ball_impulse_vector: Vector3<f32>,
     },
 
+    ThrownBallCaught {
+        thrower_id: CombatantId,
+        catcher_id: CombatantId,
+        ball_id: BallId,
+    },
+
     /// A ball has collided with an enemy 
     BallCollisionEnemy { thrower_id: CombatantId, enemy_id: CombatantId, ball_id: BallId },
 
@@ -275,6 +281,9 @@ impl SimulationEvent {
                 let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
                 let ball_rb = rigid_body_set.get_mut(ball_rigid_body_handle).unwrap();
                 ball_rb.apply_impulse(ball_impulse_vector, true);
+            }
+            SimulationEvent::ThrownBallCaught { thrower_id, catcher_id, ball_id } => {
+                todo!("ZJ-TODO: handle this")
             }
             SimulationEvent::BallCollisionEnemy { ball_id, .. } => {
                 let mut game_state = game_state.lock().unwrap();

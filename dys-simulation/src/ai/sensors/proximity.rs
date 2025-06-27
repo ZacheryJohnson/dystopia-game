@@ -5,6 +5,7 @@ use rapier3d::pipeline::{QueryFilter, QueryPipeline};
 use rapier3d::prelude::Cylinder;
 use crate::ai::belief::{Belief, ExpiringBelief};
 use crate::ai::sensor::Sensor;
+use crate::game_objects::ball::BallState;
 use crate::game_objects::combatant::CombatantId;
 use crate::game_objects::game_object_type::GameObjectType;
 use crate::game_state::{BallsMapT, CollidersMapT, CombatantsMapT};
@@ -16,6 +17,9 @@ pub struct ProximitySensor {
     shape: Cylinder,
     owner_combatant_id: CombatantId,
     owner_collider_handle: ColliderHandle,
+
+    // ZJ-TODO: revisit this approach later
+    yields_beliefs: bool,
 }
 
 impl ProximitySensor {
@@ -32,6 +36,7 @@ impl ProximitySensor {
             shape,
             owner_combatant_id,
             owner_collider_handle,
+            yields_beliefs: true
         }
     }
 }
@@ -45,6 +50,10 @@ impl Sensor for ProximitySensor {
         self.enabled
     }
 
+    fn set_yields_beliefs(&mut self, yields_beliefs: bool) {
+        self.yields_beliefs = yields_beliefs;
+    }
+
     fn sense(
         &self,
         combatant_isometry: &Isometry3<f32>,
@@ -53,13 +62,16 @@ impl Sensor for ProximitySensor {
         collider_set: &ColliderSet,
         active_colliders: &CollidersMapT,
         _: &CombatantsMapT,
-        _: &BallsMapT,
+        balls_map: &BallsMapT,
         current_tick: GameTickNumber
-    ) -> Vec<ExpiringBelief> {
+    ) -> (bool, Vec<ExpiringBelief>) {
         let mut beliefs = vec![];
 
         let query_filter = QueryFilter::default()
             .exclude_collider(self.owner_collider_handle);
+
+        // ZJ-TODO: this sucks please change
+        let mut should_interrupt = false;
 
         query_pipeline.intersections_with_shape(
             rigid_body_set,
@@ -68,27 +80,46 @@ impl Sensor for ProximitySensor {
             &self.shape,
             query_filter,
             |collider_handle| {
-                let game_object = active_colliders.get(&collider_handle).unwrap();
-                match game_object {
-                    GameObjectType::Ball(ball_id) => {
-                        beliefs.push(ExpiringBelief::new(Belief::InBallPickupRange {
-                            ball_id: *ball_id,
-                            combatant_id: self.owner_combatant_id,
-                        }, Some(current_tick + 12)));
-                    },
-                    GameObjectType::Combatant(combatant_id) => {
-                        beliefs.push(ExpiringBelief::new(Belief::CanReachCombatant {
-                            self_combatant_id: self.owner_combatant_id,
-                            target_combatant_id: *combatant_id,
-                        }, Some(current_tick + 1)));
+                if self.yields_beliefs {
+                    let game_object = active_colliders.get(&collider_handle).unwrap();
+                    match game_object {
+                        GameObjectType::Ball(ball_id) => {
+                            beliefs.push(ExpiringBelief::new(Belief::InBallPickupRange {
+                                ball_id: *ball_id,
+                                combatant_id: self.owner_combatant_id,
+                            }, Some(current_tick + 12)));
+                        },
+                        GameObjectType::Combatant(combatant_id) => {
+                            beliefs.push(ExpiringBelief::new(Belief::CanReachCombatant {
+                                self_combatant_id: self.owner_combatant_id,
+                                target_combatant_id: *combatant_id,
+                            }, Some(current_tick + 1)));
+                        }
+                        _ => {} // we can ignore all other game object types
                     }
-                    _ => {} // we can ignore all other game object types
+
+                    true
+                } else {
+                    let game_object = active_colliders.get(&collider_handle).unwrap();
+                    match game_object {
+                        GameObjectType::Ball(ball_id) => {
+                            let ball_object = balls_map.get(ball_id).unwrap();
+                            if matches!(ball_object.state, BallState::ThrownAtTarget {..}) {
+                                should_interrupt = true;
+                            }
+                        },
+                        GameObjectType::Combatant(combatant_id) => {
+                            // ZJ-TODO: determine when/if to interrupt for combatants
+                        }
+                        _ => {} // we can ignore all other game object types
+                    }
+
+                    true
                 }
 
-                true
             });
 
-        beliefs
+        (should_interrupt, beliefs)
     }
 }
 

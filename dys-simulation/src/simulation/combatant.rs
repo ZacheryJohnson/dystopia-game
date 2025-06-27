@@ -58,7 +58,7 @@ pub(crate) fn simulate_combatants(
 
             };
             for (sensor_id, sensor) in sensors {
-                let new_beliefs = sensor.sense(
+                let (should_interrupt, new_beliefs) = sensor.sense(
                     &combatant_isometry,
                     query_pipeline,
                     rigid_body_set,
@@ -73,6 +73,11 @@ pub(crate) fn simulate_combatants(
                     sensor_id,
                     &new_beliefs,
                 );
+
+                if should_interrupt {
+                    combatant_state.plan.clear();
+                    combatant_state.current_action = None;
+                }
             }
         }
 

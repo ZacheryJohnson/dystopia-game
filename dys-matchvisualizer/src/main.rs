@@ -140,7 +140,7 @@ pub fn initialize_with_canvas(
                     primary_window: Some(Window {
                         name: Some(String::from("Match Visualizer")),
                         canvas,
-                        resolution: WindowResolution::new(900.0, 900.0),
+                        resolution: WindowResolution::new(1200.0, 1200.0),
                         ..default()
                     }),
                     ..default()
@@ -1029,11 +1029,7 @@ fn handle_keyboard_input(
     }
 
     if keyboard_input.just_pressed(KeyCode::KeyR) {
-        let game_log = vis_state.game_log.as_ref().unwrap();
-        let game_log_bytes = postcard::to_allocvec(game_log).unwrap();
-        let world = vis_state.world_state.as_ref().unwrap();
-        let world_bytes = postcard::to_allocvec(world).unwrap();
-        load_game_log(game_log_bytes, world_bytes);
+        restart_with_local_game_log();
     }
 }
 

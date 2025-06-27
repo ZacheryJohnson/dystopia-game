@@ -62,7 +62,7 @@ impl Sensor for FieldOfViewSensor {
         combatants: &CombatantsMapT,
         balls: &BallsMapT,
         current_tick: GameTickNumber,
-    ) -> Vec<ExpiringBelief> {
+    ) -> (bool, Vec<ExpiringBelief>) {
         let mut beliefs = vec![];
 
         let shape_query_filter = QueryFilter::default()
@@ -136,14 +136,13 @@ impl Sensor for FieldOfViewSensor {
                     },
                     GameObjectType::Ball(ball_id) => {
                         let ball_object = balls.get(ball_id).unwrap();
-                        let ball_pos = rigid_body_set
-                            .get(ball_object.rigid_body_handle().unwrap())
-                            .unwrap()
-                            .translation();
+                        let ball_rb = rigid_body_set.get(ball_object.rigid_body_handle().unwrap()).unwrap();
+                        let ball_pos = ball_rb.translation();
 
                         beliefs.push(ExpiringBelief::new(Belief::BallPosition {
                             ball_id: *ball_id,
                             position: ball_pos.to_owned(),
+                            trajectory: ball_rb.linvel().data.0.into(),
                         }, Some(current_tick + 12)));
 
                         if let Some(combatant_id) = ball_object.held_by {
@@ -201,7 +200,7 @@ impl Sensor for FieldOfViewSensor {
             }
         }
 
-        beliefs
+        (false, beliefs)
     }
 }
 
@@ -310,7 +309,7 @@ mod tests {
 
             let combatant_forward_isometry = combatant_1.forward_isometry(rigid_body_set);
 
-            let new_beliefs = field_of_view_sensor.sense(
+            let (_, new_beliefs) = field_of_view_sensor.sense(
                 &combatant_forward_isometry,
                 query_pipeline,
                 rigid_body_set,
@@ -365,7 +364,7 @@ mod tests {
 
             let combatant_forward_isometry = combatant_1.forward_isometry(rigid_body_set);
 
-            let new_beliefs = field_of_view_sensor.sense(
+            let (_, new_beliefs) = field_of_view_sensor.sense(
                 &combatant_forward_isometry,
                 query_pipeline,
                 rigid_body_set,
@@ -481,7 +480,7 @@ mod tests {
 
             let combatant_forward_isometry = combatant_1.forward_isometry(rigid_body_set);
 
-            let new_beliefs = field_of_view_sensor.sense(
+            let (_, new_beliefs) = field_of_view_sensor.sense(
                 &combatant_forward_isometry,
                 query_pipeline,
                 rigid_body_set,

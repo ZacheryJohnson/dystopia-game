@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use dys_satisfiable::SatisfiableField;
 use crate::{ai::{action::ActionBuilder, belief::Belief, strategies::move_to_location::MoveToLocationStrategy}, game_objects::{combatant::CombatantObject, game_object::GameObject}, game_state::GameState};
@@ -216,6 +217,44 @@ pub fn actions(
                     .translation()
                     .to_owned()
             };
+
+            actions.push(
+                ActionBuilder::new()
+                    .name(format!("Catch Ball {ball_id}"))
+                    .strategy(PickUpBallStrategy::new(combatant.id, ball_id, ball_location.to_owned()))
+                    .cost(1.0) // ZJ-TODO
+                    .requires(
+                        SatisfiableBelief::InBallPickupRange()
+                            .combatant_id(SatisfiableField::Exactly(combatant.id))
+                            .ball_id(SatisfiableField::Exactly(ball_id))
+                    )
+                    .prohibits(
+                        SatisfiableBelief::HeldBall()
+                            .combatant_id(SatisfiableField::Exactly(combatant.id))
+                    )
+                    .prohibits(
+                        SatisfiableBelief::HeldBall()
+                            .ball_id(SatisfiableField::Exactly(ball_id))
+                    )
+                    .requires(
+                        SatisfiableBelief::BallIsFlying()
+                            .ball_id(SatisfiableField::Exactly(ball_id))
+                    )
+                    .completion(vec![
+                        Belief::HeldBall { ball_id, combatant_id: combatant.id },
+                        Belief::BallCaught { ball_id, combatant_id: combatant.id },
+                    ])
+                    .consumes(
+                        SatisfiableBelief::BallIsFlying()
+                            .ball_id(SatisfiableField::Exactly(ball_id))
+                    )
+                    .consumes(
+                        SatisfiableBelief::BallCaught()
+                            .ball_id(SatisfiableField::Exactly(ball_id))
+                            .combatant_id(SatisfiableField::Exactly(combatant.id))
+                    )
+                    .build()
+            );
 
             actions.push(
                 ActionBuilder::new()

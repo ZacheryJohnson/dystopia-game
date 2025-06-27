@@ -78,6 +78,14 @@ pub fn goals(
             )
             .priority(attr(AttributeType::Constitution) + attr(AttributeType::Presence))
             .build(),
+        GoalBuilder::new()
+            .name("Catch Ball")
+            .desired_belief(
+                SatisfiableBelief::BallCaught()
+                    .combatant_id(SatisfiableField::Exactly(combatant_object.id))
+            )
+            .priority(100.0)
+            .build(),
         idle_goal()
     ]
 }

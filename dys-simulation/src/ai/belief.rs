@@ -30,6 +30,7 @@ pub enum Belief {
         #[unique]
         ball_id: BallId,
         position: Vector3<f32>,
+        trajectory: Vector3<f32>,
     },
     CombatantPosition {
         #[unique]
@@ -88,6 +89,11 @@ pub enum Belief {
         #[unique]
         combatant_id: CombatantId,
         on_plate: Option<PlateId>,
+    },
+    BallCaught {
+        #[unique]
+        combatant_id: CombatantId,
+        ball_id: BallId,
     },
 }
 
@@ -291,7 +297,11 @@ mod tests {
 
     #[test]
     fn test_different_type_doesnt_satisfy() {
-        let belief_set = BeliefSet::from(&vec![Belief::BallPosition { ball_id: 1, position: Vector3::<f32>::identity() }]);
+        let belief_set = BeliefSet::from(&vec![Belief::BallPosition {
+            ball_id: 1,
+            position: Vector3::<f32>::identity(),
+            trajectory: Vector3::<f32>::identity(),
+        }]);
 
         let satisfiable = SatisfiableBelief::OnPlate();
 

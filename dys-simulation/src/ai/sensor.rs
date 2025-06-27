@@ -9,6 +9,7 @@ use crate::game_tick::GameTickNumber;
 pub trait Sensor: DynClone + Debug {
     fn set_enabled(&mut self, enabled: bool);
     fn enabled(&self) -> bool;
+    fn set_yields_beliefs(&mut self, yields_beliefs: bool) {}
     fn sense(
         &self,
         combatant_isometry: &Isometry3<f32>,
@@ -19,7 +20,7 @@ pub trait Sensor: DynClone + Debug {
         combatants: &CombatantsMapT,
         balls: &BallsMapT,
         current_tick: GameTickNumber,
-    ) -> Vec<ExpiringBelief>;
+    ) -> (bool, Vec<ExpiringBelief>);
 }
 
 dyn_clone::clone_trait_object!(Sensor);

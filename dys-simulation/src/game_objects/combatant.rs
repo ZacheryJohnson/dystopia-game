@@ -80,10 +80,18 @@ impl CombatantObject {
         );
 
         // ZJ-TODO: determine this based on limbs
-        let proximity_radius = COMBATANT_RADIUS * 2.0;
-        let proximity_sensor = ProximitySensor::new(
-            id, COMBATANT_HALF_HEIGHT * 2.0, proximity_radius, collider_handle
+        let ball_pickup_range_proximity_radius = (COMBATANT_RADIUS * 2.0);
+        let ball_pickup_range_proximity_sensor = ProximitySensor::new(
+            id, COMBATANT_HALF_HEIGHT * 2.0, ball_pickup_range_proximity_radius, collider_handle
         );
+
+        let ball_danger_proximity_range = 2.0_f32;
+        let ball_danger_proximity_radius = (COMBATANT_RADIUS * 2.0) + ball_danger_proximity_range;
+        let mut ball_danger_proximity_sensor = ProximitySensor::new(
+            id, COMBATANT_HALF_HEIGHT * 2.0, ball_danger_proximity_radius, collider_handle
+        );
+
+        ball_danger_proximity_sensor.set_yields_beliefs(false);
 
         CombatantObject {
             id,
@@ -95,7 +103,11 @@ impl CombatantObject {
                 completed_action: None,
                 plan: vec![],
                 beliefs: BeliefSet::empty(),
-                sensors: vec![(1, Box::new(field_of_view_sensor)), (2, Box::new(proximity_sensor))],
+                sensors: vec![
+                    (1, Box::new(field_of_view_sensor)),
+                    (2, Box::new(ball_pickup_range_proximity_sensor)),
+                    (3, Box::new(ball_danger_proximity_sensor)),
+                ],
                 stunned: false,
             })),
             team,
