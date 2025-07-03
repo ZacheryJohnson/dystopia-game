@@ -108,7 +108,7 @@ impl Sensor for ProximitySensor {
                                 should_interrupt = true;
                             }
                         },
-                        GameObjectType::Combatant(combatant_id) => {
+                        GameObjectType::Combatant(_combatant_id) => {
                             // ZJ-TODO: determine when/if to interrupt for combatants
                         }
                         _ => {} // we can ignore all other game object types

@@ -61,7 +61,7 @@
 
 <style scoped>
   .hidden {
-    transform: translateY(-100%);
+    transform: translateY(-200%) !important;
     display: none;
   }
 

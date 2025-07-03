@@ -1,10 +1,9 @@
-use opentelemetry_otlp::{self, Protocol, SpanExporter, WithExportConfig};
+use opentelemetry_otlp::{self, SpanExporter, WithExportConfig};
 use opentelemetry::KeyValue;
-use opentelemetry::trace::{TraceContextExt, Tracer, TracerProvider};
+use opentelemetry::trace::TracerProvider;
 use opentelemetry_sdk::{propagation::TraceContextPropagator, Resource};
-use opentelemetry_sdk::trace::{SdkTracer, SdkTracerProvider, TracerProviderBuilder};
+use opentelemetry_sdk::trace::{SdkTracerProvider, TracerProviderBuilder};
 use tracing::Level;
-use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter};
 use tracing_subscriber::util::SubscriberInitExt;
 

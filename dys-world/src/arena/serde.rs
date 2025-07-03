@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use serde::Serializer;
 use crate::arena::Arena;
 
-pub(crate) fn serialize_arena_to_id<S>(
+pub(crate) fn _serialize_arena_to_id<S>(
     _: &Arc<Mutex<Arena>>,
     s: S,
 ) -> Result<S::Ok, S::Error>

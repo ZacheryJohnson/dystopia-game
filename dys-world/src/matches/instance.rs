@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use serde::Serialize;
 use ts_rs::TS;
 use crate::matches::serde::serialize_team_instance_to_id;
-use crate::{arena::{Arena, serde::serialize_arena_to_id}, team::instance::TeamInstance};
+use crate::team::instance::TeamInstance;
 use crate::schedule::calendar::Date;
 
 pub type MatchInstanceId = u64;

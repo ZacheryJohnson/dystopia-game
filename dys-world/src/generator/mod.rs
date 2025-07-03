@@ -2,16 +2,13 @@ use std::ops::RangeInclusive;
 use std::sync::{Arc, Mutex};
 use rand::prelude::IteratorRandom;
 use rand::Rng;
-use rand_distr::Distribution;
+use rand_distr::{Distribution, Normal};
 use crate::combatant::instance::CombatantInstance;
 use crate::combatant::limb::{Limb, LimbModifier, LimbType};
 use crate::attribute::instance::AttributeInstance;
 use crate::attribute::attribute_type::AttributeType;
 use crate::team::instance::TeamInstance;
 use crate::world::World;
-use rand::seq::SliceRandom;
-use rand_distr::Normal;
-use crate::arena::Arena;
 use crate::matches::instance::MatchInstance;
 use crate::proposal::{Proposal, ProposalEffect, ProposalOption};
 use crate::schedule::calendar::{Date, Month};
@@ -500,7 +497,7 @@ impl Generator {
 
     pub fn generate_proposals(
         &self,
-        rng: &mut impl Rng,
+        _: &mut impl Rng,
         world: &World
     ) -> Vec<Proposal> {
         let mut proposals = vec![];
@@ -569,13 +566,13 @@ impl Generator {
 
 #[cfg(test)]
 mod tests {
-    use rand::thread_rng;
+    use rand::rng;
     use super::*;
 
     #[test]
     fn generate_season() {
         let generator = Generator::new();
-        let rng = &mut thread_rng();
+        let rng = &mut rng();
         let world = generator.generate_world(rng);
         let season = generator.generate_season(rng, &world);
 

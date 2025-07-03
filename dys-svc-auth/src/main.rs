@@ -1,5 +1,3 @@
-use async_nats::ConnectOptions;
-use tower::ServiceBuilder;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
 use dys_nats::error::NatsError;
@@ -58,8 +56,8 @@ async fn create_account(
 }
 
 async fn login(
-    request: LoginRequest,
-    mut app_state: AppState,
+    _request: LoginRequest,
+    _app_state: AppState,
 ) -> Result<LoginResponse, NatsError> {
     Ok(LoginResponse{})
 }

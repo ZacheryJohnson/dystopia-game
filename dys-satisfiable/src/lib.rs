@@ -3,64 +3,106 @@ use std::rc::Rc;
 pub use dyn_clone;
 pub use ahash;
 
+/// A SatisfiableField represents an abstract test that will be performed on a concrete value.
+///
 #[derive(Clone, Default)]
 pub enum SatisfiableField<
-    ValueT: Clone + PartialEq + PartialOrd
+    ConcreteT: Clone + PartialEq + PartialOrd
 > {
     /// The concrete value may have any value for this field.
     /// Ignored fields will always pass satisfiability tests.
+    /// ```
+    /// # use dys_satisfiable::SatisfiableField;
+    ///
+    /// let ignored = SatisfiableField::<u32>::Ignore;
+    /// assert!(ignored.satisfied_by(&u32::MIN));
+    /// assert!(ignored.satisfied_by(&u32::MAX));
+    /// ```
     #[default]
     Ignore,
 
-    /// The concrete value must be the exact value of type T
-    Exactly(ValueT),
+    /// The concrete value must be the exact value of type ConcreteT
+    /// ```
+    /// # use dys_satisfiable::SatisfiableField;
+    /// let exactly_three = SatisfiableField::Exactly(3u32);
+    /// assert_eq!(true, exactly_three.satisfied_by(&3u32));
+    /// assert_eq!(false, exactly_three.satisfied_by(&4u32));
+    /// ```
+    Exactly(ConcreteT),
 
-    /// The concrete value must NOT be the exact value of type T
-    NotExactly(ValueT),
+    /// The concrete value must NOT be the exact value of type ConcreteT
+    /// ```
+    /// # use dys_satisfiable::SatisfiableField;
+    /// let not_exactly_three = SatisfiableField::NotExactly(3u32);
+    /// assert_eq!(true, not_exactly_three.satisfied_by(&4u32));
+    /// assert_eq!(false, not_exactly_three.satisfied_by(&3u32));
+    /// ```
+    NotExactly(ConcreteT),
 
-    /// The concrete value must be in the range of values of type T
-    In(Vec<ValueT>),
+    /// The concrete value must be in the range of values of type ConcreteT
+    /// ```
+    /// # use dys_satisfiable::SatisfiableField;
+    /// let allowed_values = SatisfiableField::In(vec![
+    ///     1u32,
+    ///     2u32,
+    ///     3u32,
+    /// ]);
+    ///
+    /// assert_eq!(false, allowed_values.satisfied_by(&0u32));
+    /// assert_eq!(true, allowed_values.satisfied_by(&1u32));
+    /// assert_eq!(true, allowed_values.satisfied_by(&2u32));
+    /// assert_eq!(true, allowed_values.satisfied_by(&3u32));
+    /// assert_eq!(false, allowed_values.satisfied_by(&4u32));
+    /// ```
+    In(Vec<ConcreteT>),
 
-    /// The concrete value must NOT be in the range of values of type T
-    NotIn(Vec<ValueT>),
+    /// The concrete value must NOT be in the range of values of type ConcreteT
+    /// ```
+    /// # use dys_satisfiable::SatisfiableField;
+    /// let disallowed_values = SatisfiableField::NotIn(vec![
+    ///     1u32,
+    ///     2u32,
+    ///     3u32,
+    /// ]);
+    ///
+    /// assert_eq!(true, disallowed_values.satisfied_by(&0u32));
+    /// assert_eq!(false, disallowed_values.satisfied_by(&1u32));
+    /// assert_eq!(false, disallowed_values.satisfied_by(&2u32));
+    /// assert_eq!(false, disallowed_values.satisfied_by(&3u32));
+    /// assert_eq!(true, disallowed_values.satisfied_by(&4u32));
+    /// ```
+    NotIn(Vec<ConcreteT>),
 
-    /// The concrete value must be strictly greater than the value of type T
-    GreaterThan(ValueT),
+    /// The concrete value must be strictly greater than the value of type ConcreteT
+    GreaterThan(ConcreteT),
 
-    /// The concrete value must be greater than or equal to the value of type T
-    GreaterThanOrEqual(ValueT),
+    /// The concrete value must be greater than or equal to the value of type ConcreteT
+    GreaterThanOrEqual(ConcreteT),
 
-    /// The concrete value must be strictly less than the value of type T
-    LessThan(ValueT),
+    /// The concrete value must be strictly less than the value of type ConcreteT
+    LessThan(ConcreteT),
 
-    /// The concrete value must be less than or equal to the value of type T
-    LessThanOrEqual(ValueT),
+    /// The concrete value must be less than or equal to the value of type ConcreteT
+    LessThanOrEqual(ConcreteT),
 
-    /// The concrete value must pass a provided lambda
-    Lambda(Rc<dyn Fn(ValueT) -> bool>)
+    /// The concrete value must pass a provided lambda.
+    Lambda(Rc<dyn Fn(ConcreteT) -> bool>)
 }
 
-impl<ValueT: Clone + PartialEq + PartialOrd + Debug> Debug for SatisfiableField<ValueT> {
+impl<ConcreteT: Clone + PartialEq + PartialOrd + Debug> Debug for SatisfiableField<ConcreteT> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
             SatisfiableField::Lambda(_) => write!(f, "<lambda fn>"),
             SatisfiableField::Ignore => write!(f, "<ignore>"),
-            SatisfiableField::Exactly(val) => write!(f, "{val:?}"),
-            SatisfiableField::NotExactly(val) => write!(f, "{val:?}"),
-            SatisfiableField::In(val) => write!(f, "{val:?}"),
-            SatisfiableField::NotIn(val) => write!(f, "{val:?}"),
-            SatisfiableField::GreaterThan(val) => write!(f, "{val:?}"),
-            SatisfiableField::GreaterThanOrEqual(val) => write!(f, "{val:?}"),
-            SatisfiableField::LessThan(val) => write!(f, "{val:?}"),
-            SatisfiableField::LessThanOrEqual(val) => write!(f, "{val:?}"),
+            _ => write!(f, "{:?}", self),
         }
     }
 }
 
 impl<
-    ValueT: Clone + PartialEq + PartialOrd,
-> SatisfiableField<ValueT> {
-    pub fn satisfied_by(&self, value: &ValueT) -> bool {
+    ConcreteT: Clone + PartialEq + PartialOrd,
+> SatisfiableField<ConcreteT> {
+    pub fn satisfied_by(&self, value: &ConcreteT) -> bool {
         match self {
             SatisfiableField::Ignore => true,
             SatisfiableField::Exactly(self_val) => self_val == value,

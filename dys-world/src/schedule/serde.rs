@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use serde::ser::SerializeSeq;
-use serde::{Deserializer, Serializer};
+use serde::Serializer;
 use crate::matches::instance::MatchInstance;
 
 pub(crate) fn serialize_match_instances<S>(

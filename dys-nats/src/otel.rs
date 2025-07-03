@@ -26,6 +26,12 @@ impl<'a> Injector for NatsHeaderInjector<'a> {
     }
 }
 
+pub fn create_otel_header_map() -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    propagate_otel_context(&mut headers);
+    headers
+}
+
 pub fn propagate_otel_context(header_map: &mut HeaderMap) {
     opentelemetry::global::get_text_map_propagator(|propagator| {
         propagator.inject_context(&Span::current().context(), &mut NatsHeaderInjector(header_map));

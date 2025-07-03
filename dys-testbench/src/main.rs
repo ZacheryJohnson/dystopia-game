@@ -29,7 +29,7 @@ async fn main() {
 
     let away_team = world.teams.first().expect("failed to get away team from generated world").to_owned();
     let home_team = world.teams.get(1).expect("failed to get home team from generated world").to_owned();
-    let arena = Arc::new(Mutex::new(Arena::new_with_testing_defaults()));
+    let _arena = Arc::new(Mutex::new(Arena::new_with_testing_defaults()));
     let date = Date(Month::Arguscorp, 1, 10000);
 
     let match_instance = MatchInstance {

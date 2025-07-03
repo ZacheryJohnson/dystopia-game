@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use chrono::{Duration, Timelike};
-use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 use crate::matches::instance::{MatchInstance, MatchInstanceId};
 use crate::schedule::calendar::Date;
 use crate::schedule::series::Series;
@@ -26,6 +24,8 @@ impl Season {
 
         let first_match_time_utc = second_adjusted_utc + Duration::minutes(minute_adjustment);
 
+        // ZJ-TODO: refactor
+        #[allow(unused_assignments)]
         let mut next_match_time_utc = first_match_time_utc;
 
         for series in &all_series {
@@ -58,7 +58,6 @@ impl Season {
 
 #[cfg(test)]
 mod tests {
-    use crate::arena::Arena;
     use crate::matches::instance::MatchInstanceId;
     use crate::schedule::calendar::Month;
     use crate::schedule::series::SeriesType;

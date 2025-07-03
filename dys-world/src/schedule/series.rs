@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 
 use crate::schedule::serde::serialize_match_instances;
 use crate::matches::instance::MatchInstance;

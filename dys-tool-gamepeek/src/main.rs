@@ -8,7 +8,6 @@ use dys_simulation::game_objects::combatant::{CombatantId, CombatantState};
 use dys_simulation::game_state::GameState;
 use dys_simulation::game_tick::{GameTick, GameTickNumber};
 use dys_simulation::simulation::simulate_tick;
-use dys_world::arena::Arena;
 use dys_world::schedule::calendar::Date;
 use dys_world::schedule::calendar::Month::Arguscorp;
 use dys_world::matches::instance::MatchInstance;

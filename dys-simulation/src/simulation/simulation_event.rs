@@ -282,7 +282,7 @@ impl SimulationEvent {
                 let ball_rb = rigid_body_set.get_mut(ball_rigid_body_handle).unwrap();
                 ball_rb.apply_impulse(ball_impulse_vector, true);
             }
-            SimulationEvent::ThrownBallCaught { thrower_id, catcher_id, ball_id } => {
+            SimulationEvent::ThrownBallCaught { thrower_id: _, catcher_id: _, ball_id: _ } => {
                 todo!("ZJ-TODO: handle this")
             }
             SimulationEvent::BallCollisionEnemy { ball_id, .. } => {

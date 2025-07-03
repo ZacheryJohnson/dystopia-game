@@ -738,6 +738,7 @@ fn update(
         );
 
         combatant_vis.last_position = combatant_transform.translation;
+        debug!("Workaround for ignored field: {}", combatant_vis.instance_id);
     }
 
     for (mut ball_vis, mut ball_transform) in balls_query.iter_mut() {
@@ -877,7 +878,7 @@ fn display_current_score(
     const TICKS_PER_SECOND: u32 = 10;
     {
         let mut home_text_query = set.p0();
-        let (mut home_text, mut color) = home_text_query.get_single_mut().expect("failed to get home score text component");
+        let (mut home_text, mut color) = home_text_query.single_mut().expect("failed to get home score text component");
         home_text.0 = format!("{}", vis_state.home_score);
         if vis_state.end_of_game {
             if vis_state.home_score >= vis_state.away_score {
@@ -892,7 +893,7 @@ fn display_current_score(
 
     {
         let mut away_text_query = set.p1();
-        let (mut away_text, mut color) = away_text_query.get_single_mut().expect("failed to get away score text component");
+        let (mut away_text, mut color) = away_text_query.single_mut().expect("failed to get away score text component");
         away_text.0 = format!("{}", vis_state.away_score);
         if vis_state.end_of_game {
             if vis_state.away_score >= vis_state.home_score {
@@ -907,7 +908,7 @@ fn display_current_score(
 
     {
         let mut match_timer_text_query = set.p2();
-        let mut match_timer_text = match_timer_text_query.get_single_mut().expect("failed to get match timer text component");
+        let mut match_timer_text = match_timer_text_query.single_mut().expect("failed to get match timer text component");
         let minutes_component = vis_state.current_tick / TICKS_PER_SECOND / 60;
         let seconds_component = vis_state.current_tick / TICKS_PER_SECOND % 60;
         match_timer_text.0 = format!(
@@ -1053,7 +1054,7 @@ fn update_postgame_scoreboard(
         return;
     }
 
-    let Ok(mut visibility) = query.get_single_mut() else {
+    let Ok(mut visibility) = query.single_mut() else {
         return;
     };
 

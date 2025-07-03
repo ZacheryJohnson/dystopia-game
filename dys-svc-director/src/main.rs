@@ -7,17 +7,14 @@ use bytes::Bytes;
 use chrono::DateTime;
 use dys_observability::logger::LoggerOptions;
 use dys_simulation::game::Game;
-use dys_world::schedule::calendar::{Date, Month};
+use dys_world::schedule::calendar::Date;
 use dys_world::world::World;
-use serde::Serialize;
 
 use rand::SeedableRng;
 use rand::rngs::StdRng;
-use rand::seq::SliceRandom;
 use tokio::time::Instant;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
-use dys_nats::connection::make_client;
 use dys_nats::error::NatsError;
 use dys_nats::rpc::router::NatsRouter;
 use dys_protocol::nats::match_results::match_response::MatchSummary;
@@ -27,7 +24,7 @@ use dys_protocol::nats::vote::vote_svc::{GetProposalsRpcServer, VoteOnProposalRp
 use dys_protocol::nats::world::{GetSeasonRequest, GetSeasonResponse, WorldStateRequest, WorldStateResponse};
 use dys_protocol::nats::world::schedule_svc::GetSeasonRpcServer;
 use dys_protocol::nats::world::world_svc::WorldStateRpcServer;
-use dys_world::combatant::instance::{CombatantInstance, EffectDuration};
+use dys_world::combatant::instance::EffectDuration;
 use dys_world::proposal::ProposalEffect;
 use dys_world::schedule::calendar::Month::Arguscorp;
 use dys_world::schedule::season::Season;

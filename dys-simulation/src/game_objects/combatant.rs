@@ -80,7 +80,7 @@ impl CombatantObject {
         );
 
         // ZJ-TODO: determine this based on limbs
-        let ball_pickup_range_proximity_radius = (COMBATANT_RADIUS * 2.0);
+        let ball_pickup_range_proximity_radius = COMBATANT_RADIUS * 2.0;
         let ball_pickup_range_proximity_sensor = ProximitySensor::new(
             id, COMBATANT_HALF_HEIGHT * 2.0, ball_pickup_range_proximity_radius, collider_handle
         );

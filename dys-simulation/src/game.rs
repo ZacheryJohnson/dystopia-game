@@ -115,10 +115,9 @@ impl Game {
 // In the current version of Rust, the below line effectively checks for Release build configurations
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex};
     use rand::prelude::StdRng;
     use rand::SeedableRng;
-    use dys_world::{arena::Arena, schedule::calendar::{Date, Month}, generator::Generator, matches::instance::MatchInstance};
+    use dys_world::{schedule::calendar::{Date, Month}, generator::Generator, matches::instance::MatchInstance};
 
     use crate::game::Game;
 
