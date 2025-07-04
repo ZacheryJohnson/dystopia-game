@@ -1,7 +1,9 @@
-use opentelemetry_otlp::{self, SpanExporter, WithExportConfig};
+use opentelemetry_otlp::{self, LogExporter, SpanExporter, WithExportConfig};
 use opentelemetry::KeyValue;
 use opentelemetry::trace::TracerProvider;
+use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_sdk::{propagation::TraceContextPropagator, Resource};
+use opentelemetry_sdk::logs::{LoggerProviderBuilder, SdkLoggerProvider};
 use opentelemetry_sdk::trace::{SdkTracerProvider, TracerProviderBuilder};
 use tracing::Level;
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter};
@@ -19,6 +21,30 @@ impl Default for LoggerOptions {
             log_level: Level::INFO,
         }
     }
+}
+
+fn get_otel_logging_provider(
+    endpoint: impl Into<String>,
+    application_name: impl Into<String>,
+) -> SdkLoggerProvider {
+    let exporter = LogExporter::builder()
+        .with_tonic()
+        .with_endpoint(endpoint.into())
+        .build()
+        .expect("failed to build log exporter");
+
+    let provider = LoggerProviderBuilder::default()
+        .with_resource(
+            Resource::builder_empty()
+                .with_attribute(
+                    KeyValue::new("service.name", application_name.into())
+                )
+                .build()
+        )
+        .with_batch_exporter(exporter)
+        .build();
+
+    provider
 }
 
 fn get_otel_tracing_provider(
@@ -70,12 +96,18 @@ pub fn initialize(logger_options: LoggerOptions) {
             &application_name,
         );
         let telemetry_layer = tracing_opentelemetry::layer()
-            .with_tracer(tracing_provider.tracer(application_name));
+            .with_tracer(tracing_provider.tracer(application_name.clone()));
+
+        let logging_layer = OpenTelemetryTracingBridge::new(&get_otel_logging_provider(
+            otel_endpoint.clone(),
+            application_name.clone()
+        ));
 
         tracing_subscriber::registry()
             .with(env_filter)
             .with(format_layer)
             .with(telemetry_layer)
+            .with(logging_layer)
             .init();
 
         opentelemetry::global::set_tracer_provider(tracing_provider);
