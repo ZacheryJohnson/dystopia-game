@@ -110,6 +110,19 @@ services:
       - "replaceme"
       - "-m"
       - "8222"
+  nats-exporter:
+    container_name: "nats-exporter"
+    image: "natsio/prometheus-nats-exporter:latest"
+    command:
+      - "-varz"     # general metrics
+      - "-accstatz" # (?) metrics
+      - "-connz"    # connection metrics
+      - "-gatewayz" # gateway metrics
+      - "-healthz"  # health metrics
+      - "-leafz"    # leaf metrics
+      - "-subz"     # subscription metrics
+      - "-jsz=all"  # jetstream metrics (all; no filtering)
+      - "http://nats:8222"
 volumes:
   redisinsight:
   otelcollector:

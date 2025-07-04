@@ -6,6 +6,23 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
 
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: "nats"
+          scrape_interval: 5s
+          static_configs:
+            - targets: ["nats-exporter:7777"]
+
+processors:
+  metricstransform:
+    transforms:
+      # Prepend "dax_dev_" to all metrics
+      - include: ^(.*)$$
+        match_type: regexp
+        action: update
+        new_name: dax_dev_$${1}
+
 exporters:
   otlphttp/openobserve:
     endpoint: _ENDPOINT_
@@ -20,7 +37,8 @@ service:
       receivers: [otlp]
       exporters: [otlphttp/openobserve]
     metrics:
-      receivers: [otlp]
+      receivers: [otlp, prometheus]
+      processors: [metricstransform]
       exporters: [otlphttp/openobserve]
     logs:
       receivers: [otlp]
