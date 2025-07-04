@@ -64,7 +64,8 @@ services:
         BASIC_AUTH_TOKEN=$(echo "dax@determinism.dev:$$OPENOBSERVE_SECRET" | base64)
         sed -E "s/Authorization: Basic (_AUTH_)/Authorization: Basic $$BASIC_AUTH_TOKEN/g" /opt/otel-collector.original.yaml > tmp.yaml
         sed -E "s~endpoint: (_ENDPOINT_)~endpoint: http://172.18.0.1:5080/api/default~g" tmp.yaml > tmp2.yaml
-        mv tmp2.yaml /opt/otel-config/config.yaml
+        sed -E "s~stream-name: (_STREAM_)~stream-name: local~g" tmp2.yaml > tmp3.yaml
+        mv tmp3.yaml /opt/otel-config/config.yaml
     volumes:
       - ${PWD}/config/otel-collector.yaml:/opt/otel-collector.original.yaml
       - otelcollector:/opt/otel-config

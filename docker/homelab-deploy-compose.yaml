@@ -47,7 +47,8 @@ services:
       - "-c"
       - |
         sed -E "s~endpoint: (_ENDPOINT_)~endpoint: ${OPENOBSERVE_API_ENDPOINT}~g" /opt/otel-collector.yaml > /opt/otel-collector.tmp.yaml
-        sed -E "s~Authorization: Basic (_AUTH_)~Authorization: Basic ${OPENOBSERVE_BASIC_AUTH_TOKEN}~g" /opt/otel-collector.tmp.yaml > /opt/otel-config/config.yaml
+        sed -E "s~Authorization: Basic (_AUTH_)~Authorization: Basic ${OPENOBSERVE_BASIC_AUTH_TOKEN}~g" /opt/otel-collector.tmp.yaml > /opt/otel-collector.tmp2.yaml
+        sed -E "s~stream-name: (_STREAM_)~stream-name: dax-dev~g" /opt/otel-collector.tmp2.yaml > /opt/otel-config/config.yaml
     volumes:
       - ./config/otel-collector.yaml:/opt/otel-collector.yaml
       - otelcollector:/opt/otel-config

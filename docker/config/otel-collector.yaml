@@ -12,7 +12,7 @@ exporters:
     headers:
       Authorization: Basic _AUTH_
       organization: default
-      stream-name: default
+      stream-name: _STREAM_
 
 service:
   pipelines:
