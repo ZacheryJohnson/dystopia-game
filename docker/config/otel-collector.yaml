@@ -11,10 +11,14 @@ receivers:
       scrape_configs:
         - job_name: "nats"
           scrape_interval: 15s
+          scrape_timeout: 10s
           static_configs:
             - targets: ["nats-exporter:7777"]
 
 processors:
+  batch:
+    send_batch_size: 10000
+    timeout: 5s
   metricstransform:
     transforms:
       # Prepend "dax_dev_" to all metrics
@@ -35,11 +39,13 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
+      processors: [batch]
       exporters: [otlphttp/openobserve]
     metrics:
       receivers: [otlp, prometheus]
-      processors: [metricstransform]
+      processors: [batch, metricstransform]
       exporters: [otlphttp/openobserve]
     logs:
       receivers: [otlp]
+      processors: [batch]
       exporters: [otlphttp/openobserve]

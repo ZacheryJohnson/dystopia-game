@@ -106,8 +106,8 @@ pub fn initialize(logger_options: LoggerOptions) {
         tracing_subscriber::registry()
             .with(env_filter)
             .with(format_layer)
-            .with(telemetry_layer)
             .with(logging_layer)
+            .with(telemetry_layer)
             .init();
 
         opentelemetry::global::set_tracer_provider(tracing_provider);
