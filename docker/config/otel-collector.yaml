@@ -28,6 +28,8 @@ processors:
         new_name: dax_dev_$${1}
 
 exporters:
+  debug:
+    verbosity: detailed
   otlphttp/openobserve:
     endpoint: _ENDPOINT_
     headers:
@@ -48,4 +50,4 @@ service:
     logs:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlphttp/openobserve]
+      exporters: [debug, otlphttp/openobserve]
