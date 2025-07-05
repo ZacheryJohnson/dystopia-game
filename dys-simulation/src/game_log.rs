@@ -31,8 +31,7 @@ impl GameLog {
         let mut combatant_statlines = Vec::new();
         let events = ticks
             .iter()
-            .map(|tick| tick.simulation_events.to_owned())
-            .flatten()
+            .flat_map(|tick| tick.simulation_events.to_owned())
             .collect::<Vec<_>>();
 
         let game_state = game_state.lock().unwrap();

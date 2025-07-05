@@ -10,14 +10,14 @@ use crate::error::NatsError;
 use crate::otel::create_span_from;
 use crate::rpc::server::NatsRpcServer;
 
+type FutureT = Pin<Box<dyn Future<Output = Result<Bytes, NatsError>> + Send>>;
 struct NatsServiceInstance {
-    service: Box<(dyn tower::Service<
-            async_nats::Message,
-            Error=NatsError,
-            Future=Pin<Box<dyn Future<Output = Result<Bytes, NatsError>> + Send>>,
-            Response=Bytes,
-        > + Send + 'static)
-    >,
+    service: Box<dyn tower::Service<
+        async_nats::Message,
+        Error=NatsError,
+        Future=FutureT,
+        Response=Bytes
+    > + Send + 'static>,
     rpc_subject: String,
 }
 
@@ -63,7 +63,7 @@ impl NatsRouter {
     }
 
     pub async fn run(mut self) -> ! {
-        let services = std::mem::replace(&mut self.services, Vec::new());
+        let services = std::mem::take(&mut self.services);
         struct AppState {
             should_shutdown: bool,
             has_begun_shutdown: bool,

@@ -94,7 +94,14 @@ impl<ConcreteT: Clone + PartialEq + PartialOrd + Debug> Debug for SatisfiableFie
         match self {
             SatisfiableField::Lambda(_) => write!(f, "<lambda fn>"),
             SatisfiableField::Ignore => write!(f, "<ignore>"),
-            _ => write!(f, "{:?}", self),
+            SatisfiableField::Exactly(val) => write!(f, "Exactly({val:?})"),
+            SatisfiableField::NotExactly(val) => write!(f, "NotExactly({val:?})"),
+            SatisfiableField::In(vals) => write!(f, "In({vals:?})"),
+            SatisfiableField::NotIn(vals) => write!(f, "NotIn({vals:?})"),
+            SatisfiableField::GreaterThan(val) => write!(f, "GreaterThan({val:?})"),
+            SatisfiableField::GreaterThanOrEqual(val) => write!(f, "GreaterThanOrEqual({val:?})"),
+            SatisfiableField::LessThan(val) => write!(f, "LessThan({val:?})"),
+            SatisfiableField::LessThanOrEqual(val) => write!(f, "LessThanOrEqual({val:?})"),
         }
     }
 }

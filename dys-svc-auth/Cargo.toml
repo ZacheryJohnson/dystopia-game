@@ -11,7 +11,5 @@ dys-protocol = { path = "../dys-protocol", features = ["nats"] }
 dys-datastore = { path = "../dys-datastore" }
 dys-datastore-valkey = { path = "../dys-datastore-valkey" }
 
-async-nats.workspace = true
 tokio.workspace = true
-tower.workspace = true
 tracing.workspace = true

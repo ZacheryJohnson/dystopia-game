@@ -2,10 +2,9 @@ use std::ffi::OsStr;
 use std::io::{Result, Write};
 use std::path::PathBuf;
 use prost_build::{Service, ServiceGenerator};
-use walkdir;
 
-const BASE_OUTPUT_DIR: &'static str = concat!(env!("CARGO_MANIFEST_DIR"), "/generated");
-const PROTOS_DIR: &'static str = concat!(env!("CARGO_MANIFEST_DIR"), "/protos");
+const BASE_OUTPUT_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/generated");
+const PROTOS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/protos");
 
 fn get_proto_files() -> Vec<String> {
     let mut proto_files = vec![];
@@ -54,6 +53,10 @@ fn build_http(output_dir: PathBuf) -> Result<()> {
         )?;
 
     let mut generated_mod_file = std::fs::File::create(output_dir.join("mod.rs"))?;
+    generated_mod_file
+        .write_all("#![allow(clippy::all)]\n".as_bytes())
+        .expect("failed to write Clippy ignore to generated mod.rs");
+
     for generated_proto_file in walkdir::WalkDir::new(output_dir) {
         let Ok(generated_proto_file) = generated_proto_file else {
             continue;
@@ -232,7 +235,7 @@ pub mod <SERVICE_NAME>_svc {
                     .as_str()
             );
         }
-        buf.push_str("}");
+        buf.push('}');
     }
 }
 
@@ -255,6 +258,10 @@ fn build_nats(output_dir: PathBuf) -> Result<()> {
         )?;
 
     let mut generated_mod_file = std::fs::File::create(output_dir.join("mod.rs"))?;
+    generated_mod_file
+        .write_all("#![allow(clippy::all)]\n".as_bytes())
+        .expect("failed to write Clippy ignore to generated mod.rs");
+
     for generated_proto_file in walkdir::WalkDir::new(output_dir) {
         let Ok(generated_proto_file) = generated_proto_file else {
             continue;

@@ -10,7 +10,6 @@ criterion.workspace = true
 
 [dependencies]
 dys-world = { path = "../dys-world" }
-
 dys-satisfiable = { path = "../dys-satisfiable" }
 dys-satisfiable-macros = { path = "../dys-satisfiable-macros" }
 

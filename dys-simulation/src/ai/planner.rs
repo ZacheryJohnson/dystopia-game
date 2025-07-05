@@ -36,18 +36,18 @@ impl Plan {
 
     pub fn from(actions: &[Action]) -> Self {
         let mut new_plan = Plan { actions: actions.to_vec(), dbg_str: String::new() };
-        new_plan.dbg_str = format!("{:?}", new_plan);
+        new_plan.dbg_str = format!("{new_plan:?}");
         new_plan
     }
 
     pub fn push(&mut self, action: Action) {
         self.actions.push(action);
-        self.dbg_str = format!("{:?}", self);
+        self.dbg_str = format!("{self:?}");
     }
 
     pub fn extend(&mut self, actions: &[Action]) {
         self.actions.extend(actions.to_vec());
-        self.dbg_str = format!("{:?}", self);
+        self.dbg_str = format!("{self:?}");
     }
 
     pub fn plan(&self) -> Vec<Action> {
@@ -218,7 +218,7 @@ fn make_plan(
         });
 
         let plan = potential_plans.first().unwrap().to_owned();
-        let prioritized_cost = plan.cost() / goal.priority() as f32;
+        let prioritized_cost = plan.cost() / goal.priority();
         plans_scored_by_priority.push((plan, prioritized_cost));
 
         // Once we have three goals potentially satisfied, pick the best and hope it's reasonable
@@ -284,7 +284,7 @@ fn make_potential_plans(
 /// The best goal is the highest priority goal where the agent doesn't already have all of the desired beliefs.
 /// In the event we can't find a good goal from the goals provided, we'll return the Idle goal.
 #[tracing::instrument(fields(combatant_id = agent.combatant().id), skip_all, level = "debug")]
-fn next_best_goal<'a>(
+fn next_best_goal(
     agent: &impl Agent,
     _: Arc<Mutex<GameState>>,
     goals: Vec<Goal>,

@@ -92,7 +92,7 @@ impl eframe::App for GamePeekApp {
                         make_collapseable("Simulation Events".to_string(), tick.tick_number).show(ui, |ui| {
                             if self.combatant_filter.is_none() {
                                 for evt in &tick.simulation_events {
-                                    ui.label(format!("{:?}", evt));
+                                    ui.label(format!("{evt:?}"));
                                 }
                             } else {
                                 // ZJ-TODO: fix this
@@ -103,7 +103,7 @@ impl eframe::App for GamePeekApp {
                                     .collect::<Vec<_>>();
 
                                 for evt in &filtered_events {
-                                    ui.label(format!("{:?}", evt));
+                                    ui.label(format!("{evt:?}"));
                                 }
                             }
                         });

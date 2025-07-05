@@ -80,7 +80,7 @@ pub fn actions(
 
         actions.push(
             ActionBuilder::new()
-                .name(format!("Look For Combatant {}", other_combatant_id))
+                .name(format!("Look For Combatant {other_combatant_id}"))
                 .strategy(MoveToLocationStrategy::new_with_target_object(
                     combatant.id,
                     GameObjectType::Combatant(*other_combatant_id),
@@ -100,7 +100,7 @@ pub fn actions(
 
         actions.push(
             ActionBuilder::new()
-                .name(format!("Move to Combatant {}", other_combatant_id))
+                .name(format!("Move to Combatant {other_combatant_id}"))
                 .strategy(MoveToLocationStrategy::new_with_target_tracking(
                     combatant.id,
                     GameObjectType::Combatant(*other_combatant_id),
@@ -115,7 +115,7 @@ pub fn actions(
 
         actions.push(
             ActionBuilder::new()
-                .name(format!("Shove Combatant {}", other_combatant_id))
+                .name(format!("Shove Combatant {other_combatant_id}"))
                 .strategy(ShoveCombatantStrategy::new(
                     combatant.id,
                     *other_combatant_id
@@ -257,7 +257,7 @@ pub fn actions(
 
             actions.push(
                 ActionBuilder::new()
-                    .name(format!("Throw Ball {} at/to Combatant {}", ball_id, target_combatant_id))
+                    .name(format!("Throw Ball {ball_id} at/to Combatant {target_combatant_id}"))
                     .strategy(ThrowBallAtTargetStrategy::new(combatant.id, target_combatant_id))
                     // ZJ-TODO: ideally this is an inverse bell curve
                     //          for now, just penalize close throws and reward far throws

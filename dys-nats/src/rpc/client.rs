@@ -1,12 +1,11 @@
 use std::fmt::Debug;
 use std::time::Duration;
-use async_nats::HeaderMap;
 use futures::StreamExt;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 use crate::error::NatsError;
-use crate::otel::{create_otel_header_map, propagate_otel_context};
+use crate::otel::create_otel_header_map;
 
 pub trait NatsRpcClient {
     type Request: Serialize + DeserializeOwned + Debug + Send;
@@ -63,7 +62,7 @@ pub trait NatsRpcClient {
                 return Err(NatsError::PublishTimeout);
             };
 
-            let response: Self::Response = postcard::from_bytes(&response.payload.to_vec()).unwrap();
+            let response: Self::Response = postcard::from_bytes(&response.payload).unwrap();
             Ok(response)
         }
     }

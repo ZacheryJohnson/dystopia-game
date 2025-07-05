@@ -15,7 +15,7 @@ use web_time::{Duration, Instant};
 use bevy::asset::AssetMetaCheck;
 use dys_world::combatant::instance::CombatantInstanceId;
 
-const FONT_FILE: &'static str = "fonts/Teko-Medium.ttf";
+const FONT_FILE: &str = "fonts/Teko-Medium.ttf";
 
 fn main() {
     // Set the static memory to None for Option<VisualizationState>,
@@ -493,7 +493,7 @@ fn setup_after_reload_game_log(
                 if *object_type_id == 4 {
                     entity_commands.insert(PlateVisualizer);
 
-                    let mut inner_transform = transform.clone();
+                    let mut inner_transform = transform;
                     // z-ordering...
                     inner_transform.translation.z += 1.0;
                     commands.spawn((
@@ -542,7 +542,7 @@ fn setup_after_reload_game_log(
 
                 let instance_id = game_log
                     .combatant_id_mapping()
-                    .get(&combatant_id)
+                    .get(combatant_id)
                     .unwrap()
                     .to_owned();
 
@@ -572,7 +572,7 @@ fn setup_after_reload_game_log(
                     },
                     Mesh2d(meshes.add(Capsule2d::new(0.75, 1.75))), // ZJ-TODO: read radius
                     MeshMaterial2d(materials.add(Color::linear_rgb(
-                        if home_team { 0.0 } else { 0.0 },
+                        0.0,
                         if home_team { 0.4 } else { 0.0 },
                         if home_team { 0.0 } else { 1.0 },
                     ))),
@@ -631,7 +631,7 @@ fn setup_after_reload_game_log(
                 ..default()
             },
         )).with_children(|parent| {
-            for stat_category in vec![
+            for stat_category in [
                 "Combatant",
                 "Points",
                 "Throws",
@@ -677,7 +677,7 @@ fn setup_after_reload_game_log(
                     ..default()
                 },
             )).with_children(|parent| {
-                for stat_str in vec![
+                for stat_str in [
                     combatant_name,
                     statline.points_scored.to_string(),
                     statline.balls_thrown.to_string(),
@@ -911,11 +911,7 @@ fn display_current_score(
         let mut match_timer_text = match_timer_text_query.single_mut().expect("failed to get match timer text component");
         let minutes_component = vis_state.current_tick / TICKS_PER_SECOND / 60;
         let seconds_component = vis_state.current_tick / TICKS_PER_SECOND % 60;
-        match_timer_text.0 = format!(
-            "{}:{:02}",
-            minutes_component,
-            seconds_component,
-        );
+        match_timer_text.0 = format!("{minutes_component}:{seconds_component:02}");
     }
 }
 
@@ -985,7 +981,7 @@ fn update_scoring_text_visualizers(
             };
 
             if self_score_change > 0 {
-                text.0 = format!("+{}", self_score_change);
+                text.0 = format!("+{self_score_change}");
 
                 if opponent_score_change == 0 {
                     *text_color = TextColor(Color::srgb(0.71, 0.58, 0.06));

@@ -502,9 +502,9 @@ impl Generator {
     ) -> Vec<Proposal> {
         let mut proposals = vec![];
 
-        let mut proposal_id = 0;
-        for team in &world.teams {
-            proposal_id += 1;
+        for (proposal_id, team) in world.teams.iter().enumerate() {
+            // enumerate is zero-indexed and usize, but we expect one-indexed and u64 elsewhere
+            let proposal_id = (proposal_id + 1) as u64;
 
             let team_instance = team.lock().unwrap();
             let team_name = team_instance.name.to_owned();

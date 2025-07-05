@@ -7,7 +7,7 @@ pub struct NatsHeaderExtractor<'a>(pub &'a HeaderMap);
 impl<'a> Extractor for NatsHeaderExtractor<'a> {
     /// Get a value for a key from the HeaderMap.  If the value is not valid ASCII, returns None.
     fn get(&self, key: &str) -> Option<&str> {
-        self.0.get(key).and_then(|value| Some(value.as_str()))
+        self.0.get(key).map(|value| value.as_str())
     }
 
     /// Collect all the keys from the HeaderMap.
@@ -45,7 +45,7 @@ pub fn create_span_from(message: &async_nats::Message) -> Option<Span> {
     };
 
     let context = opentelemetry::global::get_text_map_propagator(|propagator| {
-        propagator.extract(&NatsHeaderExtractor(&headers))
+        propagator.extract(&NatsHeaderExtractor(headers))
     });
 
     let new_span = info_span!("NATS");

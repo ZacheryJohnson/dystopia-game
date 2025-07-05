@@ -33,7 +33,7 @@ fn get_otel_logging_provider(
         .build()
         .expect("failed to build log exporter");
 
-    let provider = LoggerProviderBuilder::default()
+    LoggerProviderBuilder::default()
         .with_resource(
             Resource::builder_empty()
                 .with_attribute(
@@ -42,9 +42,7 @@ fn get_otel_logging_provider(
                 .build()
         )
         .with_batch_exporter(exporter)
-        .build();
-
-    provider
+        .build()
 }
 
 fn get_otel_tracing_provider(
@@ -57,7 +55,7 @@ fn get_otel_tracing_provider(
         .build()
         .expect("failed to build span exporter");
 
-    let provider = TracerProviderBuilder::default()
+    TracerProviderBuilder::default()
         .with_resource(
             Resource::builder_empty()
                 .with_attribute(
@@ -66,9 +64,7 @@ fn get_otel_tracing_provider(
                 .build()
         )
         .with_batch_exporter(exporter)
-        .build();
-
-    provider
+        .build()
 }
 
 pub fn initialize(logger_options: LoggerOptions) {

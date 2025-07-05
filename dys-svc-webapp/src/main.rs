@@ -207,7 +207,7 @@ async fn main() {
             ServiceBuilder::new()
                 .layer(middleware::from_fn(static_cache_control))
                 .service(
-                    ServeDir::new(format!("{dist_path}"))
+                    ServeDir::new(&dist_path)
                         .not_found_service(ServeFile::new(format!("{dist_path}/index.html")))
                 )
         );

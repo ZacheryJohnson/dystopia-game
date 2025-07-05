@@ -12,7 +12,7 @@ impl<'de> Deserialize<'de> for World {
     where
         D: Deserializer<'de>
     {
-        const FIELDS: &'static [&'static str] = &["combatants", "teams"];
+        const FIELDS: &[&str] = &["combatants", "teams"];
         enum Field {
             Combatants,
             Teams,
@@ -133,7 +133,7 @@ impl<'de> Deserialize<'de> for PartialTeamInstance {
     where
         D: Deserializer<'de>
     {
-        const FIELDS: &'static [&'static str] = &["id", "name", "combatants"];
+        const FIELDS: &[&str] = &["id", "name", "combatants"];
         enum Field {
             Id,
             Name,

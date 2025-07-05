@@ -77,8 +77,6 @@ async fn main() {
     };
 
     let app_state_thread_copy = app_state.clone();
-    const SLEEP_DURATION: Duration = Duration::from_secs(5 * 60);
-
     tokio::task::spawn(async move {
         loop {
             let mut app_state = app_state_thread_copy.clone();
@@ -151,7 +149,7 @@ async fn simulate_matches(mut app_state: AppState) -> Vec<(MatchSummary, Bytes)>
 
     let proposals = proposal_jsons
         .iter()
-        .map(|proposal_str| serde_json::from_str(&proposal_str).unwrap())
+        .map(|proposal_str| serde_json::from_str(proposal_str).unwrap())
         .collect::<Vec<dys_world::proposal::Proposal>>();
 
     let current_date = app_state.current_date.lock().unwrap().to_owned();
@@ -173,7 +171,7 @@ async fn simulate_matches(mut app_state: AppState) -> Vec<(MatchSummary, Bytes)>
         | {
             let mut most_voted_option: (Option<u64>, u32) = (None, 0);
             for option_and_votes_str in votes.chunks(2) {
-                let option_str = option_and_votes_str.get(0);
+                let option_str = option_and_votes_str.first();
                 let option_id = option_str.unwrap().split(":").collect::<Vec<_>>()[1].parse::<u64>().unwrap();
                 let vote_count = option_and_votes_str.get(1).unwrap().parse::<u32>().unwrap();
 
@@ -221,7 +219,7 @@ async fn simulate_matches(mut app_state: AppState) -> Vec<(MatchSummary, Bytes)>
         if let Some(away_team_proposal) = proposals.iter().find(|prop| prop.name.contains(&away_team_name)) {
             let away_team_proposal_id = away_team_proposal.id;
             let away_team_proposal_votes: Vec<String> = app_state.valkey.connection().hgetall(
-                format!("env:dev:votes:proposal:{}", away_team_proposal_id),
+                format!("env:dev:votes:proposal:{away_team_proposal_id}"),
             ).await.unwrap();
 
             apply_most_voted_option(
@@ -232,7 +230,7 @@ async fn simulate_matches(mut app_state: AppState) -> Vec<(MatchSummary, Bytes)>
 
             // ZJ-TODO: don't delete, just archive
             let _: u32 = app_state.valkey.connection()
-                .del(format!("env:dev:votes:proposal:{}", away_team_proposal_id))
+                .del(format!("env:dev:votes:proposal:{away_team_proposal_id}"))
                 .await
                 .unwrap();
         }
@@ -240,14 +238,14 @@ async fn simulate_matches(mut app_state: AppState) -> Vec<(MatchSummary, Bytes)>
         if let Some(home_team_proposal) = proposals.iter().find(|prop| prop.name.contains(&home_team_name)) {
             let home_team_proposal_id = home_team_proposal.id;
             let home_team_proposal_votes: Vec<String> = app_state.valkey.connection().hgetall(
-                format!("env:dev:votes:proposal:{}", home_team_proposal_id),
+                format!("env:dev:votes:proposal:{home_team_proposal_id}"),
             ).await.unwrap();
 
             apply_most_voted_option(home_team_proposal_votes, home_team_proposal, match_instance.home_team.clone());
 
             // ZJ-TODO: don't delete, just archive
             let _: u32 = app_state.valkey.connection()
-                .del(format!("env:dev:votes:proposal:{}", home_team_proposal_id))
+                .del(format!("env:dev:votes:proposal:{home_team_proposal_id}"))
                 .await
                 .unwrap();
         }
@@ -458,7 +456,7 @@ async fn get_voting_proposals(
 
     let proposals = proposal_jsons
         .iter()
-        .map(|proposal_str| serde_json::from_str(&proposal_str).unwrap())
+        .map(|proposal_str| serde_json::from_str(proposal_str).unwrap())
         .collect::<Vec<dys_world::proposal::Proposal>>();
 
     // ZJ-TODO: don't marshal just send

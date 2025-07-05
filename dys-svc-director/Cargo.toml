@@ -13,12 +13,10 @@ dys-world = { path = "../dys-world" }
 dys-datastore = { path = "../dys-datastore" }
 dys-datastore-valkey = { path = "../dys-datastore-valkey" }
 
-async-nats.workspace = true
 bytes.workspace = true
 chrono.workspace = true
 postcard.workspace = true
 rand.workspace = true
-serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 tracing.workspace = true

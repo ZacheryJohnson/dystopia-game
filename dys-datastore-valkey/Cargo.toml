@@ -7,4 +7,3 @@ edition = "2021"
 dys-datastore = { path = "../dys-datastore" }
 
 redis.workspace = true
-tokio.workspace = true

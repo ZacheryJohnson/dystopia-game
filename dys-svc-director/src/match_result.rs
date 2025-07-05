@@ -14,7 +14,7 @@ pub async fn get_summaries(
     let mut valkey = app_state.valkey.connection();
 
     let match_ids: Vec<u64> = {
-        if request.match_ids.len() > 0 {
+        if !request.match_ids.is_empty() {
             request.match_ids
         } else {
             // If no match IDs are provided, just grab the latest ~10
@@ -46,7 +46,12 @@ pub async fn get_summaries(
         }
     }
 
-    for key in keys {
+    for maybe_key in keys {
+        let Ok(key) = maybe_key else {
+            tracing::warn!("failed to parse key: {:?}", maybe_key.err());
+            continue;
+        };
+
         // ZJ-TODO: pipeline this
         let raw_values: Vec<Option<u32>> = valkey.hget(
             key.clone(),
@@ -64,7 +69,7 @@ pub async fn get_summaries(
         let season = app_state.season.lock().unwrap();
         let current_date = app_state.current_date.lock().unwrap();
 
-        for match_instance in season.matches_on_date(&*current_date) {
+        for match_instance in season.matches_on_date(&current_date) {
             let match_instance = match_instance.lock().unwrap();
             let home_team = match_instance.home_team.lock().unwrap();
             let away_team = match_instance.away_team.lock().unwrap();
