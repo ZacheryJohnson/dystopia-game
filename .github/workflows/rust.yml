@@ -1,0 +1,48 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Cache artifacts
+      uses: actions/cache@v4.2.3
+      with:
+        # A list of files, directories, and wildcard patterns to cache and restore
+        path: |
+          target
+          ~/.cargo/registry
+          ~/.cargo/git
+        # An explicit key for restoring and saving the cache
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}          
+    - name: Build
+      run: cargo build --release --verbose
+    - name: Run tests
+      run: cargo test --release --verbose
+  bench:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download previous run results
+      uses: actions/download-artifact@v4.3.0
+      with:
+        name: bench-${{ github.ref_name }}-latest
+        path: target/criterion
+    - name: Run benchmarks
+      run: cargo bench
+    - name: Upload run results
+      uses: actions/upload-artifact@v4.6.2
+      with:
+        name: bench-${{ github.ref_name }}-latest
+        path: target/criterion
