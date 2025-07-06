@@ -190,9 +190,18 @@ pub fn initialize_with_canvas(
 fn restart_with_local_game_log() {
     #[cfg(not(target_family = "wasm"))]
     {
-        let game_log_bytes = include_bytes!("../data/game_log.bin");
-        let world_state_bytes = include_bytes!("../data/world_state.bin");
-        load_game_log(game_log_bytes.to_vec(), world_state_bytes.to_vec());
+        let game_log_bytes =
+            std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/data/game_log.bin"))
+                .unwrap();
+
+        let world_state_bytes =
+            std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/data/world_state.bin"))
+                .unwrap();
+
+        load_game_log(
+            game_log_bytes,
+            world_state_bytes
+        );
     }
 }
 
