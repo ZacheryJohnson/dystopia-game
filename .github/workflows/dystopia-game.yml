@@ -23,7 +23,10 @@ jobs:
         path: |
           dys-protocol/generated/
           target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
+          ${{ runner.os }}-cargo-
     - name: Build
       run: cargo build --release --verbose
 
@@ -41,7 +44,10 @@ jobs:
           path: |
             dys-protocol/generated/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
+            ${{ runner.os }}-cargo-
       - name: Run tests
         run: cargo test --release --verbose
 
