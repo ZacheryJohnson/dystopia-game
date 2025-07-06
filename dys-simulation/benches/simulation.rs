@@ -5,6 +5,11 @@ use dys_simulation::game::Game;
 use dys_world::{schedule::{calendar::{Date, Month}}, matches::instance::MatchInstance, generator::Generator};
 
 fn game_simulation_benchmark(c: &mut Criterion) {
+    // These tests take a while, so use a smaller sample size
+    // Default is 100
+    let mut group = c.benchmark_group("simulation");
+    group.sample_size(20);
+
     let world = Generator::new().generate_world(&mut StdRng::from_os_rng());
     let game = Game {
         match_instance: MatchInstance {
@@ -18,7 +23,8 @@ fn game_simulation_benchmark(c: &mut Criterion) {
     };
     let seed = &[0; 32];
     
-    c.bench_function("full_game_simulation", |b| b.iter(|| game.simulate_seeded(seed)));
+    group.bench_function("full_game_simulation", |b| b.iter(|| game.simulate_seeded(seed)));
+    group.finish();
 }
 
 criterion_group!(benches, game_simulation_benchmark);
