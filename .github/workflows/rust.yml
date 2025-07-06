@@ -16,17 +16,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install build prereqs
-      run: sudo apt-get install -yqq alsa
+      run: sudo apt-get install -yqq pkg-config libx11-dev libasound2-dev libudev-dev protobuf-compiler
     - name: Cache artifacts
       uses: actions/cache@v4.2.3
       with:
-        # A list of files, directories, and wildcard patterns to cache and restore
-        path: |
-          target
-          ~/.cargo/registry
-          ~/.cargo/git
-        # An explicit key for restoring and saving the cache
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}          
+        path: target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Build
       run: cargo build --release --verbose
     - name: Run tests
@@ -36,15 +31,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Install build prereqs
+      run: sudo apt-get install -yqq pkg-config libx11-dev libasound2-dev libudev-dev protobuf-compiler
     - name: Cache artifacts
       uses: actions/cache@v4.2.3
       with:
-        # A list of files, directories, and wildcard patterns to cache and restore
-        path: |
-          target
-          ~/.cargo/registry
-          ~/.cargo/git
-        # An explicit key for restoring and saving the cache
+        path: target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Build
+      run: cargo build --release --verbose
     - name: Run benchmarks
       run: cargo bench
