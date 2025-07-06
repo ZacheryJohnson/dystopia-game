@@ -65,10 +65,10 @@ jobs:
         path: |
           dys-protocol/generated/
           target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-benchmark-${{ github.run_id }}
+        key: ${{ runner.os }}-cargo-benchmark-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
         restore-keys: |
-          ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-benchmark-
-          ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          ${{ runner.os }}-cargo-benchmark-${{ hashFiles('**/Cargo.lock') }}-
+          ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
           ${{ runner.os }}-cargo-
     - name: Run benchmarks
       run: cargo bench
