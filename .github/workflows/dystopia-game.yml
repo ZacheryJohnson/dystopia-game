@@ -20,7 +20,7 @@ jobs:
     - name: Cache build
       uses: actions/cache@v4.2.3
       with:
-        path: target
+        path: target/
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Build
       run: cargo build --release --verbose
@@ -34,9 +34,9 @@ jobs:
       - name: Install build prereqs
         run: sudo apt-get install -yqq pkg-config libx11-dev libasound2-dev libudev-dev protobuf-compiler
       - name: Load cached build
-        uses: actions/cache/restore@v4.2.3
+        uses: actions/cache@v4.2.3
         with:
-          path: target
+          path: target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Run tests
         run: cargo test --release --verbose
@@ -50,23 +50,14 @@ jobs:
     - name: Install build prereqs
       run: sudo apt-get install -yqq pkg-config libx11-dev libasound2-dev libudev-dev protobuf-compiler
     - name: Load cached build
-      uses: actions/cache/restore@v4.2.3
+      uses: actions/cache@v4.2.3
       with:
-        path: target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Load latest benchmark artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: bench-latest
-        path: target/criterion/
-        merge-multiple: true
+        path: target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-benchmark-${{ github.run_id }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-benchmark-
+          ${{ runner.os }}-cargo-
     - name: Run benchmarks
       run: cargo bench
-    - name: Upload bench artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: bench-latest
-        path: target/criterion/
-        overwrite: true
       # ZJ-TODO: alert on major regression?
       # ZJ-TODO: post report somewhere to be web accessible
