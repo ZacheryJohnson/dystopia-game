@@ -54,12 +54,12 @@ jobs:
       with:
         path: target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Load latest benchmark artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: bench-latest
-        path: target/criterion/
-        merge-multiple: true
+#    - name: Load latest benchmark artifacts
+#      uses: actions/download-artifact@v4
+#      with:
+#        name: bench-latest
+#        path: target/criterion/
+#        merge-multiple: true
     - name: Run benchmarks
       run: cargo bench
     - name: Upload bench artifacts
