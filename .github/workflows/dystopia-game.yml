@@ -34,7 +34,7 @@ jobs:
       - name: Install build prereqs
         run: sudo apt-get install -yqq pkg-config libx11-dev libasound2-dev libudev-dev protobuf-compiler
       - name: Load cached build
-        uses: actions/cache@v4.2.3
+        uses: actions/cache/restore@v4.2.3
         with:
           path: target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
@@ -50,7 +50,7 @@ jobs:
     - name: Install build prereqs
       run: sudo apt-get install -yqq pkg-config libx11-dev libasound2-dev libudev-dev protobuf-compiler
     - name: Load cached build
-      uses: actions/cache@v4.2.3
+      uses: actions/cache/restore@v4.2.3
       with:
         path: target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
