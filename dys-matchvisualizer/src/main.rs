@@ -58,6 +58,17 @@ struct CombatantIdText {
     is_stunned: bool,
 }
 
+#[derive(Component)]
+struct FxEntity {
+    current_lifespan_in_ticks: usize,
+}
+
+impl Default for FxEntity {
+    fn default() -> Self {
+        FxEntity { current_lifespan_in_ticks: 0 }
+    }
+}
+
 #[derive(Clone, Debug)]
 enum VisualizationMode {
     /// The visualization will not progress
@@ -767,6 +778,9 @@ fn update(
     mut camera_query: Query<(&mut Transform, &mut Projection), (With<Camera2d>, Without<CombatantVisualizer>, Without<BallVisualizer>)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    asset_server: Res<AssetServer>,
+    mut fx_query: Query<(Entity, &mut FxEntity, &mut Sprite, &mut AnimationConfig), Without<CombatantVisualizer>>,
 ) {
     if matches!(vis_state.mode, VisualizationMode::Paused) {
         return;
@@ -865,6 +879,19 @@ fn update(
         vis_state.current_tick += 1;
     }
 
+    for (entity, mut fx_entity, mut sprite, animation_config) in fx_query.iter_mut() {
+        let Some(atlas) = &mut sprite.texture_atlas else {
+            warn!("expected texture atlas for sprite!");
+            continue;
+        };
+
+        atlas.index = fx_entity.current_lifespan_in_ticks;
+        fx_entity.current_lifespan_in_ticks += 1;
+        if fx_entity.current_lifespan_in_ticks > animation_config.last_sprite_index {
+            commands.entity(entity).despawn();
+        };
+    }
+
     let mut new_home_score = vis_state.home_score;
     let mut new_away_score = vis_state.away_score;
 
@@ -935,6 +962,37 @@ fn update(
                         combatant_id_text.is_stunned = *start;
                         break;
                     }
+                },
+                SimulationEvent::ThrownBallCaught { thrower_id, catcher_id, ball_id } => {
+                    let (_, catch_pos) = balls_query.iter()
+                        .find(|(ball_vis, _)| ball_vis.id == *ball_id)
+                        .unwrap();
+
+                    // Catch sprite
+                    let atlas_layout = TextureAtlasLayout::from_grid(
+                        UVec2::splat(64),
+                        9,
+                        1,
+                        None,
+                        None
+                    );
+                    let texture_atlas_layout = texture_atlas_layouts.add(atlas_layout);
+                    let catch_fx_animation_config = AnimationConfig::new(0, 8, 0);
+                    let mut texture_atlas = TextureAtlas::from(texture_atlas_layout);
+                    texture_atlas.index = catch_fx_animation_config.first_sprite_index;
+
+                    let mut catch_fx_spritesheet = Sprite::from_atlas_image(
+                        asset_server.load("sprites/catch-fx-wip.png"),
+                        texture_atlas,
+                    );
+                    catch_fx_spritesheet.custom_size = Some(Vec2::splat(16.0));
+
+                    commands.spawn((
+                        FxEntity::default(),
+                        catch_fx_spritesheet,
+                        catch_fx_animation_config,
+                        catch_pos.to_owned(),
+                    ));
                 },
                 _ => {}
             }

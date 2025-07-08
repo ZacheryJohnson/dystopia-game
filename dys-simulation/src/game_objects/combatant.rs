@@ -4,9 +4,10 @@ use dys_world::{arena::plate::PlateId, combatant::instance::CombatantInstance};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 use rapier3d::na::Isometry3;
 use rapier3d::prelude::*;
+use dys_satisfiable::{SatisfiabilityTest, SatisfiableField};
 use dys_world::attribute::attribute_type::AttributeType;
 use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
-use crate::ai::belief::BeliefSet;
+use crate::ai::belief::{BeliefSet, SatisfiableBelief};
 use crate::ai::sensor::Sensor;
 use crate::ai::sensors::field_of_view::FieldOfViewSensor;
 use crate::ai::sensors::proximity::ProximitySensor;
@@ -252,7 +253,7 @@ impl Agent for CombatantObject {
             current_tick = game_state.lock().unwrap().current_tick,
         ),
         skip_all,
-        level = "trace")]
+        level = "debug")]
     fn tick(
         &mut self,
         game_state: Arc<Mutex<GameState>>,
@@ -327,7 +328,7 @@ impl Agent for CombatantObject {
             combatant_state.current_action.take().expect("failed to get current action")
         };
 
-        tracing::debug!("Combatant {} - executing action {}", self.id, action.name());
+        tracing::debug!("executing action {}", action.name());
 
         let Some(action_result_events) = action.tick(self, game_state.clone()) else {
             tracing::debug!("Failed to execute action {} (the world state may have changed) - setting current action to None to replan next tick", action.name());
@@ -347,6 +348,26 @@ impl Agent for CombatantObject {
             let mut combatant_state = self.combatant_state.lock().unwrap();
             combatant_state.completed_action = Some(action.to_owned());
             combatant_state.beliefs.add_beliefs(action.completion_beliefs());
+
+            // ZJ-TODO: HACK: yuck
+            for belief in action.completion_beliefs() {
+                if SatisfiableBelief::BallCaught()
+                    .combatant_id(SatisfiableField::Exactly(self.combatant().id))
+                    .satisfied_by(*belief) {
+                    let Belief::BallCaught {
+                        combatant_id, thrower_id, ball_id
+                    } = belief else {
+                        panic!("how does this happen");
+                    };
+                    events.push(
+                        SimulationEvent::ThrownBallCaught {
+                            thrower_id: *thrower_id,
+                            catcher_id: *combatant_id,
+                            ball_id: *ball_id,
+                        }
+                    );
+                }
+            }
 
             for consumed_belief in action.consumed_beliefs() {
                 tracing::debug!("Consuming beliefs satisfying {consumed_belief:?}");

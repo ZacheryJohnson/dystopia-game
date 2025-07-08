@@ -283,7 +283,7 @@ impl SimulationEvent {
                 ball_rb.apply_impulse(ball_impulse_vector, true);
             }
             SimulationEvent::ThrownBallCaught { thrower_id: _, catcher_id: _, ball_id: _ } => {
-                todo!("ZJ-TODO: handle this")
+
             }
             SimulationEvent::BallCollisionEnemy { ball_id, .. } => {
                 let mut game_state = game_state.lock().unwrap();

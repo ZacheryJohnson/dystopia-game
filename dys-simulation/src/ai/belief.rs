@@ -93,6 +93,7 @@ pub enum Belief {
     BallCaught {
         #[unique]
         combatant_id: CombatantId,
+        thrower_id: CombatantId,
         ball_id: BallId,
     },
 }

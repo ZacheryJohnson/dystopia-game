@@ -241,7 +241,7 @@ pub fn actions(
                     )
                     .completion(vec![
                         Belief::HeldBall { ball_id, combatant_id: combatant.id },
-                        Belief::BallCaught { ball_id, combatant_id: combatant.id },
+                        Belief::BallCaught { ball_id, combatant_id: combatant.id, thrower_id: target_combatant_id },
                     ])
                     .consumes(
                         SatisfiableBelief::BallIsFlying()
