@@ -85,6 +85,25 @@ struct VisualizationState {
     mode: VisualizationMode,
 }
 
+#[derive(Component, Clone)]
+struct AnimationConfig {
+    first_sprite_index: usize,
+    last_sprite_index: usize,
+}
+
+impl AnimationConfig {
+    fn new(first: usize, last: usize, fps: u8) -> Self {
+        Self {
+            first_sprite_index: first,
+            last_sprite_index: last,
+        }
+    }
+
+    fn timer_from_fps(fps: u8) -> Timer {
+        Timer::new(Duration::from_secs_f32(1.0 / (fps as f32)), TimerMode::Once)
+    }
+}
+
 /// This is quite the hack.
 ///
 /// Once we start the Bevy app, we don't have a handle to the running process any more,
@@ -156,7 +175,8 @@ pub fn initialize_with_canvas(
                     #[cfg(target_family = "wasm")]
                     meta_check: AssetMetaCheck::Never,
                     ..default()
-                }),
+                })
+                .set(ImagePlugin::default_nearest()),
         ))
         .insert_resource(VisualizationState {
             should_exit: false,
@@ -264,18 +284,17 @@ fn setup(
 ) {
     commands.spawn((
         Camera2d,
-        Projection::Orthographic(OrthographicProjection{
+        Projection::Orthographic(OrthographicProjection {
             near: -100.0, // Default sets this to zero, when it should be negative
             far: 1000.0,
-            scale: 0.13,
-            viewport_origin: Default::default(),
             scaling_mode: ScalingMode::Fixed {
                 width: 900.0,
                 height: 900.0,
             },
+            scale: 0.13,
+            viewport_origin: Default::default(),
             area: Default::default(),
         }),
-        Transform::from_xyz(-8.0, -6.0, 0.0),
     ));
 
     commands.spawn(
@@ -421,6 +440,7 @@ fn try_reload_vis_state(
     mut vis_state: ResMut<VisualizationState>,
     asset_server: Res<AssetServer>,
     entity_query: Query<Entity, Or<(With<VisualizationObject>, With<Text>)>>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     // If we don't have pending updated game state from WASM, abort early
     let Some(updated_vis_state) = UPDATED_VIS_STATE.get() else {
@@ -438,7 +458,7 @@ fn try_reload_vis_state(
 
     *vis_state = new_vis_state;
 
-    setup_after_reload_game_log(commands, meshes, materials, asset_server, vis_state);
+    setup_after_reload_game_log(commands, meshes, materials, asset_server, vis_state, texture_atlas_layouts);
 }
 
 fn setup_after_reload_game_log(
@@ -446,7 +466,8 @@ fn setup_after_reload_game_log(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
-    vis_state: ResMut<VisualizationState>
+    vis_state: ResMut<VisualizationState>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     // If we're in the exit state, do nothing
     if vis_state.should_exit {
@@ -461,6 +482,25 @@ fn setup_after_reload_game_log(
 
     let tick_zero = game_log.ticks().iter().next().unwrap();
     assert!(tick_zero.tick_number == 0);
+
+    // Combatant sprites
+    let atlas_layout = TextureAtlasLayout::from_grid(
+        UVec2::splat(64),
+        4,
+        1,
+        None,
+        None
+    );
+    let texture_atlas_layout = texture_atlas_layouts.add(atlas_layout);
+    let combatant_idle_animation_config = AnimationConfig::new(0, 3, 4);
+    let mut texture_atlas = TextureAtlas::from(texture_atlas_layout);
+    texture_atlas.index = combatant_idle_animation_config.first_sprite_index;
+
+    let mut combatant_idle_spritesheet = Sprite::from_atlas_image(
+        asset_server.load("sprites/character-idle-wip.png"),
+        texture_atlas,
+    );
+    combatant_idle_spritesheet.custom_size = Some(Vec2::splat(6.0));
 
     for evt in &tick_zero.simulation_events {
         match evt {
@@ -543,7 +583,7 @@ fn setup_after_reload_game_log(
                 let transform = Transform {
                     translation,
                     rotation: Quat::default(),
-                    scale: Vec3::ONE, // ZJ-TODO
+                    scale: Vec3::ONE,
                 };
 
                 // ZJ-TODO: don't assume team by position
@@ -571,6 +611,15 @@ fn setup_after_reload_game_log(
 
                 name = name.splitn(2, " ").skip(1).collect::<String>();
 
+                let mut combatant_idle_spritesheet = combatant_idle_spritesheet.clone();
+                combatant_idle_spritesheet.color = Color::srgb(
+                    0.0,
+                    if home_team { 0.4 } else { 0.0 },
+                    if home_team { 0.0 } else { 1.0 },
+                );
+
+                combatant_idle_spritesheet.flip_x = !home_team;
+
                 commands.spawn((
                     VisualizationObject,
                     CombatantVisualizer {
@@ -579,12 +628,8 @@ fn setup_after_reload_game_log(
                         desired_location: translation,
                         last_position: translation
                     },
-                    Mesh2d(meshes.add(Capsule2d::new(0.75, 1.75))), // ZJ-TODO: read radius
-                    MeshMaterial2d(materials.add(Color::linear_rgb(
-                        0.0,
-                        if home_team { 0.4 } else { 0.0 },
-                        if home_team { 0.0 } else { 1.0 },
-                    ))),
+                    combatant_idle_spritesheet,
+                    combatant_idle_animation_config.clone(),
                     transform,
                 )).with_children(|builder| {
                     // We'll inherit the x and y coords from the parent,
@@ -716,9 +761,10 @@ fn setup_after_reload_game_log(
 fn update(
     mut commands: Commands,
     mut vis_state: ResMut<VisualizationState>,
-    mut combatants_query: Query<(&mut CombatantVisualizer, &mut Transform), Without<BallVisualizer>>,
+    mut combatants_query: Query<(&mut CombatantVisualizer, &mut Transform, &mut Sprite, &mut AnimationConfig), Without<BallVisualizer>>,
     mut combatant_id_text_query: Query<&mut CombatantIdText>,
     mut balls_query: Query<(&mut BallVisualizer, &mut Transform), Without<CombatantVisualizer>>,
+    mut camera_query: Query<(&mut Transform, &mut Projection), (With<Camera2d>, Without<CombatantVisualizer>, Without<BallVisualizer>)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
@@ -739,16 +785,61 @@ fn update(
     let lerp_progress = ((time_since_last_update.as_millis() as u64 % 1000) as f32 / 100.0)
         .clamp(0.0, 1.0);
 
+    let mut min_x = f32::MAX;
+    let mut max_x = f32::MIN;
+    let mut min_y = f32::MAX;
+    let mut max_y = f32::MIN;
+
     // Visual updates can occur ever frame
-    for (mut combatant_vis, mut combatant_transform) in combatants_query.iter_mut() {
+    for (mut combatant_vis, mut combatant_transform, mut sprite, animation_config) in combatants_query.iter_mut() {
+        // ZJ-TODO: track what direction a combatant is "facing" in case we allow backpedaling
+        //          that's a long time from now though, so this works in the interim
+        if (combatant_vis.desired_location.x - combatant_transform.translation.x).abs() > f32::EPSILON * 4.0 {
+            sprite.flip_x = combatant_vis.desired_location.x < combatant_transform.translation.x;
+        }
+
         combatant_transform.translation = combatant_vis.last_position.lerp(
             combatant_vis.desired_location,
             lerp_progress
         );
 
+        min_x = min_x.min(combatant_transform.translation.x);
+        max_x = max_x.max(combatant_transform.translation.x);
+        min_y = min_y.min(combatant_transform.translation.y);
+        max_y = max_y.max(combatant_transform.translation.y);
+
         combatant_vis.last_position = combatant_transform.translation;
         debug!("Workaround for ignored field: {}", combatant_vis.instance_id);
+
+        let Some(atlas) = &mut sprite.texture_atlas else {
+            warn!("expected texture atlas for sprite!");
+            continue;
+        };
+
+        atlas.index = vis_state.current_tick as usize % animation_config.last_sprite_index;
     }
+
+    // ZJ-TODO: WIP camera zoom + movement
+    //          this really needs lerping as it's kinda vomit inducing atm
+
+    // let x_offset = (max_x + min_x - 100.0) * 0.2;
+    // let y_offset = (max_y + min_y - 100.0) * 0.2;
+
+    let x_offset = 0.0;
+    let y_offset = 0.0;
+    let x_base = -8.0;
+    let y_base = -6.0;
+
+    let (mut camera_transform, mut projection) = camera_query.single_mut().unwrap();
+    camera_transform.translation.x = x_offset + x_base;
+    camera_transform.translation.y = y_offset + y_base;
+
+    // let Projection::Orthographic(ref mut projection) = *projection else {
+    //     panic!("expected orthographic projection");
+    // };
+    //
+    // let max_dist = (max_x - min_x).max(max_y - min_y);
+    // projection.scale = 0.13_f32.min(max_dist * 0.01);
 
     for (mut ball_vis, mut ball_transform) in balls_query.iter_mut() {
         ball_transform.translation = ball_vis.last_position.lerp(
@@ -805,8 +896,8 @@ fn update(
                     ball_vis.desired_scale = Vec3::ONE * scale_modifier;
                 },
                 SimulationEvent::CombatantPositionUpdate { combatant_id, position } => {
-                    let (mut combatant_vis, _) = combatants_query.iter_mut()
-                        .find(|(combatant_vis, _)| combatant_vis.id == *combatant_id)
+                    let (mut combatant_vis, _, _, _) = combatants_query.iter_mut()
+                        .find(|(combatant_vis, _, _, _)| combatant_vis.id == *combatant_id)
                         .unwrap();
 
                     combatant_vis.desired_location = Vec3::new(position.x, position.z, position.y);
