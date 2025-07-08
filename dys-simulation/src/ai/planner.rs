@@ -283,7 +283,7 @@ fn make_potential_plans(
 
 /// The best goal is the highest priority goal where the agent doesn't already have all of the desired beliefs.
 /// In the event we can't find a good goal from the goals provided, we'll return the Idle goal.
-#[tracing::instrument(fields(combatant_id = agent.combatant().id), skip_all, level = "debug")]
+#[tracing::instrument(skip_all, level = "debug")]
 fn next_best_goal(
     agent: &impl Agent,
     _: Arc<Mutex<GameState>>,

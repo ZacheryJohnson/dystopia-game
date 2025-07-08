@@ -12,6 +12,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 pub struct LoggerOptions {
     pub application_name: String,
     pub log_level: Level,
+    pub with_ansi: bool
 }
 
 impl Default for LoggerOptions {
@@ -19,6 +20,7 @@ impl Default for LoggerOptions {
         Self { 
             application_name: String::new(),
             log_level: Level::INFO,
+            with_ansi: true,
         }
     }
 }
@@ -76,10 +78,10 @@ pub fn initialize(logger_options: LoggerOptions) {
     let env_filter = EnvFilter::from_default_env()
         .add_directive(logger_options.log_level.into());
 
-    let format = tracing_subscriber::fmt::format().with_ansi(
-        std::env::var("NO_FMT").is_err()
-    );
-    let format_layer = tracing_subscriber::fmt::layer().event_format(format);
+    let format = tracing_subscriber::fmt::format().with_ansi(logger_options.with_ansi);
+    let format_layer = tracing_subscriber::fmt::layer()
+        .with_ansi(logger_options.with_ansi)
+        .event_format(format);
 
     if otel_endpoint.is_empty() {
         tracing_subscriber::registry()

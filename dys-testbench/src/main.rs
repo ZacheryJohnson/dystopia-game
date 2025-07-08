@@ -13,9 +13,19 @@ use rand_pcg::Pcg64;
 
 #[tokio::main]
 async fn main() {
+    let args = std::env::args().collect::<Vec<_>>();
+    let log_level = if args.contains(&"--debug".to_string()) {
+        Level::DEBUG
+    } else if args.contains(&"--trace".to_string()) {
+        Level::TRACE
+    } else {
+        Level::INFO
+    };
+
     let logger_options = LoggerOptions {
         application_name: "testbench".to_string(),
-        log_level: Level::INFO,
+        log_level,
+        with_ansi: !args.contains(&"--no-ansi".to_string()),
     };
 
     dys_observability::logger::initialize(logger_options);
