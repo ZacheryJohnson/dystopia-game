@@ -189,7 +189,7 @@ async fn main() {
             "/api",
             Router::new()
                 .route("/summaries", get(query_latest_games))
-                .route("/game_log/:match_id", get(get_game_log))
+                .route("/game_log/{match_id}", get(get_game_log))
                 .route("/world_state", get(query_world_state))
                 .route("/season", get(get_season))
                 .route("/create_account", post(create_account))
