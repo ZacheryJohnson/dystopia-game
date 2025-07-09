@@ -4,7 +4,7 @@ use dys_satisfiable::SatisfiableField;
 use crate::ai::agent::Agent;
 use crate::ai::belief::SatisfiableBelief;
 use crate::game_state::GameState;
-use crate::simulation::simulation_event::SimulationEvent;
+use crate::simulation::simulation_event::{PendingSimulationEvent, SimulationEvent};
 use crate::simulation::simulation_stage::SimulationStage;
 
 pub(crate) fn simulate_combatants(
@@ -85,7 +85,7 @@ pub(crate) fn simulate_combatants(
 
         let maybe_position_update = combatant_events
             .iter()
-            .find(|evt| matches!(evt, SimulationEvent::CombatantPositionUpdate {..}));
+            .find(|evt| matches!(evt, PendingSimulationEvent(SimulationEvent::CombatantPositionUpdate {..})));
 
         if maybe_position_update.is_none() {
             let game_state = game_state.lock().unwrap();
@@ -95,10 +95,12 @@ pub(crate) fn simulate_combatants(
                 .unwrap()
                 .translation();
 
-            events.push(SimulationEvent::CombatantPositionUpdate {
-                combatant_id: *combatant_id,
-                position: *combatant_translation,
-            });
+            events.push(PendingSimulationEvent(
+                SimulationEvent::CombatantPositionUpdate {
+                    combatant_id: *combatant_id,
+                    position: *combatant_translation,
+                }
+            ));
         }
 
         events.append(&mut combatant_events);

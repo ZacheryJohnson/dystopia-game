@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use crate::{game_state::GameState, game_tick::{GameTick, TickPerformance}};
 use crate::simulation::collision::handle_collision_events;
-use crate::simulation::simulation_event::SimulationEvent;
+use crate::simulation::simulation_event::{PendingSimulationEvent, SimulationEvent};
 use crate::simulation::simulation_stage::SimulationStage;
 use self::{ball::simulate_balls, combatant::simulate_combatants, scoring::simulate_scoring};
 
@@ -76,7 +76,7 @@ pub fn simulate_tick(game_state: Arc<Mutex<GameState>>) -> GameTick {
 
 fn commit_simulation_events(
     game_state: Arc<Mutex<GameState>>,
-    pending_events: Vec<SimulationEvent>
+    pending_events: Vec<PendingSimulationEvent>
 ) -> Vec<SimulationEvent> {
     let mut committed_simulation_events = vec![];
     for pending_event in pending_events {
@@ -89,7 +89,7 @@ fn commit_simulation_events(
             continue;
         }
 
-        committed_simulation_events.push(pending_event);
+        committed_simulation_events.push(pending_event.0);
 
         // Attempt to commit the new events we just generated
         committed_simulation_events.extend(

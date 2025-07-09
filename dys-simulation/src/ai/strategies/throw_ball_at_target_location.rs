@@ -5,6 +5,7 @@ use dys_satisfiable::SatisfiableField;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::{combatant::CombatantId, game_object::GameObject}, game_state::{GameState}, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::{BeliefSet, SatisfiableBelief};
 use crate::game_objects::ball::BallState;
+use crate::simulation::simulation_event::PendingSimulationEvent;
 
 pub struct ThrowBallAtTargetStrategy {
     self_id: CombatantId,
@@ -54,7 +55,7 @@ impl Strategy for ThrowBallAtTargetStrategy {
         &mut self,
         agent: &dyn Agent,
         game_state: Arc<Mutex<GameState>>,
-    ) -> Option<Vec<SimulationEvent>> {
+    ) -> Option<Vec<PendingSimulationEvent>> {
         // Agents may believe that they're holding a ball, but not actually holding a ball per the simulation
         // If the authoritative game state says they're not holding a ball, consider this strategy complete
         // ZJ-TODO: delay first?
@@ -126,9 +127,23 @@ impl Strategy for ThrowBallAtTargetStrategy {
 
         Some(vec![
             if is_same_team {
-                SimulationEvent::BallThrownAtTeammate { thrower_id: agent.combatant().id, teammate_id: self.target, ball_id, ball_impulse_vector }
+                PendingSimulationEvent(
+                    SimulationEvent::BallThrownAtTeammate {
+                        thrower_id: agent.combatant().id,
+                        teammate_id: self.target,
+                        ball_id,
+                        ball_impulse_vector
+                    }
+                )
             } else {
-                SimulationEvent::BallThrownAtEnemy { thrower_id: agent.combatant().id, enemy_id: self.target, ball_id, ball_impulse_vector }
+                PendingSimulationEvent(
+                    SimulationEvent::BallThrownAtEnemy {
+                        thrower_id: agent.combatant().id,
+                        enemy_id: self.target,
+                        ball_id,
+                        ball_impulse_vector
+                    }
+                )
             }
         ])
     }

@@ -4,7 +4,7 @@ use rapier3d::{geometry::ColliderHandle, pipeline::QueryFilter};
 
 use crate::{game_objects::{combatant::TeamAlignment, game_object_type::GameObjectType}, game_state::GameState};
 use crate::simulation::simulation_stage::SimulationStage;
-use super::simulation_event::SimulationEvent;
+use super::simulation_event::{PendingSimulationEvent, SimulationEvent};
 
 const PLATE_POINTS_PER_TICK: u8 = 1; // ZJ-TODO: move this to config
 const OWNED_PLATE_MULTIPLIER: u8 = 2; // ZJ-TODO: move this to config
@@ -76,11 +76,13 @@ pub fn simulate_scoring(
         let one_team_owns_plate = home_owns_plate || away_owns_plate;
 
         for (combatant_id, _) in scoring_combatants {
-            simulation_events.push(SimulationEvent::PointsScoredByCombatant { 
-                plate_id: *plate_id,
-                combatant_id: *combatant_id,
-                points: if one_team_owns_plate { PLATE_POINTS_PER_TICK * OWNED_PLATE_MULTIPLIER } else { PLATE_POINTS_PER_TICK },
-            });
+            simulation_events.push(PendingSimulationEvent(
+                SimulationEvent::PointsScoredByCombatant {
+                    plate_id: *plate_id,
+                    combatant_id: *combatant_id,
+                    points: if one_team_owns_plate { PLATE_POINTS_PER_TICK * OWNED_PLATE_MULTIPLIER } else { PLATE_POINTS_PER_TICK },
+                }
+            ));
         }
     }
 

@@ -5,6 +5,7 @@ use dys_satisfiable::SatisfiableField;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::ball::BallId, game_state::GameState, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::{BeliefSet, SatisfiableBelief};
 use crate::game_objects::combatant::CombatantId;
+use crate::simulation::simulation_event::PendingSimulationEvent;
 
 pub struct PickUpBallStrategy {
     self_combatant_id: CombatantId,
@@ -83,7 +84,7 @@ impl Strategy for PickUpBallStrategy {
         &mut self,
         agent: &dyn Agent,
         game_state: Arc<Mutex<GameState>>,
-    ) -> Option<Vec<SimulationEvent>> {
+    ) -> Option<Vec<PendingSimulationEvent>> {
         let balls = {
             let game_state = game_state.lock().unwrap();
             game_state
@@ -104,7 +105,12 @@ impl Strategy for PickUpBallStrategy {
         self.is_complete = true;
 
         Some(vec![
-            SimulationEvent::CombatantPickedUpBall { combatant_id: agent.combatant().id, ball_id: self.ball_id }
+            PendingSimulationEvent(
+                SimulationEvent::CombatantPickedUpBall {
+                    combatant_id: agent.combatant().id,
+                    ball_id: self.ball_id
+                }
+            )
         ])
     }
 }

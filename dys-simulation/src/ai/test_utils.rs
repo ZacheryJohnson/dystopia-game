@@ -17,6 +17,7 @@ use crate::game::Game;
 use crate::game_state::{BallsMapT, CollidersMapT, CombatantsMapT, PlatesMapT};
 use crate::physics_sim::PhysicsSim;
 use crate::simulation::config::SimulationConfig;
+use crate::simulation::simulation_event::PendingSimulationEvent;
 use super::{agent::Agent, belief::Belief};
 
 pub struct TestAgent {
@@ -72,7 +73,7 @@ impl Agent for TestAgent {
         BeliefSet::from(&self.beliefs)
     }
 
-    fn tick(&mut self, _: Arc<Mutex<GameState>>) -> Vec<SimulationEvent> {
+    fn tick(&mut self, _: Arc<Mutex<GameState>>) -> Vec<PendingSimulationEvent> {
         vec![]
     }
 }
