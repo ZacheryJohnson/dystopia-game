@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 use dys_satisfiable::SatisfiabilityTest;
 use crate::game_state::GameState;
-use crate::simulation::simulation_event::{PendingSimulationEvent, SimulationEvent};
+use crate::simulation::simulation_event::PendingSimulationEvent;
 
 use super::agent::Agent;
 use super::belief::{Belief, BeliefSatisfiabilityTest, BeliefSet, BeliefTest};
@@ -98,7 +98,7 @@ impl Action {
         strategy_is_complete || all_promised_beliefs_satisfied
     }
 
-    #[tracing::instrument(name = "action::tick", fields(combatant_id = agent.combatant().id), skip_all, level = "trace")]
+    #[tracing::instrument(name = "action::tick", skip_all, level = "trace")]
     pub fn tick(
         &mut self,
         agent: &impl Agent,
@@ -109,6 +109,8 @@ impl Action {
             tracing::debug!("Cannot perform action {}", self.name());
             return None;
         }
+
+        tracing::trace!("Executing strategy {}", strategy.name());
 
         strategy.tick(agent, game_state)
     }

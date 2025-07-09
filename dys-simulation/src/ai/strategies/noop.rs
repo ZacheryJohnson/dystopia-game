@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use crate::{ai::{agent::Agent, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
+use crate::{ai::{agent::Agent, strategy::Strategy}, game_state::GameState};
 use crate::ai::belief::BeliefSet;
 use crate::simulation::simulation_event::PendingSimulationEvent;
 

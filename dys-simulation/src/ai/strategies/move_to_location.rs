@@ -141,6 +141,8 @@ impl Strategy for MoveToLocationStrategy {
         // or will initialize the state we need.
         //
         // If we *do* have a path, we can only perform this strategy if we have a node to path to.
+        tracing::debug!("Path is empty={}", self.path.is_empty());
+        tracing::debug!("Next node is some={}", self.next_node.is_some());
         self.path.is_empty() || self.next_node.is_some()
     }
 
@@ -154,7 +156,6 @@ impl Strategy for MoveToLocationStrategy {
 
     #[tracing::instrument(
         name = "move_to_location::tick",
-        fields(combatant_id = agent.combatant().id),
         skip_all,
         level = "trace"
     )]
@@ -242,6 +243,7 @@ impl Strategy for MoveToLocationStrategy {
 
         let is_at_target = (self.target_location - combatant_position).coords.magnitude() <= unit_resolution;
         if is_at_target || self.next_node.is_none() {
+            tracing::trace!("Completing action - is_at_target = {is_at_target} | next_node_is_node = {}", self.next_node.is_none());
             self.is_complete = true;
         }
 
