@@ -148,7 +148,16 @@ impl eframe::App for GamePeekApp {
                                             ui.label(format!("Planned Action: {}", action.name()));
                                         }
                                         make_collapseable("Beliefs".to_string(), tick.tick_number).show(ui, |ui| {
-                                            for (source, beliefs) in &combatant_state.beliefs.sourced_beliefs() {
+                                            let sourced_beliefs = combatant_state.beliefs.sourced_beliefs().to_owned();
+                                            let sorted_map = BTreeMap::from_iter(sourced_beliefs.iter());
+                                            for (source, beliefs) in sorted_map {
+                                                // ZJ-TODO: figure this out w/o clone
+                                                let mut beliefs = beliefs.clone();
+                                                beliefs.sort_by(|b1, b2| {
+                                                    let b1_str = format!("{b1:?}");
+                                                    let b2_str = format!("{b2:?}");
+                                                    b1_str.cmp(&b2_str)
+                                                });
                                                 for belief in beliefs {
                                                     ui.label(format!("({source}) {:?} (t {:?})", belief.belief, belief.expires_on_tick));
                                                 }

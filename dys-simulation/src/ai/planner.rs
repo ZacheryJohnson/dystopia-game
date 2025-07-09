@@ -6,14 +6,7 @@ use crate::{ai::goals::goals, game_state::GameState};
 use crate::ai::belief::{BeliefSet, BeliefTest};
 use super::{action::Action, actions::actions, agent::Agent, goal::Goal};
 
-#[tracing::instrument(
-    skip_all,
-    level = "trace",
-    fields(
-        combatant_id = agent.combatant().id,
-        tick = game_state.lock().unwrap().current_tick
-    )
-)]
+#[tracing::instrument(skip_all, level = "trace")]
 pub fn plan(
     agent: &impl Agent,
     game_state: Arc<Mutex<GameState>>,

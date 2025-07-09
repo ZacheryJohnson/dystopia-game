@@ -47,9 +47,15 @@ impl Strategy for PickUpBallStrategy {
                 .combatant_id(SatisfiableField::Exactly(self.self_combatant_id))
         );
 
-        !self.should_interrupt(owned_beliefs) && self_not_holding_any_ball && self_can_reach_ball
+        tracing::debug!("Not holding ball={self_not_holding_any_ball}");
+        tracing::debug!("Can reach ball={self_can_reach_ball}");
+
+        let can_perform = !self.should_interrupt(owned_beliefs) && self_not_holding_any_ball && self_can_reach_ball;
+        tracing::debug!("Can perform: {can_perform}");
+        can_perform
     }
 
+    #[tracing::instrument(name = "strategy::pick_up_ball::should_interrupt", skip_all, level = "trace")]
     fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool {
         // If someone picks up the ball we're targeting, interrupt
         let other_combatant_holding_target_ball = owned_beliefs.can_satisfy(
@@ -73,7 +79,13 @@ impl Strategy for PickUpBallStrategy {
                 })))
         );
 
-        other_combatant_holding_target_ball || target_ball_now_unknown || target_ball_moved_significantly
+        tracing::debug!("Other holding target ball={other_combatant_holding_target_ball}");
+        tracing::debug!("Target ball unknown={target_ball_now_unknown}");
+        tracing::debug!("Target ball moved significantly={target_ball_moved_significantly}");
+
+        let should_interrupt = other_combatant_holding_target_ball || target_ball_now_unknown || target_ball_moved_significantly;
+        tracing::debug!("Should interrupt: {should_interrupt}");
+        should_interrupt
     }
 
     fn is_complete(&self) -> bool {

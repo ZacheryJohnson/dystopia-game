@@ -111,5 +111,5 @@ pub fn initialize(logger_options: LoggerOptions) {
         opentelemetry::global::set_tracer_provider(tracing_provider);
     }
 
-    tracing::info!("Using OTEL_ENDPOINT={otel_endpoint}");
+    tracing::info!("Logger initialized; OTEL_ENDPOINT={otel_endpoint} log_level={}", logger_options.log_level);
 }
