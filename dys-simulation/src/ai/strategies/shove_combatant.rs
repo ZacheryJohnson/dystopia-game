@@ -6,7 +6,7 @@ use crate::ai::belief::{BeliefSet, SatisfiableBelief};
 use crate::ai::strategy::Strategy;
 use crate::game_objects::combatant::CombatantId;
 use crate::game_state::GameState;
-use crate::simulation::simulation_event::SimulationEvent;
+use crate::simulation::simulation_event::{PendingSimulationEvent, SimulationEvent};
 
 const SHOVE_FORCE_MULTIPLIER: f32 = 15000.0;
 
@@ -56,7 +56,7 @@ impl Strategy for ShoveCombatantStrategy {
         &mut self,
         agent: &dyn Agent,
         game_state: Arc<Mutex<GameState>>,
-    ) -> Option<Vec<SimulationEvent>> {
+    ) -> Option<Vec<PendingSimulationEvent>> {
         let mut events = vec![];
 
         let mut game_state = game_state.lock().unwrap();
@@ -81,18 +81,22 @@ impl Strategy for ShoveCombatantStrategy {
             strength / target_weight
         };
 
-        events.push(SimulationEvent::CombatantShoveForceApplied {
-            shover_combatant_id: self.self_combatant_id,
-            recipient_target_id: self.target_combatant_id,
-            force_magnitude,
-            force_direction,
-        });
+        events.push(PendingSimulationEvent(
+            SimulationEvent::CombatantShoveForceApplied {
+                shover_combatant_id: self.self_combatant_id,
+                recipient_target_id: self.target_combatant_id,
+                force_magnitude,
+                force_direction,
+            }
+        ));
 
         // ZJ-TODO: this should be handled elsewhere
-        events.push(SimulationEvent::CombatantStunned {
-            combatant_id: self.target_combatant_id,
-            start: true
-        });
+        events.push(PendingSimulationEvent(
+            SimulationEvent::CombatantStunned {
+                combatant_id: self.target_combatant_id,
+                start: true
+            }
+        ));
 
         Some(events)
     }

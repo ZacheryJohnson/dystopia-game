@@ -7,6 +7,7 @@ use crate::ai::belief::BeliefSet;
 use crate::game_objects::combatant::CombatantId;
 use crate::game_objects::game_object::GameObject;
 use crate::game_objects::game_object_type::GameObjectType;
+use crate::simulation::simulation_event::PendingSimulationEvent;
 
 pub struct MoveToLocationStrategy {
     is_complete: bool,
@@ -161,7 +162,7 @@ impl Strategy for MoveToLocationStrategy {
         &mut self,
         agent: &dyn Agent,
         game_state: Arc<Mutex<GameState>>,
-    ) -> Option<Vec<SimulationEvent>> {
+    ) -> Option<Vec<PendingSimulationEvent>> {
         let mut events = vec![];
 
         self.max_ticks = self.max_ticks.saturating_sub(1);
@@ -244,10 +245,12 @@ impl Strategy for MoveToLocationStrategy {
             self.is_complete = true;
         }
 
-        events.push(SimulationEvent::CombatantPositionUpdate { 
-            combatant_id: agent.combatant().id,
-            position: combatant_position,
-        });
+        events.push(PendingSimulationEvent(
+            SimulationEvent::CombatantPositionUpdate {
+                combatant_id: agent.combatant().id,
+                position: combatant_position,
+            }
+        ));
 
         Some(events)
     }

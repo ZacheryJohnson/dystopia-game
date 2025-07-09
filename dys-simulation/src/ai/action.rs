@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 use dys_satisfiable::SatisfiabilityTest;
 use crate::game_state::GameState;
-use crate::simulation::simulation_event::SimulationEvent;
+use crate::simulation::simulation_event::{PendingSimulationEvent, SimulationEvent};
 
 use super::agent::Agent;
 use super::belief::{Belief, BeliefSatisfiabilityTest, BeliefSet, BeliefTest};
@@ -103,7 +103,7 @@ impl Action {
         &mut self,
         agent: &impl Agent,
         game_state: Arc<Mutex<GameState>>,
-    ) -> Option<Vec<SimulationEvent>> {
+    ) -> Option<Vec<PendingSimulationEvent>> {
         let mut strategy = self.strategy.lock().unwrap();
         if !strategy.can_perform(&agent.beliefs()) {
             tracing::debug!("Cannot perform action {}", self.name());
@@ -443,7 +443,7 @@ mod tests {
         use crate::ai::agent::Agent;
         use crate::ai::strategy::Strategy;
         use crate::game_state::GameState;
-        use crate::simulation::simulation_event::SimulationEvent;
+        use crate::simulation::simulation_event::{PendingSimulationEvent, SimulationEvent};
         use super::*;
 
         struct StrategyAlwaysIsComplete;
@@ -458,7 +458,7 @@ mod tests {
             
             fn is_complete(&self) -> bool { true }
 
-            fn tick(&mut self, _: &dyn Agent, _: Arc<Mutex<GameState>>) -> Option<Vec<SimulationEvent>> {
+            fn tick(&mut self, _: &dyn Agent, _: Arc<Mutex<GameState>>) -> Option<Vec<PendingSimulationEvent>> {
                 None
             }
         }
@@ -475,7 +475,7 @@ mod tests {
 
             fn is_complete(&self) -> bool { false }
 
-            fn tick(&mut self, _: &dyn Agent, _: Arc<Mutex<GameState>>) -> Option<Vec<SimulationEvent>> {
+            fn tick(&mut self, _: &dyn Agent, _: Arc<Mutex<GameState>>) -> Option<Vec<PendingSimulationEvent>> {
                 None
             }
         }

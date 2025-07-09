@@ -3,6 +3,7 @@ use std::time::Instant;
 use rapier3d::{na::vector, prelude::*};
 use rapier3d::na::Vector3;
 use crate::{game_objects::{ball::{BallObject, BallState}, game_object::GameObject, game_object_type::GameObjectType}, game_state::GameState};
+use crate::simulation::simulation_event::PendingSimulationEvent;
 use crate::simulation::simulation_stage::SimulationStage;
 use super::{config::SimulationConfig, simulation_event::SimulationEvent};
 
@@ -28,7 +29,9 @@ pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationSta
             let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
             let ball_rb = rigid_body_set.get_mut(ball_object.rigid_body_handle().unwrap()).unwrap();
 
-            events.push(SimulationEvent::BallPositionUpdate { ball_id, position: *ball_rb.translation() });
+            events.push(PendingSimulationEvent(
+                SimulationEvent::BallPositionUpdate { ball_id, position: *ball_rb.translation() }
+            ));
         }
     }
 
@@ -50,7 +53,7 @@ pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationSta
 fn try_move_if_held(
     ball: &BallObject,
     game_state: Arc<Mutex<GameState>>,
-) -> Option<SimulationEvent> {
+) -> Option<PendingSimulationEvent> {
     let BallState::Held { holder_id } = ball.state else {
         return None;
     };
@@ -74,13 +77,15 @@ fn try_move_if_held(
         forward_isometry.translation.vector + forward_isometry.transform_vector(&new_ball_position_offset)
     };
 
-    Some(SimulationEvent::BallPositionUpdate { ball_id: ball.id, position: held_by_combatant_pos })
+    Some(PendingSimulationEvent(
+        SimulationEvent::BallPositionUpdate { ball_id: ball.id, position: held_by_combatant_pos }
+    ))
 }
 
 fn explode(
     ball: &BallObject,
     game_state: Arc<Mutex<GameState>>,
-) -> Vec<SimulationEvent> {
+) -> Vec<PendingSimulationEvent> {
     // Only handle balls in the Explode state
     let BallState::Explode = ball.state else {
         return vec![];
@@ -118,7 +123,7 @@ fn explode(
     }
 
     let mut events = vec![
-        SimulationEvent::BallExplosion { ball_id: ball.id, charge: ball.charge }
+        PendingSimulationEvent(SimulationEvent::BallExplosion { ball_id: ball.id, charge: ball.charge })
     ];
 
     for collider_handle in affected_colliders {
@@ -138,7 +143,7 @@ fn apply_explosion_forces(
     game_state: Arc<Mutex<GameState>>,
     collider_handle: ColliderHandle,
     ball_object: &BallObject,
-) -> Vec<SimulationEvent> {
+) -> Vec<PendingSimulationEvent> {
     let BallState::Explode = ball_object.state else {
         return vec![];
     };
@@ -160,18 +165,22 @@ fn apply_explosion_forces(
     let force_direction = vector![position_difference.x, 0.0, position_difference.z].normalize();
     let force_magnitude = ball_object.charge * CHARGE_FORCE_MODIFIER / position_difference.magnitude().powi(2);
 
-    events.push(SimulationEvent::BallExplosionForceApplied {
-        ball_id: ball_object.id,
-        combatant_id: *combatant_id,
-        force_magnitude,
-        force_direction
-    });
+    events.push(PendingSimulationEvent(
+        SimulationEvent::BallExplosionForceApplied {
+            ball_id: ball_object.id,
+            combatant_id: *combatant_id,
+            force_magnitude,
+            force_direction
+        }
+    ));
 
     // ZJ-TODO: this should be handled elsewhere
-    events.push(SimulationEvent::CombatantStunned {
-        combatant_id: *combatant_id,
-        start: true
-    });
+    events.push(PendingSimulationEvent(
+        SimulationEvent::CombatantStunned {
+            combatant_id: *combatant_id,
+            start: true
+        }
+    ));
 
     events
 }

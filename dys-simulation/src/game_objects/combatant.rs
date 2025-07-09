@@ -11,6 +11,7 @@ use crate::ai::belief::{BeliefSet, SatisfiableBelief};
 use crate::ai::sensor::Sensor;
 use crate::ai::sensors::field_of_view::FieldOfViewSensor;
 use crate::ai::sensors::proximity::ProximitySensor;
+use crate::simulation::simulation_event::PendingSimulationEvent;
 use super::{ball::BallId, game_object::GameObject};
 
 pub type CombatantId = u64;
@@ -257,7 +258,7 @@ impl Agent for CombatantObject {
     fn tick(
         &mut self,
         game_state: Arc<Mutex<GameState>>,
-    ) -> Vec<SimulationEvent> {
+    ) -> Vec<PendingSimulationEvent> {
         let mut events = vec![];
 
         if self.is_stunned() {
@@ -277,10 +278,12 @@ impl Agent for CombatantObject {
                     true
                 );
 
-                events.push(SimulationEvent::CombatantStunned {
-                    combatant_id: self.id,
-                    start: false,
-                });
+                events.push(PendingSimulationEvent(
+                    SimulationEvent::CombatantStunned {
+                        combatant_id: self.id,
+                        start: false,
+                    }
+                ));
             }
 
             return events;
@@ -359,13 +362,13 @@ impl Agent for CombatantObject {
                     } = belief else {
                         panic!("how does this happen");
                     };
-                    events.push(
+                    events.push(PendingSimulationEvent(
                         SimulationEvent::ThrownBallCaught {
                             thrower_id: *thrower_id,
                             catcher_id: *combatant_id,
                             ball_id: *ball_id,
                         }
-                    );
+                    ));
                 }
             }
 

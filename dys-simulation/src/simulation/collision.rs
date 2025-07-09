@@ -3,7 +3,7 @@ use std::time::Instant;
 use crate::game_objects::ball::BallState;
 use crate::game_objects::game_object_type::GameObjectType;
 use crate::game_state::GameState;
-use crate::simulation::simulation_event::SimulationEvent;
+use crate::simulation::simulation_event::{PendingSimulationEvent, SimulationEvent};
 use crate::simulation::simulation_stage::SimulationStage;
 
 pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> SimulationStage {
@@ -43,16 +43,22 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
 
                 if let BallState::ThrownAtTarget { direction: _direction, thrower_id, target_id } = ball_obj.state {
                     // ZJ-TODO: do this in simulation: Ball aiming for a target hit the arena - mark it as rolling now
-                    new_simulation_events.push(SimulationEvent::BallCollisionArena { thrower_id, original_target_id: target_id, ball_id: *ball_id });
+                    new_simulation_events.push(PendingSimulationEvent(
+                        SimulationEvent::BallCollisionArena { thrower_id, original_target_id: target_id, ball_id: *ball_id }
+                    ));
                 }
             },
             (GameObjectType::Plate(plate_id), GameObjectType::Combatant(combatant_id)) | (GameObjectType::Combatant(combatant_id), GameObjectType::Plate(plate_id)) => {
                 if evt.started() {
-                    new_simulation_events.push(SimulationEvent::CombatantOnPlate { combatant_id: *combatant_id, plate_id: *plate_id })
+                    new_simulation_events.push(PendingSimulationEvent(
+                        SimulationEvent::CombatantOnPlate { combatant_id: *combatant_id, plate_id: *plate_id }
+                    ));
                 }
 
                 if evt.stopped() {
-                    new_simulation_events.push(SimulationEvent::CombatantOffPlate { combatant_id: *combatant_id, plate_id: *plate_id })
+                    new_simulation_events.push(PendingSimulationEvent(
+                        SimulationEvent::CombatantOffPlate { combatant_id: *combatant_id, plate_id: *plate_id }
+                    ));
                 }
             },
             (GameObjectType::Plate(_), _) | (_, GameObjectType::Plate(_)) => continue,
@@ -74,7 +80,9 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
                     let hit_combatant_team = game_state.combatants.get(combatant_id).unwrap().team;
 
                     if thrower_team != hit_combatant_team {
-                        new_simulation_events.push(SimulationEvent::BallCollisionEnemy { thrower_id, enemy_id: *combatant_id, ball_id: *ball_id });
+                        new_simulation_events.push(PendingSimulationEvent(
+                            SimulationEvent::BallCollisionEnemy { thrower_id, enemy_id: *combatant_id, ball_id: *ball_id }
+                        ));
                     }
 
                     // ZJ-TODO: need to handle case of same team (catch pass?)

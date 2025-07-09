@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::BeliefSet;
+use crate::simulation::simulation_event::PendingSimulationEvent;
 
 pub(in crate::ai) struct NoopStrategy;
 
@@ -25,7 +26,7 @@ impl Strategy for NoopStrategy {
         &mut self,
         _: &dyn Agent,
         _: Arc<Mutex<GameState>>,
-    ) -> Option<Vec<SimulationEvent>> {
+    ) -> Option<Vec<PendingSimulationEvent>> {
         Some(vec![])
     }
 }
