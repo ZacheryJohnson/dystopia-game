@@ -48,7 +48,6 @@ impl BallObject {
         let collider = ColliderBuilder::ball(BALL_RADIUS)
             .active_events(ActiveEvents::COLLISION_EVENTS)
             .restitution(BALL_RESTITUTION)
-            .restitution_combine_rule(CoefficientCombineRule::Min)
             .density(BALL_MASS)
             .position(Isometry3::translation(0.0, BALL_RADIUS, 0.0))
             .build();
@@ -77,7 +76,6 @@ impl BallObject {
 
         if let Some(id) = combatant_id {
             self.change_state(current_tick, BallState::Held { holder_id: id });
-            self.charge = 10.0;
         }
     }
 }

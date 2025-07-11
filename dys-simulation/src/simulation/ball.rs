@@ -7,7 +7,11 @@ use crate::simulation::simulation_event::PendingSimulationEvent;
 use crate::simulation::simulation_stage::SimulationStage;
 use super::{config::SimulationConfig, simulation_event::SimulationEvent};
 
-const CHARGE_FORCE_MODIFIER: f32 = 500.0;
+/// Charge is an arbitrary metric to determine the "strength" of an explosion.
+/// Charge itself is not a measure of Newtons applied to the combatant, but rather a multiplier.
+/// The force modifier is a coefficient such that a ball with charge 1.0 will result in a
+/// 100kg combatant being accelerated 0.5 units/second^2 (eg 50 Newtons).
+const CHARGE_FORCE_MODIFIER: f32 = 50.0;
 
 pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationStage {
     let start_time = Instant::now();
@@ -30,7 +34,11 @@ pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationSta
             let ball_rb = rigid_body_set.get_mut(ball_object.rigid_body_handle().unwrap()).unwrap();
 
             events.push(PendingSimulationEvent(
-                SimulationEvent::BallPositionUpdate { ball_id, position: *ball_rb.translation() }
+                SimulationEvent::BallPositionUpdate {
+                    ball_id,
+                    position: *ball_rb.translation(),
+                    charge: ball_object.charge,
+                }
             ));
         }
     }
@@ -78,7 +86,11 @@ fn try_move_if_held(
     };
 
     Some(PendingSimulationEvent(
-        SimulationEvent::BallPositionUpdate { ball_id: ball.id, position: held_by_combatant_pos }
+        SimulationEvent::BallPositionUpdate {
+            ball_id: ball.id,
+            position: held_by_combatant_pos,
+            charge: ball.charge,
+        }
     ))
 }
 

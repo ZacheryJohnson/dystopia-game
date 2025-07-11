@@ -37,6 +37,7 @@ impl Game {
                 simulation_events.push(SimulationEvent::BallPositionUpdate { 
                     ball_id: *ball_id,
                     position: *ball_rb.translation(),
+                    charge: ball_object.charge,
                 });
             }
 

@@ -12,7 +12,7 @@ impl Default for SimulationConfig {
         Self { 
             ticks_per_second: 10,
             seconds_per_half: 3 * 60,
-            ball_charge_increase_per_tick: 2.5,
+            ball_charge_increase_per_tick: 5.0,
             ball_charge_maximum: 100.0,
             game_conclusion_score: 150,
         }

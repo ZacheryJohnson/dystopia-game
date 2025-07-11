@@ -49,7 +49,11 @@ pub enum SimulationEvent {
     ArenaObjectPositionUpdate { object_type_id: u32, position: Vector3<f32>, scale: Vector3<f32>, rotation: Quaternion<f32> },
 
     /// A ball has moved through the world
-    BallPositionUpdate { ball_id: BallId, position: Vector3<f32> },
+    BallPositionUpdate {
+        ball_id: BallId,
+        position: Vector3<f32>,
+        charge: f32,
+    },
 
     /// A combatant has moved through the world
     CombatantPositionUpdate { combatant_id: CombatantId, position: Vector3<f32> },
@@ -128,7 +132,7 @@ impl SimulationEvent {
         match **event {
             SimulationEvent::ArenaObjectPositionUpdate { .. } => {}
 
-            SimulationEvent::BallPositionUpdate { ball_id, position } => {
+            SimulationEvent::BallPositionUpdate { ball_id, position, charge: _ } => {
                 let mut game_state = game_state.lock().unwrap();
 
                 let ball_object = game_state
@@ -312,17 +316,18 @@ impl SimulationEvent {
                 let ball_rb = rigid_body_set.get_mut(ball_rigid_body_handle).unwrap();
                 ball_rb.apply_impulse(ball_impulse_vector, true);
             }
-            SimulationEvent::BallCollisionEnemy { ball_id, .. } => {
-                let mut game_state = game_state.lock().unwrap();
-                let current_tick = game_state.current_tick;
-                let ball_object = game_state.balls.get_mut(&ball_id).unwrap();
-                ball_object.change_state(current_tick, BallState::Explode);
+            SimulationEvent::BallCollisionEnemy { .. } => {
+                // ZJ-TODO: delete wholesale?
+                // let mut game_state = game_state.lock().unwrap();
+                // let current_tick = game_state.current_tick;
+                // let ball_object = game_state.balls.get_mut(&ball_id).unwrap();
+                // ball_object.change_state(current_tick, BallState::Explode);
             }
             SimulationEvent::BallCollisionArena { thrower_id: _, original_target_id: _, ball_id } => {
                 let mut game_state = game_state.lock().unwrap();
                 let current_tick = game_state.current_tick;
                 let ball_object = game_state.balls.get_mut(&ball_id).unwrap();
-                ball_object.change_state(current_tick, BallState::Idle);
+                ball_object.change_state(current_tick, BallState::Explode);
             }
             SimulationEvent::BallExplosion { ball_id, charge: _ } => {
                 let mut game_state = game_state.lock().unwrap();
