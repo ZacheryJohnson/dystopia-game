@@ -1,4 +1,5 @@
 use std::sync::{Arc, Mutex};
+use rapier3d::na::Vector3;
 use dys_satisfiable::SatisfiableField;
 use crate::{ai::{action::ActionBuilder, belief::Belief, strategies::move_to_location::MoveToLocationStrategy}, game_objects::{combatant::CombatantObject, game_object::GameObject}, game_state::GameState};
 use crate::ai::belief::SatisfiableBelief;
@@ -201,6 +202,13 @@ pub fn actions(
                 .build()
         );
 
+        let enemy_combatant_ids = combatants
+            .clone()
+            .iter()
+            .filter(|(_, combatant_object)| combatant_object.team != combatant.team)
+            .map(|(combatant_id, _)| combatant_id.to_owned())
+            .collect::<Vec<_>>();
+
         for (target_combatant_id, target_combatant_object) in combatants.clone() {
             // Don't try to throw a ball at ourselves
             if target_combatant_id == combatant.id {
@@ -225,6 +233,11 @@ pub fn actions(
                     .requires(
                         SatisfiableBelief::InBallPickupRange()
                             .combatant_id(SatisfiableField::Exactly(combatant.id))
+                            .ball_id(SatisfiableField::Exactly(ball_id))
+                    )
+                    .requires(
+                        SatisfiableBelief::BallThrownAtCombatant()
+                            .target_combatant_id(SatisfiableField::Exactly(combatant.id))
                             .ball_id(SatisfiableField::Exactly(ball_id))
                     )
                     .prohibits(
@@ -257,7 +270,7 @@ pub fn actions(
 
             actions.push(
                 ActionBuilder::new()
-                    .name(format!("Throw Ball {ball_id} at/to Combatant {target_combatant_id}"))
+                    .name(format!("Pass Ball {ball_id} to Combatant {target_combatant_id}"))
                     .strategy(ThrowBallAtTargetStrategy::new(combatant.id, target_combatant_id))
                     // ZJ-TODO: ideally this is an inverse bell curve
                     //          for now, just penalize close throws and reward far throws
@@ -272,6 +285,26 @@ pub fn actions(
                             .self_combatant_id(SatisfiableField::Exactly(combatant.id))
                             .other_combatant_id(SatisfiableField::Exactly(target_combatant_id))
                     )
+                    .prohibits(
+                        SatisfiableBelief::CombatantPosition()
+                            .combatant_id(SatisfiableField::In(enemy_combatant_ids.clone()))
+                            .position(SatisfiableField::lambda_from(move |target_pos: Vector3<f32>| {
+                                const MIN_THROW_DISTANCE: f32 = 5.0;
+                                (target_pos - combatant_pos).magnitude() < MIN_THROW_DISTANCE
+                            }))
+                    )
+                    .requires(
+                        SatisfiableBelief::CombatantPosition()
+                            .combatant_id(SatisfiableField::Exactly(target_combatant_id))
+                            .position(SatisfiableField::lambda_from(move |target_pos: Vector3<f32>| {
+                                const MIN_THROW_DISTANCE: f32 = 5.0;
+                                (target_pos - combatant_pos).magnitude() >= MIN_THROW_DISTANCE
+                            }))
+                    )
+                    .prohibits(
+                        SatisfiableBelief::HeldBall()
+                            .combatant_id(SatisfiableField::Exactly(target_combatant_id))
+                    )
                     .completion(vec![
                         Belief::BallThrownAtCombatant {
                             ball_id,
@@ -279,6 +312,69 @@ pub fn actions(
                             target_combatant_id,
                             target_on_plate: target_combatant_object.plate(),
                         },
+                    ])
+                    .broadcasts(vec![
+                        Belief::BallThrownAtCombatant {
+                            ball_id,
+                            thrower_combatant_id: combatant.id,
+                            target_combatant_id,
+                            target_on_plate: target_combatant_object.plate(),
+                        }
+                    ])
+                    .consumes(
+                        SatisfiableBelief::HeldBall()
+                            .combatant_id(SatisfiableField::Exactly(combatant.id))
+                            .ball_id(SatisfiableField::Exactly(ball_id))
+                    )
+                    .consumes(
+                        SatisfiableBelief::BallThrownAtCombatant()
+                            .ball_id(SatisfiableField::Exactly(ball_id))
+                            .thrower_combatant_id(SatisfiableField::Exactly(combatant.id))
+                            .target_combatant_id(SatisfiableField::Exactly(target_combatant_id))
+                    )
+                    .build()
+            );
+
+            actions.push(
+                ActionBuilder::new()
+                    .name(format!("Throw Ball {ball_id} at Combatant {target_combatant_id}"))
+                    .strategy(ThrowBallAtTargetStrategy::new(combatant.id, target_combatant_id))
+                    // ZJ-TODO: ideally this is an inverse bell curve
+                    //          for now, just penalize close throws and reward far throws
+                    .cost(10.0 + 5.0 / (target_pos - combatant_pos).magnitude())
+                    .requires(
+                        SatisfiableBelief::HeldBall()
+                            .combatant_id(SatisfiableField::Exactly(combatant.id))
+                            .ball_id(SatisfiableField::Exactly(ball_id))
+                    )
+                    .requires(
+                        SatisfiableBelief::DirectLineOfSightToCombatant()
+                            .self_combatant_id(SatisfiableField::Exactly(combatant.id))
+                            .other_combatant_id(SatisfiableField::Exactly(target_combatant_id))
+                    )
+                    .prohibits(
+                        SatisfiableBelief::CombatantPosition()
+                            .combatant_id(SatisfiableField::In(enemy_combatant_ids.clone()))
+                            .position(SatisfiableField::lambda_from(move |target_pos: Vector3<f32>| {
+                                const MIN_THROW_DISTANCE: f32 = 5.0;
+                                (target_pos - combatant_pos).magnitude() < MIN_THROW_DISTANCE
+                            }))
+                    )
+                    .completion(vec![
+                        Belief::BallThrownAtCombatant {
+                            ball_id,
+                            thrower_combatant_id: combatant.id,
+                            target_combatant_id,
+                            target_on_plate: target_combatant_object.plate(),
+                        },
+                    ])
+                    .broadcasts(vec![
+                        Belief::BallThrownAtCombatant {
+                            ball_id,
+                            thrower_combatant_id: combatant.id,
+                            target_combatant_id,
+                            target_on_plate: target_combatant_object.plate(),
+                        }
                     ])
                     .consumes(
                         SatisfiableBelief::HeldBall()

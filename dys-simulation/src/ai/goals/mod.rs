@@ -7,6 +7,7 @@ use super::goal::Goal;
 
 // ZJ-TODO: move to config
 const ON_PLATE_PRIORITY_MULTIPLIER: f32 = 4.5;
+const TEAMMATE_PASS_PRIORITY_MULTIPLIER: f32 = 3.0;
 
 pub fn idle_goal() -> Goal {
     GoalBuilder::new()
@@ -41,6 +42,14 @@ pub fn goals(
             )
             .priority(0.5 * attr(AttributeType::Dexterity))
             .repeatable(true)
+            .build(),
+        GoalBuilder::new()
+            .name("Pass Ball to Teammate")
+            .desired_belief(
+                SatisfiableBelief::BallThrownAtCombatant()
+                    .target_combatant_id(SatisfiableField::In(teammate_ids.clone()))
+            )
+            .priority(TEAMMATE_PASS_PRIORITY_MULTIPLIER * (75.0 + attr(AttributeType::Communication) - attr(AttributeType::Ego)))
             .build(),
         GoalBuilder::new()
             .name("Throw Ball At Enemies On Plates")

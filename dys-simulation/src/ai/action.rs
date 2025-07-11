@@ -1,11 +1,12 @@
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 use dys_satisfiable::SatisfiabilityTest;
+use crate::ai::beliefs::belief_set::BeliefSet;
 use crate::game_state::GameState;
 use crate::simulation::simulation_event::PendingSimulationEvent;
 
 use super::agent::Agent;
-use super::belief::{Belief, BeliefSatisfiabilityTest, BeliefSet, BeliefTest};
+use super::belief::{Belief, BeliefSatisfiabilityTest, BeliefTest};
 use super::strategies::noop::NoopStrategy;
 use super::strategy::Strategy;
 
@@ -34,6 +35,9 @@ pub struct Action {
 
     /// Concrete beliefs applied once the action completes successfully.
     completion_beliefs: Vec<Belief>,
+
+    /// Concrete beliefs that are applied to OTHERS once the action completes successfully.
+    broadcast_on_completion_beliefs: Vec<Belief>,
 
     /// Beliefs that will be consumed upon completing the action
     consumed_beliefs: Vec<BeliefTest>,
@@ -119,6 +123,10 @@ impl Action {
         &self.completion_beliefs
     }
 
+    pub fn broadcast_beliefs(&self) -> &Vec<Belief> {
+        &self.broadcast_on_completion_beliefs
+    }
+
     pub fn prohibited_beliefs(&self) -> &Vec<BeliefTest> {
         &self.prohibited_beliefs
     }
@@ -143,6 +151,7 @@ impl Debug for Action {
             .field("prerequisite_beliefs", &self.prerequisite_beliefs)
             .field("prohibited_beliefs", &self.prohibited_beliefs)
             .field("completion_beliefs", &self.completion_beliefs)
+            .field("broadcast_beliefs", &self.broadcast_on_completion_beliefs)
             .field("promised_beliefs", &self.promised_beliefs)
             .field("consumed_beliefs", &self.consumed_beliefs)
             .finish()
@@ -163,6 +172,7 @@ impl ActionBuilder {
                 prerequisite_beliefs: vec![],
                 prohibited_beliefs: vec![],
                 completion_beliefs: vec![],
+                broadcast_on_completion_beliefs: vec![],
                 promised_beliefs: vec![],
                 consumed_beliefs: vec![],
             }
@@ -214,6 +224,11 @@ impl ActionBuilder {
         self
     }
 
+    pub fn broadcasts(mut self, beliefs: Vec<Belief>) -> ActionBuilder {
+        self.action.broadcast_on_completion_beliefs = beliefs;
+        self
+    }
+
     pub fn promises(mut self, belief: Belief) -> Self {
         self.action.promised_beliefs.push(belief);
         self
@@ -235,9 +250,10 @@ impl From<ActionBuilder> for Action {
 mod tests {
     use dys_satisfiable::SatisfiableField;
     use crate::ai::action::ActionBuilder;
-    use crate::ai::belief::{Belief, BeliefSet, SatisfiableBelief};
+    use crate::ai::belief::{Belief, SatisfiableBelief};
 
     mod fn_can_perform {
+        use crate::ai::beliefs::belief_set::BeliefSet;
         use super::*;
 
         #[test]
@@ -443,9 +459,10 @@ mod tests {
     mod fn_is_complete {
         use std::sync::{Arc, Mutex};
         use crate::ai::agent::Agent;
+        use crate::ai::beliefs::belief_set::BeliefSet;
         use crate::ai::strategy::Strategy;
         use crate::game_state::GameState;
-        use crate::simulation::simulation_event::{PendingSimulationEvent, SimulationEvent};
+        use crate::simulation::simulation_event::PendingSimulationEvent;
         use super::*;
 
         struct StrategyAlwaysIsComplete;

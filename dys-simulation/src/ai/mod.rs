@@ -3,6 +3,7 @@ pub mod agent;
 
 pub mod action;
 pub mod belief;
+pub mod beliefs;
 pub mod goal;
 pub mod planner;
 pub mod sensor;

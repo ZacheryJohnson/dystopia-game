@@ -23,18 +23,6 @@ pub(crate) fn simulate_combatants(
     // Update combatants' sensors
     for (combatant_id, combatant_object) in &mut combatants {
         {
-            let mut game_state = game_state.lock().unwrap();
-            let active_colliders = game_state.active_colliders.clone();
-            let combatants = game_state.combatants.clone();
-            let balls = game_state.balls.clone();
-            let (
-                query_pipeline,
-                rigid_body_set,
-                collider_set
-            ) = game_state.physics_sim.query_pipeline_and_sets();
-
-            let combatant_isometry = combatant_object.forward_isometry(rigid_body_set);
-
             let sensors = {
                 // ZJ-TODO: refactor yuck
                 if combatant_object.is_stunned() {
@@ -57,16 +45,18 @@ pub(crate) fn simulate_combatants(
                 }
 
             };
+
+            let combatant_isometry = {
+                let game_state = game_state.lock().unwrap();
+                let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                combatant_object.forward_isometry(rigid_body_set)
+            };
+
             for (sensor_id, sensor) in sensors {
                 let (should_interrupt, new_beliefs) = sensor.sense(
                     &combatant_isometry,
-                    query_pipeline,
-                    rigid_body_set,
-                    collider_set,
-                    &active_colliders,
-                    &combatants,
-                    &balls,
-                    current_tick);
+                    game_state.clone()
+                );
 
                 let mut combatant_state = combatant_object.combatant_state.lock().unwrap();
                 combatant_state.beliefs.add_expiring_beliefs_from_source(
