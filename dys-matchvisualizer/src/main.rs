@@ -140,6 +140,7 @@ struct BallVisualizer {
     pub last_position: Vec3,
     pub desired_scale: Vec3,
     pub last_scale: Vec3,
+    pub desired_charge: f32,
 }
 
 #[derive(Component)]
@@ -491,23 +492,41 @@ fn setup_after_reload_game_log(
     assert!(tick_zero.tick_number == 0);
 
     // Combatant sprites
-    let atlas_layout = TextureAtlasLayout::from_grid(
+    let combatant_idle_atlas_layout = TextureAtlasLayout::from_grid(
         UVec2::splat(64),
         4,
         1,
         None,
         None
     );
-    let texture_atlas_layout = texture_atlas_layouts.add(atlas_layout);
+    let combatant_idle_texture_atlas_layout = texture_atlas_layouts.add(combatant_idle_atlas_layout);
     let combatant_idle_animation_config = AnimationConfig::new(0, 3);
-    let mut texture_atlas = TextureAtlas::from(texture_atlas_layout);
-    texture_atlas.index = combatant_idle_animation_config.first_sprite_index;
+    let mut combatant_idle_texture_atlas = TextureAtlas::from(combatant_idle_texture_atlas_layout);
+    combatant_idle_texture_atlas.index = combatant_idle_animation_config.first_sprite_index;
 
     let mut combatant_idle_spritesheet = Sprite::from_atlas_image(
         asset_server.load("sprites/character-idle-wip.png"),
-        texture_atlas,
+        combatant_idle_texture_atlas,
     );
     combatant_idle_spritesheet.custom_size = Some(Vec2::splat(6.0));
+
+    let combatant_running_atlas_layout = TextureAtlasLayout::from_grid(
+        UVec2::splat(64),
+        8,
+        1,
+        None,
+        None
+    );
+    let combatant_running_texture_atlas_layout = texture_atlas_layouts.add(combatant_running_atlas_layout);
+    let combatant_running_animation_config = AnimationConfig::new(0, 7);
+    let mut combatant_running_texture_atlas = TextureAtlas::from(combatant_running_texture_atlas_layout);
+    combatant_running_texture_atlas.index = combatant_running_animation_config.first_sprite_index;
+
+    let mut combatant_running_spritesheet = Sprite::from_atlas_image(
+        asset_server.load("sprites/character-running-wip.png"),
+        combatant_running_texture_atlas,
+    );
+    combatant_running_spritesheet.custom_size = Some(Vec2::splat(6.0));
 
     for evt in &tick_zero.simulation_events {
         match evt {
@@ -562,7 +581,7 @@ fn setup_after_reload_game_log(
                     entity_commands.insert(BarrierVisualizer);
                 }
             },
-            SimulationEvent::BallPositionUpdate { ball_id, position } => {
+            SimulationEvent::BallPositionUpdate { ball_id, position, charge: _ } => {
                 // ZJ-TODO: adding 10.0 sucks, but is necessary for balls to show above combatants in z-ordering
                 //          otherwise the ball can "hide" under combatants
                 let translation = Vec3::new(position.x, position.z, position.y + 10.0);
@@ -571,6 +590,8 @@ fn setup_after_reload_game_log(
                     rotation: Quat::default(),
                     scale: Vec3::ONE,
                 };
+
+                let default_ball_color = Color::linear_rgb(0.75, 0.75, 0.0);
                 commands.spawn((
                     VisualizationObject,
                     BallVisualizer {
@@ -578,10 +599,11 @@ fn setup_after_reload_game_log(
                         desired_location: translation,
                         last_position: translation,
                         desired_scale: Vec3::ONE,
-                        last_scale: Vec3::ONE
+                        last_scale: Vec3::ONE,
+                        desired_charge: 0.0,
                     },
                     Mesh2d(meshes.add(Circle { radius: 0.5 })), // ZJ-TODO: read radius from ball object
-                    MeshMaterial2d(materials.add(Color::linear_rgb(0.75, 0.75, 0.0))),
+                    MeshMaterial2d(materials.add(default_ball_color)),
                     transform,
                 ));
             },
@@ -621,14 +643,23 @@ fn setup_after_reload_game_log(
                     combatant_id
                 );
 
-                let mut combatant_idle_spritesheet = combatant_idle_spritesheet.clone();
-                combatant_idle_spritesheet.color = Color::srgb(
-                    0.0,
-                    if home_team { 0.4 } else { 0.0 },
-                    if home_team { 0.0 } else { 1.0 },
+                // let mut combatant_idle_spritesheet = combatant_idle_spritesheet.clone();
+                // combatant_idle_spritesheet.color = Color::srgb(
+                //     0.0,
+                //     if home_team { 0.4 } else { 0.0 },
+                //     if home_team { 0.0 } else { 1.0 },
+                // );
+                //
+                // combatant_idle_spritesheet.flip_x = !home_team;
+
+                let mut combatant_running_spritesheet = combatant_running_spritesheet.clone();
+                combatant_running_spritesheet.color = Color::srgb(
+                    if home_team { 0.0 } else { 0.8 },
+                    if home_team { 0.4 } else { 0.8 },
+                    if home_team { 0.0 } else { 0.8 },
                 );
 
-                combatant_idle_spritesheet.flip_x = !home_team;
+                combatant_running_spritesheet.flip_x = !home_team;
 
                 commands.spawn((
                     VisualizationObject,
@@ -638,8 +669,10 @@ fn setup_after_reload_game_log(
                         desired_location: translation,
                         last_position: translation
                     },
-                    combatant_idle_spritesheet,
-                    combatant_idle_animation_config.clone(),
+                    // combatant_idle_spritesheet,
+                    combatant_running_spritesheet,
+                    // combatant_idle_animation_config.clone(),
+                    combatant_running_animation_config.clone(),
                     transform,
                 )).with_children(|builder| {
                     // We'll inherit the x and y coords from the parent,
@@ -773,7 +806,7 @@ fn update(
     mut vis_state: ResMut<VisualizationState>,
     mut combatants_query: Query<(&mut CombatantVisualizer, &mut Transform, &mut Sprite, &mut AnimationConfig), Without<BallVisualizer>>,
     mut combatant_id_text_query: Query<&mut CombatantIdText>,
-    mut balls_query: Query<(&mut BallVisualizer, &mut Transform), Without<CombatantVisualizer>>,
+    mut balls_query: Query<(&mut BallVisualizer, &mut Transform, &mut MeshMaterial2d<ColorMaterial>), Without<CombatantVisualizer>>,
     mut camera_query: Query<(&mut Transform, &mut Projection), (With<Camera2d>, Without<CombatantVisualizer>, Without<BallVisualizer>)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
@@ -807,7 +840,7 @@ fn update(
     for (mut combatant_vis, mut combatant_transform, mut sprite, animation_config) in combatants_query.iter_mut() {
         // ZJ-TODO: track what direction a combatant is "facing" in case we allow backpedaling
         //          that's a long time from now though, so this works in the interim
-        if (combatant_vis.desired_location.x - combatant_transform.translation.x).abs() > f32::EPSILON * 4.0 {
+        if (combatant_vis.desired_location.x - combatant_transform.translation.x).abs() > 0.5 {
             sprite.flip_x = combatant_vis.desired_location.x < combatant_transform.translation.x;
         }
 
@@ -854,7 +887,7 @@ fn update(
     // let max_dist = (max_x - min_x).max(max_y - min_y);
     // projection.scale = 0.13_f32.min(max_dist * 0.01);
 
-    for (mut ball_vis, mut ball_transform) in balls_query.iter_mut() {
+    for (mut ball_vis, mut ball_transform, ball_mat) in balls_query.iter_mut() {
         ball_transform.translation = ball_vis.last_position.lerp(
             ball_vis.desired_location,
             lerp_progress
@@ -868,6 +901,9 @@ fn update(
         );
 
         ball_vis.last_scale = ball_transform.scale;
+
+        let ball_color_mat = materials.get_mut(ball_mat.0.id()).unwrap();
+        ball_color_mat.color = Color::linear_rgb(0.75, 0.75 - (ball_vis.desired_charge / 100.0), 0.0);
     }
 
     if time_since_last_update < TIME_BETWEEN_TICKS {
@@ -911,15 +947,17 @@ fn update(
         for event in &events_this_tick.simulation_events {
             match event {
                 SimulationEvent::ArenaObjectPositionUpdate { .. } => { /* no-op, nothing to move with arena objects currently - this may change if plates start moving */},
-                SimulationEvent::BallPositionUpdate { ball_id, position } => {
-                    let (mut ball_vis, _) = balls_query.iter_mut()
-                        .find(|(ball_vis, _)| ball_vis.id == *ball_id)
+                SimulationEvent::BallPositionUpdate { ball_id, position, charge } => {
+                    let (mut ball_vis, _, _) = balls_query.iter_mut()
+                        .find(|(ball_vis, _, _)| ball_vis.id == *ball_id)
                         .unwrap();
 
                     ball_vis.desired_location = Vec3::new(position.x, position.z, position.y);
                     // Every 3 units vertically, make the ball twice as big
                     let scale_modifier = (1.0 + (position.y / 3.0)).max(1.0);
                     ball_vis.desired_scale = Vec3::ONE * scale_modifier;
+
+                    ball_vis.desired_charge = *charge;
                 },
                 SimulationEvent::CombatantPositionUpdate { combatant_id, position } => {
                     let (mut combatant_vis, _, _, _) = combatants_query.iter_mut()
@@ -937,8 +975,8 @@ fn update(
                     }
                 },
                 SimulationEvent::BallExplosion { ball_id, charge } => {
-                    let (_, ball_pos) = balls_query.iter()
-                        .find(|(ball_vis, _)| ball_vis.id == *ball_id)
+                    let (_, ball_pos, _) = balls_query.iter()
+                        .find(|(ball_vis, _, _)| ball_vis.id == *ball_id)
                         .unwrap();
 
                     let explosion_radius = charge * 0.3;
@@ -963,8 +1001,8 @@ fn update(
                     }
                 },
                 SimulationEvent::ThrownBallCaught { thrower_id: _, catcher_id: _, ball_id } => {
-                    let (_, catch_pos) = balls_query.iter()
-                        .find(|(ball_vis, _)| ball_vis.id == *ball_id)
+                    let (_, catch_pos, _) = balls_query.iter()
+                        .find(|(ball_vis, _, _)| ball_vis.id == *ball_id)
                         .unwrap();
 
                     // Catch sprite
