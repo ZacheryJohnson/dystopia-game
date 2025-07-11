@@ -109,6 +109,10 @@ impl<ConcreteT: Clone + PartialEq + PartialOrd + Debug> Debug for SatisfiableFie
 impl<
     ConcreteT: Clone + PartialEq + PartialOrd,
 > SatisfiableField<ConcreteT> {
+    pub fn lambda_from(lambda_fn: impl Fn(ConcreteT) -> bool + 'static) -> Self {
+        SatisfiableField::Lambda(Rc::new(lambda_fn))
+    }
+
     pub fn satisfied_by(&self, value: &ConcreteT) -> bool {
         match self {
             SatisfiableField::Ignore => true,

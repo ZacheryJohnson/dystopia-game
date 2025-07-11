@@ -1,16 +1,15 @@
-use rapier3d::dynamics::RigidBodySet;
-use rapier3d::geometry::{ColliderHandle, ColliderSet, Cuboid};
+use std::sync::{Arc, Mutex};
+use rapier3d::geometry::{ColliderHandle, Cuboid};
 use rapier3d::prelude::*;
 use rapier3d::na::{vector, Isometry3, Vector3};
-use rapier3d::pipeline::{QueryFilter, QueryPipeline};
+use rapier3d::pipeline::QueryFilter;
 use crate::ai::belief::{Belief, ExpiringBelief};
 use crate::ai::sensor::Sensor;
 use crate::game_objects::ball::BallState;
 use crate::game_objects::combatant::CombatantId;
 use crate::game_objects::game_object::GameObject;
 use crate::game_objects::game_object_type::GameObjectType;
-use crate::game_state::{BallsMapT, CollidersMapT, CombatantsMapT};
-use crate::game_tick::GameTickNumber;
+use crate::game_state::GameState;
 
 #[derive(Clone, Debug)]
 pub struct FieldOfViewSensor {
@@ -55,15 +54,22 @@ impl Sensor for FieldOfViewSensor {
     fn sense(
         &self,
         combatant_isometry: &Isometry3<f32>,
-        query_pipeline: &QueryPipeline,
-        rigid_body_set: &RigidBodySet,
-        collider_set: &ColliderSet,
-        active_colliders: &CollidersMapT,
-        combatants: &CombatantsMapT,
-        balls: &BallsMapT,
-        current_tick: GameTickNumber,
+        game_state: Arc<Mutex<GameState>>,
     ) -> (bool, Vec<ExpiringBelief>) {
         let mut beliefs = vec![];
+
+        let mut game_state = game_state.lock().unwrap();
+
+        let active_colliders = game_state.active_colliders.clone();
+        let balls = game_state.balls.clone();
+        let combatants = game_state.combatants.clone();
+        let current_tick = game_state.current_tick.to_owned();
+
+        let (
+            query_pipeline,
+            rigid_body_set,
+            collider_set
+        ) = game_state.physics_sim.query_pipeline_and_sets();
 
         let shape_query_filter = QueryFilter::default()
             .exclude_collider(self.owner_collider_handle);
@@ -219,10 +225,11 @@ mod tests {
     use crate::ai::belief::SatisfiableBelief;
     use crate::ai::sensor::Sensor;
     use crate::ai::sensors::field_of_view::FieldOfViewSensor;
+    use crate::ai::test_utils::make_test_game_state;
     use crate::game_objects::combatant::{CombatantObject, TeamAlignment};
     use crate::game_objects::game_object_type::GameObjectType;
     use crate::game_objects::game_object_type::GameObjectType::Barrier;
-    use crate::game_state::{BallsMapT, CollidersMapT, CombatantsMapT};
+    use crate::game_state::{CollidersMapT, CombatantsMapT};
     use crate::physics_sim::PhysicsSim;
 
     #[test]
@@ -239,13 +246,15 @@ mod tests {
         // Combatant 3 is behind combatant 1
         let combatant_3_position = vector![1.0, 0.0, -3.0];
 
-        let mut physics_sim = PhysicsSim::new(10);
+        let physics_sim = PhysicsSim::new(10);
+        let game_state = make_test_game_state(Some(physics_sim));
         let (combatant_1_collider_handle, combatant_1, active_colliders, combatants) = {
+            let mut game_state = game_state.lock().unwrap();
             let (
                 rigid_body_set,
                 collider_set,
                 _,
-            ) = physics_sim.sets_mut();
+            ) = game_state.physics_sim.sets_mut();
 
             let combatant_1 = CombatantObject::new(
                 1,
@@ -278,7 +287,7 @@ mod tests {
             );
 
             // We must tick in order for the objects to be available in our tests
-            physics_sim.tick();
+            game_state.physics_sim.tick();
 
             let mut active_colliders = CollidersMapT::new();
             let combatant_1_collider_handle = combatant_1.collider_handle.clone();
@@ -295,29 +304,31 @@ mod tests {
         };
 
         {
-            let (
-                query_pipeline,
-                rigid_body_set,
-                collider_set,
-            ) = physics_sim.query_pipeline_and_sets();
+            let (combatant_isometry, field_of_view_sensor) = {
+                let mut game_state = game_state.lock().unwrap();
+                game_state.active_colliders = active_colliders;
+                game_state.combatants = combatants;
 
-            let field_of_view_sensor = FieldOfViewSensor::new(
-                10.0,
-                1,
-                combatant_1_collider_handle,
-            );
+                let field_of_view_sensor = FieldOfViewSensor::new(
+                    10.0,
+                    1,
+                    combatant_1_collider_handle,
+                );
 
-            let combatant_forward_isometry = combatant_1.forward_isometry(rigid_body_set);
+                let (
+                    _,
+                    rigid_body_set,
+                    _,
+                ) = game_state.physics_sim.query_pipeline_and_sets();
+
+                let combatant_forward_isometry = combatant_1.forward_isometry(rigid_body_set);
+
+                (combatant_forward_isometry, field_of_view_sensor)
+            };
 
             let (_, new_beliefs) = field_of_view_sensor.sense(
-                &combatant_forward_isometry,
-                query_pipeline,
-                rigid_body_set,
-                collider_set,
-                &active_colliders,
-                &combatants,
-                &BallsMapT::default(),
-                1
+                &combatant_isometry,
+                game_state.clone()
             );
 
             let knows_combatant_2_position = new_beliefs.iter().any(|belief| {
@@ -335,7 +346,8 @@ mod tests {
             assert!(knows_combatant_2_position && knows_no_other_positions);
         }
         {
-            let (rigid_body_set, _, _) = physics_sim.sets_mut();
+            let mut game_state = game_state.lock().unwrap();
+            let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
             // Rotate combatant 1 around to face combatant 3
             let combatant_1_rigid_body = rigid_body_set
                 .get_mut(combatant_1.rigid_body_handle)
@@ -347,32 +359,31 @@ mod tests {
             );
         }
 
-        physics_sim.tick();
+        game_state.lock().unwrap().physics_sim.tick();
 
         {
-            let (
-                query_pipeline,
-                rigid_body_set,
-                collider_set,
-            ) = physics_sim.query_pipeline_and_sets();
+            let (combatant_isometry, field_of_view_sensor) = {
+                let mut game_state = game_state.lock().unwrap();
+                let (
+                    _,
+                    rigid_body_set,
+                    _,
+                ) = game_state.physics_sim.query_pipeline_and_sets();
 
-            let field_of_view_sensor = FieldOfViewSensor::new(
-                10.0,
-                1,
-                combatant_1_collider_handle,
-            );
+                let field_of_view_sensor = FieldOfViewSensor::new(
+                    10.0,
+                    1,
+                    combatant_1_collider_handle,
+                );
 
-            let combatant_forward_isometry = combatant_1.forward_isometry(rigid_body_set);
+                let combatant_forward_isometry = combatant_1.forward_isometry(rigid_body_set);
+
+                (combatant_forward_isometry, field_of_view_sensor)
+            };
 
             let (_, new_beliefs) = field_of_view_sensor.sense(
-                &combatant_forward_isometry,
-                query_pipeline,
-                rigid_body_set,
-                collider_set,
-                &active_colliders,
-                &combatants,
-                &BallsMapT::default(),
-                1
+                &combatant_isometry,
+                game_state.clone(),
             );
 
             let knows_combatant_3_position = new_beliefs.iter().any(|belief| {
@@ -406,13 +417,15 @@ mod tests {
         let wall_position = vector![1.0, 0.0, 1.5];
         let wall_size = vector![5.0, 5.0, 0.5];
 
-        let mut physics_sim = PhysicsSim::new(10);
+        let physics_sim = PhysicsSim::new(10);
+        let game_state = make_test_game_state(Some(physics_sim));
         let (combatant_1_collider_handle, combatant_1, active_colliders, combatants) = {
+            let mut game_state = game_state.lock().unwrap();
             let (
                 rigid_body_set,
                 collider_set,
                 _,
-            ) = physics_sim.sets_mut();
+            ) = game_state.physics_sim.sets_mut();
 
             let combatant_1 = CombatantObject::new(
                 1,
@@ -450,7 +463,7 @@ mod tests {
             );
 
             // We must tick in order for the objects to be available in our tests
-            physics_sim.tick();
+            game_state.physics_sim.tick();
 
             let mut active_colliders = CollidersMapT::new();
             let combatant_1_collider_handle = combatant_1.collider_handle.clone();
@@ -465,30 +478,32 @@ mod tests {
             (combatant_1_collider_handle, combatant_1, active_colliders, combatants)
         };
 
+        game_state.lock().unwrap().active_colliders = active_colliders;
+        game_state.lock().unwrap().combatants = combatants;
+
         {
-            let (
-                query_pipeline,
-                rigid_body_set,
-                collider_set,
-            ) = physics_sim.query_pipeline_and_sets();
+            let (combatant_isometry, field_of_view_sensor) = {
+                let mut game_state = game_state.lock().unwrap();
+                let (
+                    _,
+                    rigid_body_set,
+                    _,
+                ) = game_state.physics_sim.query_pipeline_and_sets();
 
-            let field_of_view_sensor = FieldOfViewSensor::new(
-                10.0,
-                1,
-                combatant_1_collider_handle,
-            );
+                let field_of_view_sensor = FieldOfViewSensor::new(
+                    10.0,
+                    1,
+                    combatant_1_collider_handle,
+                );
 
-            let combatant_forward_isometry = combatant_1.forward_isometry(rigid_body_set);
+                let combatant_forward_isometry = combatant_1.forward_isometry(rigid_body_set);
+
+                (combatant_forward_isometry, field_of_view_sensor)
+            };
 
             let (_, new_beliefs) = field_of_view_sensor.sense(
-                &combatant_forward_isometry,
-                query_pipeline,
-                rigid_body_set,
-                collider_set,
-                &active_colliders,
-                &combatants,
-                &BallsMapT::default(),
-                1
+                &combatant_isometry,
+                game_state.clone(),
             );
 
             let knows_combatant_2_position = new_beliefs.iter().any(|belief| {

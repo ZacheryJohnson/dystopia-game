@@ -7,11 +7,13 @@ use rapier3d::prelude::*;
 use dys_satisfiable::{SatisfiabilityTest, SatisfiableField};
 use dys_world::attribute::attribute_type::AttributeType;
 use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
-use crate::ai::belief::{BeliefSet, SatisfiableBelief};
+use crate::ai::belief::SatisfiableBelief;
+use crate::ai::beliefs::belief_set::BeliefSet;
 use crate::ai::sensor::Sensor;
 use crate::ai::sensors::field_of_view::FieldOfViewSensor;
 use crate::ai::sensors::proximity::ProximitySensor;
 use crate::simulation::simulation_event::PendingSimulationEvent;
+use crate::simulation::simulation_event::SimulationEvent::BroadcastBelief;
 use super::{ball::BallId, game_object::GameObject};
 
 pub type CombatantId = u64;
@@ -351,6 +353,15 @@ impl Agent for CombatantObject {
             let mut combatant_state = self.combatant_state.lock().unwrap();
             combatant_state.completed_action = Some(action.to_owned());
             combatant_state.beliefs.add_beliefs(action.completion_beliefs());
+
+            for broadcast_belief in action.broadcast_beliefs() {
+                events.push(PendingSimulationEvent(
+                    BroadcastBelief {
+                        from_combatant_id: self.id,
+                        belief: broadcast_belief.to_owned(),
+                    }
+                ));
+            }
 
             // ZJ-TODO: HACK: yuck
             for belief in action.completion_beliefs() {

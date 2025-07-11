@@ -48,6 +48,8 @@ impl GameLog {
                 })
                 .sum();
 
+            // ZJ-TODO: balls thrown at teammates may hit enemies and explode
+            //          this would be a "hit", but would not count as a "throw"
             let balls_thrown = events
                 .iter()
                 .filter(|evt| matches!(evt, SimulationEvent::BallThrownAtEnemy { thrower_id: cid, .. } if cid == combatant_id ))

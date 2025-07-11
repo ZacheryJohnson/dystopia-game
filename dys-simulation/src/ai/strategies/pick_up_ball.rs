@@ -3,7 +3,8 @@ use std::sync::{Arc, Mutex};
 use rapier3d::{na::Vector3};
 use dys_satisfiable::SatisfiableField;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::ball::BallId, game_state::GameState, simulation::simulation_event::SimulationEvent};
-use crate::ai::belief::{BeliefSet, SatisfiableBelief};
+use crate::ai::belief::SatisfiableBelief;
+use crate::ai::beliefs::belief_set::BeliefSet;
 use crate::game_objects::combatant::CombatantId;
 use crate::simulation::simulation_event::PendingSimulationEvent;
 

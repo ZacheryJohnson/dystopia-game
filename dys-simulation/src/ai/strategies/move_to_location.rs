@@ -3,7 +3,7 @@ use dys_world::arena::navmesh::{ArenaNavmeshNode, ArenaNavmeshPath};
 use rapier3d::na::Point3;
 use rapier3d::prelude::*;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
-use crate::ai::belief::BeliefSet;
+use crate::ai::beliefs::belief_set::BeliefSet;
 use crate::game_objects::combatant::CombatantId;
 use crate::game_objects::game_object::GameObject;
 use crate::game_objects::game_object_type::GameObjectType;

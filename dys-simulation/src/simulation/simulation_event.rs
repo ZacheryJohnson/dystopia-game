@@ -5,7 +5,7 @@ use rapier3d::prelude::*;
 use rapier3d::na::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
 use dys_satisfiable::SatisfiableField;
-use crate::ai::belief::SatisfiableBelief;
+use crate::ai::belief::{Belief, ExpiringBelief, SatisfiableBelief};
 use crate::game_objects::{ball::BallId, combatant::CombatantId};
 use crate::game_objects::ball::BallState;
 use crate::game_objects::combatant::TeamAlignment;
@@ -112,6 +112,12 @@ pub enum SimulationEvent {
         force_magnitude: f32,
         force_direction: Vector3<f32>
     },
+
+    // ZJ-TODO: TEMP: broadcast this belief to all other combatants (excluding self)
+    BroadcastBelief {
+        from_combatant_id: CombatantId,
+        belief: Belief,
+    }
 }
 
 impl SimulationEvent {
@@ -425,6 +431,23 @@ impl SimulationEvent {
                     .unwrap();
                 let impulse = force_direction.normalize() * force_magnitude;
                 combatant_rb.apply_impulse(impulse, true);
+            },
+
+            SimulationEvent::BroadcastBelief {from_combatant_id, belief} => {
+                let mut game_state = game_state.lock().unwrap();
+                let current_tick = game_state.current_tick.to_owned();
+                for (combatant_id, combatant_object) in game_state.combatants.iter_mut() {
+                    if *combatant_id == from_combatant_id {
+                        // Don't broadcast to ourselves
+                        continue;
+                    }
+
+                    // ZJ-TODO: will unsourced belief be a problem?
+                    let mut combatant_state = combatant_object.combatant_state.lock().unwrap();
+                    combatant_state.beliefs.add_expiring_belief(
+                        ExpiringBelief::new(belief, Some(current_tick + 12))
+                    );
+                }
             }
         };
 

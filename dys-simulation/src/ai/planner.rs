@@ -3,7 +3,8 @@ use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 use dys_satisfiable::SatisfiabilityTest;
 use crate::{ai::goals::goals, game_state::GameState};
-use crate::ai::belief::{BeliefSet, BeliefTest};
+use crate::ai::belief::BeliefTest;
+use crate::ai::beliefs::belief_set::BeliefSet;
 use super::{action::Action, actions::actions, agent::Agent, goal::Goal};
 
 #[tracing::instrument(skip_all, level = "trace")]

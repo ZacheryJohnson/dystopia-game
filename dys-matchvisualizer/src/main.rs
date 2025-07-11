@@ -103,15 +103,11 @@ struct AnimationConfig {
 }
 
 impl AnimationConfig {
-    fn new(first: usize, last: usize, fps: u8) -> Self {
+    fn new(first: usize, last: usize) -> Self {
         Self {
             first_sprite_index: first,
             last_sprite_index: last,
         }
-    }
-
-    fn timer_from_fps(fps: u8) -> Timer {
-        Timer::new(Duration::from_secs_f32(1.0 / (fps as f32)), TimerMode::Once)
     }
 }
 
@@ -451,7 +447,7 @@ fn try_reload_vis_state(
     mut vis_state: ResMut<VisualizationState>,
     asset_server: Res<AssetServer>,
     entity_query: Query<Entity, Or<(With<VisualizationObject>, With<Text>)>>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     // If we don't have pending updated game state from WASM, abort early
     let Some(updated_vis_state) = UPDATED_VIS_STATE.get() else {
@@ -503,7 +499,7 @@ fn setup_after_reload_game_log(
         None
     );
     let texture_atlas_layout = texture_atlas_layouts.add(atlas_layout);
-    let combatant_idle_animation_config = AnimationConfig::new(0, 3, 4);
+    let combatant_idle_animation_config = AnimationConfig::new(0, 3);
     let mut texture_atlas = TextureAtlas::from(texture_atlas_layout);
     texture_atlas.index = combatant_idle_animation_config.first_sprite_index;
 
@@ -620,7 +616,10 @@ fn setup_after_reload_game_log(
                     panic!("failed to find combatant with instance ID {instance_id}");
                 };
 
-                name = name.splitn(2, " ").skip(1).collect::<String>();
+                name = format!("{} ({})",
+                    name.splitn(2, " ").skip(1).collect::<String>(),
+                    combatant_id
+                );
 
                 let mut combatant_idle_spritesheet = combatant_idle_spritesheet.clone();
                 combatant_idle_spritesheet.color = Color::srgb(
@@ -844,7 +843,7 @@ fn update(
     let x_base = -8.0;
     let y_base = -6.0;
 
-    let (mut camera_transform, mut projection) = camera_query.single_mut().unwrap();
+    let (mut camera_transform, _) = camera_query.single_mut().unwrap();
     camera_transform.translation.x = x_offset + x_base;
     camera_transform.translation.y = y_offset + y_base;
 
@@ -963,7 +962,7 @@ fn update(
                         break;
                     }
                 },
-                SimulationEvent::ThrownBallCaught { thrower_id, catcher_id, ball_id } => {
+                SimulationEvent::ThrownBallCaught { thrower_id: _, catcher_id: _, ball_id } => {
                     let (_, catch_pos) = balls_query.iter()
                         .find(|(ball_vis, _)| ball_vis.id == *ball_id)
                         .unwrap();
@@ -977,7 +976,7 @@ fn update(
                         None
                     );
                     let texture_atlas_layout = texture_atlas_layouts.add(atlas_layout);
-                    let catch_fx_animation_config = AnimationConfig::new(0, 8, 0);
+                    let catch_fx_animation_config = AnimationConfig::new(0, 8);
                     let mut texture_atlas = TextureAtlas::from(texture_atlas_layout);
                     texture_atlas.index = catch_fx_animation_config.first_sprite_index;
 

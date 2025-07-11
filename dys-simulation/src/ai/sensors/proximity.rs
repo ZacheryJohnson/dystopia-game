@@ -1,16 +1,16 @@
-use rapier3d::dynamics::RigidBodySet;
-use rapier3d::geometry::{ColliderHandle, ColliderSet};
+use std::sync::{Arc, Mutex};
+use rapier3d::geometry::ColliderHandle;
 use rapier3d::na::Isometry3;
-use rapier3d::pipeline::{QueryFilter, QueryPipeline};
+use rapier3d::pipeline::QueryFilter;
 use rapier3d::prelude::Cylinder;
 use crate::ai::belief::{Belief, ExpiringBelief};
 use crate::ai::sensor::Sensor;
 use crate::game_objects::ball::BallState;
 use crate::game_objects::combatant::CombatantId;
 use crate::game_objects::game_object_type::GameObjectType;
-use crate::game_state::{BallsMapT, CollidersMapT, CombatantsMapT};
-use crate::game_tick::GameTickNumber;
+use crate::game_state::GameState;
 
+/// ProximitySensors are used to detect events in a cylindrical area around the agent.
 #[derive(Clone, Debug)]
 pub struct ProximitySensor {
     enabled: bool,
@@ -57,13 +57,7 @@ impl Sensor for ProximitySensor {
     fn sense(
         &self,
         combatant_isometry: &Isometry3<f32>,
-        query_pipeline: &QueryPipeline,
-        rigid_body_set: &RigidBodySet,
-        collider_set: &ColliderSet,
-        active_colliders: &CollidersMapT,
-        _: &CombatantsMapT,
-        balls_map: &BallsMapT,
-        current_tick: GameTickNumber
+        game_state: Arc<Mutex<GameState>>,
     ) -> (bool, Vec<ExpiringBelief>) {
         let mut beliefs = vec![];
 
@@ -72,6 +66,17 @@ impl Sensor for ProximitySensor {
 
         // ZJ-TODO: this sucks please change
         let mut should_interrupt = false;
+
+        let mut game_state = game_state.lock().unwrap();
+        let active_colliders = game_state.active_colliders.clone();
+        let balls_map = game_state.balls.clone();
+        let current_tick = game_state.current_tick;
+
+        let (
+            query_pipeline,
+            rigid_body_set,
+            collider_set,
+        ) = game_state.physics_sim.query_pipeline_and_sets();
 
         query_pipeline.intersections_with_shape(
             rigid_body_set,
@@ -87,7 +92,7 @@ impl Sensor for ProximitySensor {
                             beliefs.push(ExpiringBelief::new(Belief::InBallPickupRange {
                                 ball_id: *ball_id,
                                 combatant_id: self.owner_combatant_id,
-                            }, Some(current_tick + 12)));
+                            }, Some(current_tick + 1)));
                         },
                         GameObjectType::Combatant(combatant_id) => {
                             beliefs.push(ExpiringBelief::new(Belief::CanReachCombatant {
