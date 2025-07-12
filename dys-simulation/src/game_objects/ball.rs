@@ -1,4 +1,4 @@
-use rapier3d::{dynamics::{CoefficientCombineRule, RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
+use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
 use rapier3d::na::Isometry3;
 use crate::game_objects::combatant::CombatantId;
 use crate::game_tick::GameTickNumber;

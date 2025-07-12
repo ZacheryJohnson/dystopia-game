@@ -63,7 +63,26 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
             },
             (GameObjectType::Plate(_), _) | (_, GameObjectType::Plate(_)) => continue,
             (GameObjectType::BallSpawn, _) | (_, GameObjectType::BallSpawn) => continue,
-            (GameObjectType::Barrier, _) | (_, GameObjectType::Barrier) => continue,
+            (GameObjectType::Barrier, GameObjectType::Combatant(combatant_id)) | (GameObjectType::Combatant(combatant_id), GameObjectType::Barrier) => {
+                if !evt.started() {
+                    continue;
+                }
+
+                let damage = {
+                    let game_state = game_state.lock().unwrap();
+
+                    let combatant_rb = game_state.combatants.get(combatant_id).unwrap().rigid_body_handle;
+
+                    let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                    let combatant_rigid_body = rigid_body_set.get(combatant_rb).unwrap();
+                    combatant_rigid_body.linvel().magnitude() as f32
+                };
+
+                let mut game_state = game_state.lock().unwrap();
+                let combatant_object = game_state.combatants.get_mut(combatant_id).unwrap();
+                combatant_object.apply_damage(damage);
+            },
+            (GameObjectType::Barrier, _) => continue,
             (GameObjectType::Ball(_), GameObjectType::Ball(_)) => continue,
             (GameObjectType::Combatant(_), GameObjectType::Combatant(_)) => continue,
             (GameObjectType::Ball(ball_id), GameObjectType::Combatant(combatant_id)) | (GameObjectType::Combatant(combatant_id), GameObjectType::Ball(ball_id)) => {

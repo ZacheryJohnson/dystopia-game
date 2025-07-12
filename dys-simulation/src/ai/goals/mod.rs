@@ -7,7 +7,7 @@ use super::goal::Goal;
 
 // ZJ-TODO: move to config
 const ON_PLATE_PRIORITY_MULTIPLIER: f32 = 4.5;
-const TEAMMATE_PASS_PRIORITY_MULTIPLIER: f32 = 3.0;
+const TEAMMATE_PASS_PRIORITY_MULTIPLIER: f32 = 1.5;
 
 pub fn idle_goal() -> Goal {
     GoalBuilder::new()
@@ -40,7 +40,7 @@ pub fn goals(
                 SatisfiableBelief::OnPlate()
                     .combatant_id(SatisfiableField::Exactly(combatant_object.id))
             )
-            .priority(0.5 * attr(AttributeType::Dexterity))
+            .priority(0.75 * attr(AttributeType::Dexterity))
             .repeatable(true)
             .build(),
         GoalBuilder::new()

@@ -131,6 +131,7 @@ impl BeliefSet {
             .beliefs()
             .iter()
             .filter(|belief| satisfiable.is_same_variant(belief))
+            .inspect(|belief| tracing::trace!("Can satisfy {belief:?} = {}", satisfiable.satisfied_by(**belief)))
             .any(|belief| satisfiable.satisfied_by(*belief))
     }
 

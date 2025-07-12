@@ -46,6 +46,8 @@ pub struct CombatantState {
     pub beliefs: BeliefSet,
     pub sensors: Vec<(u32, Box<dyn Sensor>)>,
 
+    // ZJ-TODO: this should instead be a set of temporary limb modifiers
+    pub damage: f32,
     pub on_plate: Option<PlateId>,
     pub holding_ball: Option<BallId>,
     pub stunned: bool,
@@ -71,7 +73,7 @@ impl CombatantObject {
         let collider = ColliderBuilder::cuboid(COMBATANT_RADIUS, COMBATANT_HALF_HEIGHT, COMBATANT_RADIUS)
             .active_events(ActiveEvents::COLLISION_EVENTS)
             .active_collision_types(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_FIXED | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
-            .density(COMBATANT_MASS)
+            .mass(COMBATANT_MASS)
             .position(Isometry3::translation(0.0, COMBATANT_HALF_HEIGHT, 0.0))
             .build();
 
@@ -112,6 +114,7 @@ impl CombatantObject {
                     (2, Box::new(ball_pickup_range_proximity_sensor)),
                     (3, Box::new(ball_danger_proximity_sensor)),
                 ],
+                damage: 0.0,
                 stunned: false,
             })),
             team,
@@ -209,6 +212,11 @@ impl CombatantObject {
     pub fn is_stunned(&self) -> bool {
         self.combatant_state.lock().unwrap().stunned
     }
+
+    pub fn apply_damage(&mut self, damage: f32) {
+        let mut combatant_state = self.combatant_state.lock().unwrap();
+        combatant_state.damage += damage;
+    }
 }
 
 impl GameObject for CombatantObject {
@@ -263,8 +271,13 @@ impl Agent for CombatantObject {
     ) -> Vec<PendingSimulationEvent> {
         let mut events = vec![];
 
+        let combatant_damage = {
+            let combatant_state = self.combatant_state.lock().unwrap();
+            combatant_state.damage
+        };
+
         if self.is_stunned() {
-            let random_value = game_state.lock().unwrap().rng.next_u32() % 500;
+            let random_value = game_state.lock().unwrap().rng.next_u32() % (1000 + combatant_damage.floor() as u32);
             let constitution = self
                 .combatant
                 .lock()
