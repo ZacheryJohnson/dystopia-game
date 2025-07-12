@@ -191,6 +191,14 @@ impl Sensor for FieldOfViewSensor {
                             }, Some(current_tick + 1)));
                         }
 
+                        if combatant_object.is_stunned() {
+                            beliefs.push(ExpiringBelief::new(
+                                Belief::CombatantIsStunned {
+                                    combatant_id: *combatant_id
+                                }, Some(current_tick + 1))
+                            );
+                        }
+
                         if has_direct_line_of_sight {
                             beliefs.push(ExpiringBelief::new(
                                 Belief::DirectLineOfSightToCombatant {

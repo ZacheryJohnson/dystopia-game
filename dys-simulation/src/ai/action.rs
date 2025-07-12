@@ -63,15 +63,10 @@ impl Action {
         let none_prohibited = self
             .prohibited_beliefs
             .iter()
+            .inspect(|belief| tracing::debug!("Can satisfy prohibited {:?} = {}", belief, owned_beliefs.can_satisfy(*belief)))
             .all(|belief| !owned_beliefs.can_satisfy(belief));
 
-        let can_perform_strategy = self
-            .strategy
-            .lock()
-            .unwrap()
-            .can_perform(owned_beliefs);
-
-        all_prereqs && none_prohibited && can_perform_strategy
+        all_prereqs && none_prohibited
     }
 
     pub fn should_interrupt(&self, owned_beliefs: &BeliefSet) -> bool {
@@ -108,9 +103,14 @@ impl Action {
         agent: &impl Agent,
         game_state: Arc<Mutex<GameState>>,
     ) -> Option<Vec<PendingSimulationEvent>> {
+        if !self.can_perform(&agent.beliefs()) {
+            tracing::debug!("Cannot perform action (action fail) {}", self.name());
+            return None;
+        }
+
         let mut strategy = self.strategy.lock().unwrap();
         if !strategy.can_perform(&agent.beliefs()) {
-            tracing::debug!("Cannot perform action {}", self.name());
+            tracing::debug!("Cannot perform action (strategy fail) {}", self.name());
             return None;
         }
 
@@ -399,6 +399,61 @@ mod tests {
 
             let result = action.can_perform(&belief_set);
             assert!(result);
+        }
+
+        #[test]
+        fn test() {
+            let combatant_id = 1;
+            let action = ActionBuilder::new()
+                .requires(
+                    SatisfiableBelief::OnPlate()
+                        .combatant_id(SatisfiableField::Exactly(combatant_id))
+                )
+                .prohibits(
+                    SatisfiableBelief::HeldBall()
+                        .combatant_id(SatisfiableField::Exactly(combatant_id))
+                )
+                .prohibits(
+                    SatisfiableBelief::CombatantIsStunned()
+                        .combatant_id(SatisfiableField::Exactly(combatant_id))
+                )
+                .build();
+
+            let belief_set = BeliefSet::from(&[
+                Belief::OnPlate { plate_id: 1, combatant_id },
+            ]);
+
+            assert!(action.can_perform(&belief_set));
+
+            let belief_set = BeliefSet::from(&[
+                Belief::OnPlate { plate_id: 1, combatant_id },
+                Belief::CombatantIsStunned { combatant_id },
+            ]);
+
+            assert!(!action.can_perform(&belief_set));
+
+            let belief_set = BeliefSet::from(&[
+                Belief::OnPlate { plate_id: 1, combatant_id },
+                Belief::HeldBall { ball_id: 1, combatant_id },
+            ]);
+
+            assert!(!action.can_perform(&belief_set));
+
+            let belief_set = BeliefSet::from(&[
+                Belief::OnPlate { plate_id: 1, combatant_id },
+                Belief::CombatantIsStunned { combatant_id },
+                Belief::HeldBall { ball_id: 1, combatant_id },
+            ]);
+
+            assert!(!action.can_perform(&belief_set));
+
+            let belief_set = BeliefSet::from(&[
+                Belief::OnPlate { plate_id: 1, combatant_id },
+                Belief::CombatantIsStunned { combatant_id },
+                Belief::HeldBall { ball_id: 1, combatant_id },
+            ]);
+
+            assert!(!action.can_perform(&belief_set));
         }
     }
 

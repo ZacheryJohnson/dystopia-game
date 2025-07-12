@@ -95,6 +95,10 @@ pub enum Belief {
         thrower_id: CombatantId,
         ball_id: BallId,
     },
+    CombatantIsStunned {
+        #[unique]
+        combatant_id: CombatantId,
+    }
 }
 
 #[derive(Clone, Debug)]

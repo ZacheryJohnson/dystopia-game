@@ -1,4 +1,5 @@
 use std::sync::{Arc, Mutex};
+use indexmap::IndexMap;
 use rapier3d::na::Vector3;
 use dys_satisfiable::SatisfiableField;
 use crate::{ai::{action::ActionBuilder, belief::Belief, strategies::move_to_location::MoveToLocationStrategy}, game_objects::{combatant::CombatantObject, game_object::GameObject}, game_state::GameState};
@@ -127,10 +128,6 @@ pub fn actions(
                         .self_combatant_id(SatisfiableField::Exactly(combatant.id))
                         .target_combatant_id(SatisfiableField::Exactly(*other_combatant_id)),
                 )
-                .prohibits(
-                    SatisfiableBelief::HeldBall()
-                        .combatant_id(SatisfiableField::Exactly(combatant.id))
-                )
                 .promises(Belief::CombatantShoved {
                     combatant_id: *other_combatant_id,
                     on_plate: other_combatant_object.plate(),
@@ -209,21 +206,18 @@ pub fn actions(
             .map(|(combatant_id, _)| combatant_id.to_owned())
             .collect::<Vec<_>>();
 
-        for (target_combatant_id, target_combatant_object) in combatants.clone() {
+        let teammate_combatant_ids = combatants
+            .clone()
+            .iter()
+            .filter(|(_, combatant_object)| combatant_object.team == combatant.team)
+            .map(|(combatant_id, _)| combatant_id.to_owned())
+            .collect::<Vec<_>>();
+
+        for (target_combatant_id, _) in combatants.clone() {
             // Don't try to throw a ball at ourselves
             if target_combatant_id == combatant.id {
                 continue;
             }
-
-            let target_pos = {
-                let game_state = game_state.lock().unwrap();
-                let (rigid_body_set, _, _) = game_state.physics_sim.sets();
-                rigid_body_set
-                    .get(target_combatant_object.rigid_body_handle)
-                    .unwrap()
-                    .translation()
-                    .to_owned()
-            };
 
             actions.push(
                 ActionBuilder::new()
@@ -267,11 +261,30 @@ pub fn actions(
                     )
                     .build()
             );
+        }
+
+        let teammate_combatants = combatants
+            .clone()
+            .iter()
+            .filter(|(_, combatant_object)| combatant_object.team == combatant.team)
+            .map(|(id, obj)| (id.to_owned(), obj.to_owned()))
+            .collect::<IndexMap<_, _>>();
+
+        for (teammate_combatant_id, teammate_combatant_object) in teammate_combatants {
+            let target_pos = {
+                let game_state = game_state.lock().unwrap();
+                let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                rigid_body_set
+                    .get(teammate_combatant_object.rigid_body_handle)
+                    .unwrap()
+                    .translation()
+                    .to_owned()
+            };
 
             actions.push(
                 ActionBuilder::new()
-                    .name(format!("Pass Ball {ball_id} to Combatant {target_combatant_id}"))
-                    .strategy(ThrowBallAtTargetStrategy::new(combatant.id, target_combatant_id))
+                    .name(format!("Pass Ball {ball_id} to Combatant {teammate_combatant_id}"))
+                    .strategy(ThrowBallAtTargetStrategy::new(combatant.id, teammate_combatant_id))
                     // ZJ-TODO: ideally this is an inverse bell curve
                     //          for now, just penalize close throws and reward far throws
                     .cost(10.0 + 5.0 / (target_pos - combatant_pos).magnitude())
@@ -283,7 +296,11 @@ pub fn actions(
                     .requires(
                         SatisfiableBelief::DirectLineOfSightToCombatant()
                             .self_combatant_id(SatisfiableField::Exactly(combatant.id))
-                            .other_combatant_id(SatisfiableField::Exactly(target_combatant_id))
+                            .other_combatant_id(SatisfiableField::Exactly(teammate_combatant_id))
+                    )
+                    .requires(
+                        SatisfiableBelief::DirectLineOfSightToCombatant()
+                            .other_combatant_id(SatisfiableField::In(teammate_combatant_ids.clone()))
                     )
                     .prohibits(
                         SatisfiableBelief::CombatantPosition()
@@ -293,9 +310,13 @@ pub fn actions(
                                 (target_pos - combatant_pos).magnitude() < MIN_THROW_DISTANCE
                             }))
                     )
+                    .prohibits(
+                        SatisfiableBelief::CombatantIsStunned()
+                            .combatant_id(SatisfiableField::Exactly(teammate_combatant_id))
+                    )
                     .requires(
                         SatisfiableBelief::CombatantPosition()
-                            .combatant_id(SatisfiableField::Exactly(target_combatant_id))
+                            .combatant_id(SatisfiableField::Exactly(teammate_combatant_id))
                             .position(SatisfiableField::lambda_from(move |target_pos: Vector3<f32>| {
                                 const MIN_THROW_DISTANCE: f32 = 5.0;
                                 (target_pos - combatant_pos).magnitude() >= MIN_THROW_DISTANCE
@@ -303,22 +324,22 @@ pub fn actions(
                     )
                     .prohibits(
                         SatisfiableBelief::HeldBall()
-                            .combatant_id(SatisfiableField::Exactly(target_combatant_id))
+                            .combatant_id(SatisfiableField::Exactly(teammate_combatant_id))
                     )
                     .completion(vec![
                         Belief::BallThrownAtCombatant {
                             ball_id,
                             thrower_combatant_id: combatant.id,
-                            target_combatant_id,
-                            target_on_plate: target_combatant_object.plate(),
+                            target_combatant_id: teammate_combatant_id,
+                            target_on_plate: teammate_combatant_object.plate(),
                         },
                     ])
                     .broadcasts(vec![
                         Belief::BallThrownAtCombatant {
                             ball_id,
                             thrower_combatant_id: combatant.id,
-                            target_combatant_id,
-                            target_on_plate: target_combatant_object.plate(),
+                            target_combatant_id: teammate_combatant_id,
+                            target_on_plate: teammate_combatant_object.plate(),
                         }
                     ])
                     .consumes(
@@ -330,15 +351,35 @@ pub fn actions(
                         SatisfiableBelief::BallThrownAtCombatant()
                             .ball_id(SatisfiableField::Exactly(ball_id))
                             .thrower_combatant_id(SatisfiableField::Exactly(combatant.id))
-                            .target_combatant_id(SatisfiableField::Exactly(target_combatant_id))
+                            .target_combatant_id(SatisfiableField::Exactly(teammate_combatant_id))
                     )
                     .build()
             );
+        }
+
+
+        let enemy_combatants = combatants
+            .clone()
+            .iter()
+            .filter(|(_, combatant_object)| combatant_object.team != combatant.team)
+            .map(|(id, obj)| (id.to_owned(), obj.to_owned()))
+            .collect::<IndexMap<_, _>>();
+
+        for (enemy_combatant_id, enemy_combatant_object) in enemy_combatants {
+            let target_pos = {
+                let game_state = game_state.lock().unwrap();
+                let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                rigid_body_set
+                    .get(enemy_combatant_object.rigid_body_handle)
+                    .unwrap()
+                    .translation()
+                    .to_owned()
+            };
 
             actions.push(
                 ActionBuilder::new()
-                    .name(format!("Throw Ball {ball_id} at Combatant {target_combatant_id}"))
-                    .strategy(ThrowBallAtTargetStrategy::new(combatant.id, target_combatant_id))
+                    .name(format!("Throw Ball {ball_id} at Combatant {enemy_combatant_id}"))
+                    .strategy(ThrowBallAtTargetStrategy::new(combatant.id, enemy_combatant_id))
                     // ZJ-TODO: ideally this is an inverse bell curve
                     //          for now, just penalize close throws and reward far throws
                     .cost(10.0 + 5.0 / (target_pos - combatant_pos).magnitude())
@@ -350,7 +391,11 @@ pub fn actions(
                     .requires(
                         SatisfiableBelief::DirectLineOfSightToCombatant()
                             .self_combatant_id(SatisfiableField::Exactly(combatant.id))
-                            .other_combatant_id(SatisfiableField::Exactly(target_combatant_id))
+                            .other_combatant_id(SatisfiableField::Exactly(enemy_combatant_id))
+                    )
+                    .requires(
+                        SatisfiableBelief::DirectLineOfSightToCombatant()
+                            .other_combatant_id(SatisfiableField::In(enemy_combatant_ids.clone()))
                     )
                     .prohibits(
                         SatisfiableBelief::CombatantPosition()
@@ -364,16 +409,16 @@ pub fn actions(
                         Belief::BallThrownAtCombatant {
                             ball_id,
                             thrower_combatant_id: combatant.id,
-                            target_combatant_id,
-                            target_on_plate: target_combatant_object.plate(),
+                            target_combatant_id: enemy_combatant_id,
+                            target_on_plate: enemy_combatant_object.plate(),
                         },
                     ])
                     .broadcasts(vec![
                         Belief::BallThrownAtCombatant {
                             ball_id,
                             thrower_combatant_id: combatant.id,
-                            target_combatant_id,
-                            target_on_plate: target_combatant_object.plate(),
+                            target_combatant_id: enemy_combatant_id,
+                            target_on_plate: enemy_combatant_object.plate(),
                         }
                     ])
                     .consumes(
@@ -385,7 +430,7 @@ pub fn actions(
                         SatisfiableBelief::BallThrownAtCombatant()
                             .ball_id(SatisfiableField::Exactly(ball_id))
                             .thrower_combatant_id(SatisfiableField::Exactly(combatant.id))
-                            .target_combatant_id(SatisfiableField::Exactly(target_combatant_id))
+                            .target_combatant_id(SatisfiableField::Exactly(enemy_combatant_id))
                     )
                     .build()
             );

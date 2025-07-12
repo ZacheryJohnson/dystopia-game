@@ -364,6 +364,7 @@ impl SimulationEvent {
                 {
                     let combatant_object = game_state.combatants.get_mut(&combatant_id).unwrap();
                     combatant_object.set_stunned(true);
+                    combatant_object.apply_damage(force_magnitude);
                 }
             }
             SimulationEvent::PointsScoredByCombatant { plate_id: _, combatant_id, points } => {
@@ -426,6 +427,7 @@ impl SimulationEvent {
                 let combatant_rigid_body_handle = {
                     let combatant_object = game_state.combatants.get_mut(&recipient_target_id).unwrap();
                     combatant_object.set_stunned(true);
+                    combatant_object.apply_damage(force_magnitude / 2.0); // arbitrarily making shoves do less damage
                     combatant_object.rigid_body_handle
                 };
 

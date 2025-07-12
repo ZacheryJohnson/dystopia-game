@@ -10,8 +10,8 @@ use super::{config::SimulationConfig, simulation_event::SimulationEvent};
 /// Charge is an arbitrary metric to determine the "strength" of an explosion.
 /// Charge itself is not a measure of Newtons applied to the combatant, but rather a multiplier.
 /// The force modifier is a coefficient such that a ball with charge 1.0 will result in a
-/// 100kg combatant being accelerated 0.5 units/second^2 (eg 50 Newtons).
-const CHARGE_FORCE_MODIFIER: f32 = 50.0;
+/// 100kg combatant being accelerated 5 units/second^2 (eg 500 Newtons).
+const CHARGE_FORCE_MODIFIER: f32 = 500.0;
 
 pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationStage {
     let start_time = Instant::now();
