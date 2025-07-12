@@ -862,7 +862,7 @@ fn update(
             continue;
         };
 
-        atlas.index = vis_state.current_tick as usize % animation_config.last_sprite_index;
+        atlas.index = vis_state.current_tick as usize % (animation_config.last_sprite_index + 1);
     }
 
     // ZJ-TODO: WIP camera zoom + movement
