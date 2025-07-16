@@ -10,13 +10,17 @@ use bevy::window::WindowResolution;
 use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_time::{Duration, Instant};
-use dys_world::combatant::instance::CombatantInstanceId;
 
 #[cfg(target_family = "wasm")]
 use bevy::asset::AssetMetaCheck;
 
 mod ui;
-use crate::ui::components as UiComponents;
+mod visualizer;
+
+use crate::ui::{components as UiComponents, UiSystems};
+use crate::visualizer::components::*;
+use crate::visualizer::resources::*;
+use crate::visualizer::VisualizerSystems;
 
 fn main() {
     // Set the static memory to None for Option<VisualizationState>,
@@ -30,44 +34,6 @@ fn main() {
         restart_with_local_game_log();
         initialize_with_canvas(String::new());
     }
-}
-
-#[derive(Component)]
-struct FxEntity {
-    current_lifespan_in_ticks: usize,
-}
-
-impl Default for FxEntity {
-    fn default() -> Self {
-        FxEntity { current_lifespan_in_ticks: 0 }
-    }
-}
-
-#[derive(Clone, Debug)]
-enum VisualizationMode {
-    /// The visualization will not progress
-    Paused,
-
-    /// The visualization will progress only when the viewer instructs it to
-    Step,
-
-    /// The visualization will progress without user intervention
-    Play,
-}
-
-#[derive(Debug, Resource)]
-struct VisualizationState {
-    should_exit: bool,
-    game_log: Option<GameLog>,
-    world_state: Option<dys_world::world::World>,
-    current_tick: GameTickNumber,
-    last_update_time: Instant,
-    home_score: u16,
-    home_score_diff_from_last_tick: i16,
-    away_score: u16,
-    away_score_diff_from_last_tick: i16,
-    end_of_game: bool,
-    mode: VisualizationMode,
 }
 
 #[derive(Component, Clone)]
@@ -91,42 +57,7 @@ impl AnimationConfig {
 /// and can't update the VisualizationState resource in the standard Bevy ways.
 ///
 /// To get around this, we have this static OnceCell, that holds an Arc<Mutex<Option<VisualizationState>>>.
-/// It is initialized in [initialize_with_canvas()] to hold a None value for the Option.
 static UPDATED_VIS_STATE: OnceCell<Arc<Mutex<Option<VisualizationState>>>> = OnceCell::new();
-
-/// All objects in the simulation visualization will have this component.
-/// This allows us to easily clean up if the user wants to reload/leave the visualization.
-#[derive(Component)]
-struct VisualizationObject;
-
-#[derive(Component)]
-struct CombatantVisualizer {
-    pub id: CombatantId,
-    pub instance_id: CombatantInstanceId,
-    pub desired_location: Vec3,
-    pub last_position: Vec3,
-}
-
-#[derive(Component)]
-struct BallVisualizer {
-    pub id: BallId,
-    pub desired_location: Vec3,
-    pub last_position: Vec3,
-    pub desired_scale: Vec3,
-    pub last_scale: Vec3,
-    pub desired_charge: f32,
-}
-
-#[derive(Component)]
-struct ExplosionVisualizer {
-    pub opacity: u8,
-}
-
-#[derive(Component)]
-struct BarrierVisualizer;
-
-#[derive(Component)]
-struct PlateVisualizer;
 
 const FONT_FILE: &str = "fonts/Teko-Medium.ttf";
 
@@ -161,22 +92,18 @@ pub fn initialize_with_canvas(
                 })
                 .set(ImagePlugin::default_nearest()),
         ))
-        .add_plugins(
+        .add_plugins((
             ui::UiPlugin,
+            visualizer::VisualizerPlugin,
+        ))
+        .configure_sets(
+            Update,
+            // Ensure that the visualizer runs before all other systems
+            (
+                VisualizerSystems,
+                UiSystems,
+            ).chain()
         )
-        .insert_resource(VisualizationState {
-            should_exit: false,
-            game_log: None,
-            world_state: None,
-            current_tick: 0,
-            last_update_time: Instant::now(),
-            home_score: 0,
-            home_score_diff_from_last_tick: 0,
-            away_score: 0,
-            away_score_diff_from_last_tick: 0,
-            end_of_game: false,
-            mode: VisualizationMode::Paused,
-        })
         .add_systems(Startup, setup)
         .add_systems(Update, (
             update,
@@ -188,7 +115,6 @@ pub fn initialize_with_canvas(
             update_scoring_text_visualizers.after(update),
             update_combatant_id_text,
             try_reload_vis_state.before(update),
-            update_postgame_scoreboard.after(try_reload_vis_state),
         ))
         .run();
 }
@@ -220,26 +146,7 @@ pub fn load_game_log(
     let world: dys_world::world::World = serde_json::from_str(std::str::from_utf8(serialized_world_state.as_slice()).unwrap()).expect("failed to deserialize world state");
 
     let updated_visualization_state = UPDATED_VIS_STATE.get().unwrap();
-
-    #[cfg(not(target_family="wasm"))]
-    let visualization_mode = VisualizationMode::Step;
-
-    #[cfg(target_family="wasm")]
-    let visualization_mode = VisualizationMode::Play;
-
-    updated_visualization_state.lock().unwrap().replace(VisualizationState {
-        should_exit: false,
-        game_log: Some(game_log),
-        world_state: Some(world),
-        current_tick: 0,
-        last_update_time: Instant::now(),
-        home_score: 0,
-        home_score_diff_from_last_tick: 0,
-        away_score: 0,
-        away_score_diff_from_last_tick: 0,
-        end_of_game: false,
-        mode: visualization_mode,
-    });
+    updated_visualization_state.lock().unwrap().replace(VisualizationState::from(game_log, world));
 }
 
 #[wasm_bindgen]
@@ -249,19 +156,7 @@ pub fn exit() {
         .unwrap()
         .lock()
         .unwrap()
-        .replace(VisualizationState {
-            should_exit: true,
-            game_log: None,
-            world_state: None,
-            current_tick: 0,
-            last_update_time: Instant::now(),
-            home_score: 0,
-            home_score_diff_from_last_tick: 0,
-            away_score: 0,
-            away_score_diff_from_last_tick: 0,
-            end_of_game: false,
-            mode: VisualizationMode::Paused,
-        });
+        .replace(VisualizationState::default());
 }
 
 fn setup(
@@ -326,12 +221,12 @@ fn setup_after_reload_game_log(
 
     // This function assumes we're setting up state from tick zero
     // Maybe there's a world where you can live-watch matches and want to join in some intermediate state, but that's not this world
-    assert!(vis_state.current_tick == 0);
+    assert_eq!(vis_state.current_tick, 0);
     let game_log = vis_state.game_log.as_ref().unwrap();
     assert!(!game_log.ticks().is_empty());
 
     let tick_zero = game_log.ticks().iter().next().unwrap();
-    assert!(tick_zero.tick_number == 0);
+    assert_eq!(tick_zero.tick_number, 0);
 
     // Combatant sprites
     let combatant_idle_atlas_layout = TextureAtlasLayout::from_grid(
@@ -1076,24 +971,5 @@ fn update_combatant_id_text(
         } else {
             *text_color = TextColor(Color::WHITE);
         }
-    }
-}
-
-fn update_postgame_scoreboard(
-    mut query: Query<&mut Visibility, With<UiComponents::PostgameScoreboard>>,
-    vis_state: Res<VisualizationState>,
-) {
-    if vis_state.should_exit {
-        return;
-    }
-
-    let Ok(mut visibility) = query.single_mut() else {
-        return;
-    };
-
-    if vis_state.end_of_game {
-        *visibility = Visibility::Visible;
-    } else {
-        *visibility = Visibility::Hidden;
     }
 }

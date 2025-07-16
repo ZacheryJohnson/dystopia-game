@@ -4,18 +4,18 @@ use bevy::prelude::{Plugin, SystemSet};
 mod setup;
 mod update;
 
-pub struct UiPlugin;
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash, SystemSet)]
-pub struct UiSystems;
+pub struct VisualizerSystems;
 
-impl Plugin for UiPlugin {
+pub struct VisualizerPlugin;
+impl Plugin for VisualizerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
-            setup::UiSetup,
-            update::UiUpdate,
+            setup::VisualizerSetup,
+            update::VisualizerUpdate,
         ));
     }
 }
 
 pub mod components;
+pub mod resources;

@@ -5,13 +5,16 @@ use bevy::math::Vec3;
 use bevy::prelude::*;
 
 use crate::ui::components::*;
+use crate::ui::UiSystems;
 
 const FONT_FILE: &str = "fonts/Teko-Medium.ttf";
 pub struct UiSetup;
 
 impl Plugin for UiSetup {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, UiSetup::setup);
+        app.add_systems(Startup, (
+            UiSetup::setup
+        ).in_set(UiSystems));
     }
 }
 
