@@ -77,7 +77,11 @@ impl ArenaFeature for ArenaBarrier {
     fn origin(&self) -> &Vector3<f32> {
         &self.origin
     }
-     
+
+    fn rotation(&self) -> &Quaternion<f32> {
+        &self.rotation
+    }
+
     fn shape(&self) -> Option<&SharedShape> {
         Some(&self.shape)
     }
@@ -88,9 +92,5 @@ impl ArenaFeature for ArenaBarrier {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
-    }
-    
-    fn rotation(&self) -> &Quaternion<f32> {
-        &self.rotation
     }
 }

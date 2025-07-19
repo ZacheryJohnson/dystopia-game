@@ -1,8 +1,8 @@
-use std::time::Instant;
 use bevy::prelude::Resource;
 use dys_simulation::game_log::GameLog;
 use dys_simulation::game_tick::GameTickNumber;
 use dys_world::world::World;
+use web_time::Instant;
 
 #[derive(Clone, Debug)]
 pub enum VisualizationMode {

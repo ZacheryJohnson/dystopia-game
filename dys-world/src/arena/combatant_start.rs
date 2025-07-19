@@ -18,15 +18,15 @@ impl ArenaFeature for ArenaCombatantStart {
         &self.origin
     }
 
+    fn rotation(&self) -> &Quaternion<f32> {
+        &self.rotation
+    }
+
     fn pathing_type(&self) -> NavmeshPathingType {
         NavmeshPathingType::Skip
     }
-    
+
     fn as_any(&self) -> &dyn std::any::Any {
         self
-    }
-    
-    fn rotation(&self) -> &Quaternion<f32> {
-        &self.rotation
     }    
 }

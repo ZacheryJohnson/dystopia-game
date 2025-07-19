@@ -45,6 +45,10 @@ impl ArenaFeature for ArenaPlate {
         &self.origin
     }
 
+    fn rotation(&self) -> &Quaternion<f32> {
+        &self.rotation
+    }
+
     fn shape(&self) -> Option<&SharedShape> {
         Some(&self.shape)
     }
@@ -52,12 +56,8 @@ impl ArenaFeature for ArenaPlate {
     fn pathing_type(&self) -> NavmeshPathingType {
         NavmeshPathingType::Skip
     }
-    
+
     fn as_any(&self) -> &dyn std::any::Any {
         self
-    }
-    
-    fn rotation(&self) -> &Quaternion<f32> {
-        &self.rotation
     }
 }
