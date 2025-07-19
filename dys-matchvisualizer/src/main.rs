@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use dys_simulation::{game_log::GameLog, game_objects::{ball::BallId, combatant::CombatantId}, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
+use dys_simulation::{game_log::GameLog, simulation::simulation_event::SimulationEvent};
 
 use bevy::{math::vec2, prelude::*, sprite::MeshMaterial2d};
 use bevy::prelude::Color::Srgba;

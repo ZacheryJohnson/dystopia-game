@@ -12,7 +12,7 @@ pub enum NavmeshPathingType {
     Block
 }
 
-pub trait ArenaFeature {    
+pub trait ArenaFeature {
     fn build_rigid_body(&self) -> Option<RigidBody> { None }
 
     fn build_collider(&self) -> Option<Collider> { None }
