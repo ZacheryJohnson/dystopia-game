@@ -13,6 +13,7 @@ use web_time::{Duration, Instant};
 
 #[cfg(target_family = "wasm")]
 use bevy::asset::AssetMetaCheck;
+use dys_simulation::combatant_statline::CombatantStatline;
 
 mod ui;
 mod visualizer;
@@ -440,7 +441,7 @@ fn setup_after_reload_game_log(
         }
     }
 
-    let combatant_statlines = game_log.combatant_statlines().to_owned();
+    let combatant_statlines = CombatantStatline::from_game_log(game_log);
     commands.spawn((
         Node {
             top: Val::Percent(10.0),
