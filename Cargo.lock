@@ -2606,6 +2606,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "dys-simulation",
+ "dys-stat",
  "dys-world",
  "getrandom 0.3.3",
  "once_cell",
@@ -2703,6 +2704,14 @@ dependencies = [
  "rapier3d",
  "serde",
  "tracing",
+]
+
+[[package]]
+name = "dys-stat"
+version = "0.1.0"
+dependencies = [
+ "dys-simulation",
+ "serde",
 ]
 
 [[package]]

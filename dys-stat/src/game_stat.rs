@@ -1,5 +1,5 @@
-use crate::game_objects::combatant::CombatantId;
-use crate::simulation::simulation_event::SimulationEvent;
+use dys_simulation::game_objects::combatant::CombatantId;
+use dys_simulation::simulation::simulation_event::SimulationEvent;
 
 type ValueFnT<ValueT> = fn(CombatantId, &Vec<SimulationEvent>) -> Option<ValueT>;
 
@@ -9,34 +9,32 @@ pub trait GameStat {
     fn name(&self) -> impl Into<String>;
     fn value_fn(&self) -> ValueFnT<Self::ValueT>;
 
-    fn get_value(&self, combatant_id: CombatantId, events: &Vec<SimulationEvent>) -> Option<Self::ValueT> {
+    fn calculate(&self, combatant_id: CombatantId, events: &Vec<SimulationEvent>) -> Option<Self::ValueT> {
         self.value_fn()(combatant_id, events)
     }
 }
 
 #[derive(Debug)]
-struct GameStatPointsScored;
+pub struct GameStatPointsScored;
 impl GameStat for GameStatPointsScored {
     type ValueT = i32;
 
-    fn name(&self) -> impl Into<String> {
-        "Points"
-    }
+    fn name(&self) -> impl Into<String> { "Points" }
 
     fn value_fn(&self) -> ValueFnT<Self::ValueT> {
         |combatant_id, events| {
             Some(
                 events
-                .iter()
-                .filter(|evt| matches!(evt, SimulationEvent::PointsScoredByCombatant { combatant_id: cid, .. } if *cid == combatant_id ))
-                .map(|evt| {
-                    let SimulationEvent::PointsScoredByCombatant { points, ..} = evt else {
-                        return 0;
-                    };
+                    .iter()
+                    .filter(|evt| matches!(evt, SimulationEvent::PointsScoredByCombatant { combatant_id: cid, .. } if *cid == combatant_id ))
+                    .map(|evt| {
+                        let SimulationEvent::PointsScoredByCombatant { points, ..} = evt else {
+                            return 0;
+                        };
 
-                    points.to_owned() as Self::ValueT
-                })
-                .sum()
+                        points.to_owned() as Self::ValueT
+                    })
+                    .sum()
             )
         }
     }
@@ -57,7 +55,7 @@ mod tests {
             }
         ];
 
-        let value = GameStatPointsScored.get_value(combatant_id, &events);
+        let value = GameStatPointsScored.calculate(combatant_id, &events);
         assert_eq!(Some(2), value);
     }
 }
