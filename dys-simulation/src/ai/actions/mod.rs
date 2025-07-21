@@ -24,7 +24,7 @@ pub fn actions(
 
     let combatant_pos = {
         let game_state = game_state.lock().unwrap();
-        let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+        let (rigid_body_set, _) = game_state.physics_sim.sets();
         rigid_body_set
             .get(combatant.rigid_body_handle)
             .unwrap()
@@ -42,7 +42,7 @@ pub fn actions(
     for (plate_id, plate_object) in plates {
         let plate_location = {
             let game_state = game_state.lock().unwrap();
-            let (_, collider_set, _) = game_state.physics_sim.sets();
+            let (_, collider_set) = game_state.physics_sim.sets();
             collider_set
                 .get(plate_object.collider_handle().unwrap())
                 .unwrap()
@@ -72,7 +72,7 @@ pub fn actions(
 
         let target_pos = {
             let game_state = game_state.lock().unwrap();
-            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+            let (rigid_body_set, _) = game_state.physics_sim.sets();
             rigid_body_set
                 .get(other_combatant_object.rigid_body_handle)
                 .unwrap()
@@ -142,7 +142,7 @@ pub fn actions(
     for (ball_id, ball_object) in balls {
         let ball_location = {
             let game_state = game_state.lock().unwrap();
-            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+            let (rigid_body_set, _) = game_state.physics_sim.sets();
             rigid_body_set
                 .get(ball_object.rigid_body_handle().unwrap())
                 .unwrap()
@@ -273,7 +273,7 @@ pub fn actions(
         for (teammate_combatant_id, teammate_combatant_object) in teammate_combatants {
             let target_pos = {
                 let game_state = game_state.lock().unwrap();
-                let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                let (rigid_body_set, _) = game_state.physics_sim.sets();
                 rigid_body_set
                     .get(teammate_combatant_object.rigid_body_handle)
                     .unwrap()
@@ -368,7 +368,7 @@ pub fn actions(
         for (enemy_combatant_id, enemy_combatant_object) in enemy_combatants {
             let target_pos = {
                 let game_state = game_state.lock().unwrap();
-                let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                let (rigid_body_set, _) = game_state.physics_sim.sets();
                 rigid_body_set
                     .get(enemy_combatant_object.rigid_body_handle)
                     .unwrap()

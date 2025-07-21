@@ -287,7 +287,7 @@ impl Agent for CombatantObject {
 
             if constitution >= random_value as f32 {
                 let mut game_state = game_state.lock().unwrap();
-                let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+                let (rigid_body_set, _) = game_state.physics_sim.sets_mut();
                 rigid_body_set.get_mut(self.rigid_body_handle).unwrap().set_linvel(
                     Vector3::zeros(),
                     true

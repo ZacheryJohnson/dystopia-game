@@ -62,7 +62,7 @@ impl Strategy for ShoveCombatantStrategy {
 
         let mut game_state = game_state.lock().unwrap();
         let combatants = game_state.combatants.clone();
-        let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+        let (rigid_body_set, _) = game_state.physics_sim.sets_mut();
         let self_object = combatants.get(&self.self_combatant_id).unwrap();
         let target_object = combatants.get(&self.target_combatant_id).unwrap();
 

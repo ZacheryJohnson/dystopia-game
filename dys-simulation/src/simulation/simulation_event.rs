@@ -19,6 +19,7 @@ use crate::game_state::GameState;
 /// For example, a combatant may try to throw a ball at another combatant, but be stunned
 /// by a ball explosion prior to actually throwing the ball.
 /// In this case, the combatant's pending action will be discarded and not committed by the simulation.
+#[derive(Debug)]
 pub struct PendingSimulationEvent(pub SimulationEvent);
 impl Deref for PendingSimulationEvent {
     type Target = SimulationEvent;
@@ -31,6 +32,13 @@ impl Deref for PendingSimulationEvent {
 impl DerefMut for PendingSimulationEvent {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl PendingSimulationEvent {
+    /// Returns true if both pending simulation events are the same variant of SimulationEvent
+    pub fn is_same_variant(&self, other: &PendingSimulationEvent) -> bool {
+        std::mem::discriminant(&self.0) == std::mem::discriminant(&other.0)
     }
 }
 
@@ -146,7 +154,7 @@ impl SimulationEvent {
                 // teleporting the ball around to match
                 // Fix that, but until then, we need to update our transform manually
                 if matches!(ball_object.state, BallState::Held {..} ) {
-                    let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+                    let (rigid_body_set, _) = game_state.physics_sim.sets_mut();
                     let combatant_rb = rigid_body_set
                         .get_mut(ball_object.rigid_body_handle().unwrap())
                         .unwrap();
@@ -163,7 +171,7 @@ impl SimulationEvent {
                     .unwrap()
                     .to_owned();
 
-                let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+                let (rigid_body_set, _) = game_state.physics_sim.sets_mut();
                 let combatant_rb = rigid_body_set
                     .get_mut(combatant_object.rigid_body_handle)
                     .unwrap();
@@ -203,7 +211,7 @@ impl SimulationEvent {
                 // ZJ-TODO: be authoritative here
                 //          combatants may be out of range, despite their beliefs
                 let distance = {
-                    let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                    let (rigid_body_set, _) = game_state.physics_sim.sets();
                     let combatant_rb_handle = game_state
                         .combatants
                         .get(&combatant_id)
@@ -290,7 +298,7 @@ impl SimulationEvent {
                 ball_object.set_held_by(None, current_tick);
                 let ball_rigid_body_handle = ball_object.rigid_body_handle().unwrap();
 
-                let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+                let (rigid_body_set, _) = game_state.physics_sim.sets_mut();
                 let ball_rb = rigid_body_set.get_mut(ball_rigid_body_handle).unwrap();
                 ball_rb.apply_impulse(ball_impulse_vector, true);
             }
@@ -312,7 +320,7 @@ impl SimulationEvent {
                 ball_object.set_held_by(None, current_tick);
                 let ball_rigid_body_handle = ball_object.rigid_body_handle().unwrap();
 
-                let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+                let (rigid_body_set, _) = game_state.physics_sim.sets_mut();
                 let ball_rb = rigid_body_set.get_mut(ball_rigid_body_handle).unwrap();
                 ball_rb.apply_impulse(ball_impulse_vector, true);
             }
@@ -334,7 +342,7 @@ impl SimulationEvent {
                 let current_tick = game_state.current_tick;
                 let ball_rigid_body_handle = game_state.balls.get(&ball_id).unwrap().rigid_body_handle().unwrap();
                 {
-                    let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+                    let (rigid_body_set, _) = game_state.physics_sim.sets_mut();
 
                     // After exploding, reset charge, make ball idle
                     // ZJ-TODO: delete ball, spawn new one, etc
@@ -352,7 +360,7 @@ impl SimulationEvent {
             SimulationEvent::BallExplosionForceApplied { ball_id: _, combatant_id, force_magnitude, force_direction } => {
                 let mut game_state = game_state.lock().unwrap();
                 let combatant_rigid_body_handle = game_state.combatants.get(&combatant_id).unwrap().rigid_body_handle;
-                let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+                let (rigid_body_set, _) = game_state.physics_sim.sets_mut();
 
                 let combatant_rb = rigid_body_set
                     .get_mut(combatant_rigid_body_handle)
@@ -431,7 +439,7 @@ impl SimulationEvent {
                     combatant_object.rigid_body_handle
                 };
 
-                let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+                let (rigid_body_set, _) = game_state.physics_sim.sets_mut();
 
                 let combatant_rb = rigid_body_set
                     .get_mut(combatant_rigid_body_handle)

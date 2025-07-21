@@ -22,7 +22,7 @@ impl Game {
         // Add a "tick 0" for initial state
         // ZJ-TODO: there should probably be a SimulationEvent::InitialState, rather than a bunch of updates
         {
-            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+            let (rigid_body_set, _) = game_state.physics_sim.sets();
             let mut simulation_events = vec![];
             for (combatant_id, combatant_object) in &game_state.combatants {
                 let combatant_rb = rigid_body_set.get(combatant_object.rigid_body_handle().unwrap()).unwrap();
@@ -79,7 +79,6 @@ impl Game {
                 tick_number: 0,
                 tick_performance: TickPerformance::default(),
                 simulation_events,
-                is_halftime: false,
                 is_end_of_game: false,
             };
 

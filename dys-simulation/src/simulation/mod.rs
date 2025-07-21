@@ -33,7 +33,6 @@ pub fn simulate_tick(game_state: Arc<Mutex<GameState>>) -> GameTick {
         (game_state.current_tick, game_state.simulation_config.clone(), post_tick_timestamp - pre_tick_timestamp, highest_score)
     };
 
-    let is_halftime = current_tick == simulation_config.ticks_per_half();
     let is_end_of_game = current_tick == simulation_config.ticks_per_game() || highest_score >= simulation_config.game_conclusion_score();
     let is_scoring_tick = current_tick % simulation_config.ticks_per_second() == 0;
 
@@ -69,7 +68,6 @@ pub fn simulate_tick(game_state: Arc<Mutex<GameState>>) -> GameTick {
             post_tick_timestamp - pre_tick_timestamp
         ),
         simulation_events: committed_simulation_events,
-        is_halftime,
         is_end_of_game
     }
 }
@@ -80,10 +78,22 @@ fn commit_simulation_events(
 ) -> Vec<SimulationEvent> {
     let mut committed_simulation_events = vec![];
     for pending_event in pending_events {
-        let (successful_simulation, new_events) = SimulationEvent::simulate_event(
+        let (successful_simulation, new_pending_events) = SimulationEvent::simulate_event(
             game_state.clone(),
             &pending_event
         );
+
+        // If a newly generated pending event is the same variant as the currently evaluated pending event,
+        // we risk infinite recursion. There's likely a better way to handle this, but for simplicity's
+        // sake in the interim, just panic and force a different approach.
+        // Note that this won't catch cases where A creates a B, then B creates an A, and so on.
+        let potentially_infinite_recursion =  new_pending_events
+            .iter()
+            .any(|new_pending| new_pending.is_same_variant(&pending_event));
+
+        if potentially_infinite_recursion {
+            panic!("pending simulation event {pending_event:?} generated more pending events of same variant");
+        }
 
         if !successful_simulation {
             continue;
@@ -93,7 +103,7 @@ fn commit_simulation_events(
 
         // Attempt to commit the new events we just generated
         committed_simulation_events.extend(
-            commit_simulation_events(game_state.clone(), new_events)
+            commit_simulation_events(game_state.clone(), new_pending_events)
         );
     }
 

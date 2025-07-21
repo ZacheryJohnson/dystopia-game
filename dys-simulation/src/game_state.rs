@@ -64,7 +64,7 @@ impl GameState {
 
         let simulation_config = SimulationConfig::default();
         let mut physics_sim = PhysicsSim::new(simulation_config.ticks_per_second());
-        let (rigid_body_set, collider_set, _) = physics_sim.sets_mut();
+        let (rigid_body_set, collider_set) = physics_sim.sets_mut();
 
         let mut active_colliders = CollidersMapT::new();
         let mut balls = BallsMapT::new();

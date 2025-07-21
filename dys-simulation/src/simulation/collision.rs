@@ -73,7 +73,7 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
 
                     let combatant_rb = game_state.combatants.get(combatant_id).unwrap().rigid_body_handle;
 
-                    let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                    let (rigid_body_set, _) = game_state.physics_sim.sets();
                     let combatant_rigid_body = rigid_body_set.get(combatant_rb).unwrap();
                     combatant_rigid_body.linvel().magnitude() as f32
                 };
