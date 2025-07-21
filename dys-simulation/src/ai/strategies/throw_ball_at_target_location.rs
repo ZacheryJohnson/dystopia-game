@@ -72,7 +72,7 @@ impl Strategy for ThrowBallAtTargetStrategy {
         let (target_pos, ball_pos, is_same_team, y_axis_gravity) = {
             let game_state = game_state.lock().unwrap();
 
-            let (rigid_body_set, collider_set, _) = game_state.physics_sim.sets();
+            let (rigid_body_set, collider_set) = game_state.physics_sim.sets();
 
             let target_object = game_state.combatants.get(&self.target).unwrap();
             let target_pos = collider_set

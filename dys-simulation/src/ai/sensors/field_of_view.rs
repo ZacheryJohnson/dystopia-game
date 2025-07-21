@@ -261,7 +261,6 @@ mod tests {
             let (
                 rigid_body_set,
                 collider_set,
-                _,
             ) = game_state.physics_sim.sets_mut();
 
             let combatant_1 = CombatantObject::new(
@@ -355,7 +354,7 @@ mod tests {
         }
         {
             let mut game_state = game_state.lock().unwrap();
-            let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+            let (rigid_body_set, _) = game_state.physics_sim.sets_mut();
             // Rotate combatant 1 around to face combatant 3
             let combatant_1_rigid_body = rigid_body_set
                 .get_mut(combatant_1.rigid_body_handle)
@@ -432,7 +431,6 @@ mod tests {
             let (
                 rigid_body_set,
                 collider_set,
-                _,
             ) = game_state.physics_sim.sets_mut();
 
             let combatant_1 = CombatantObject::new(

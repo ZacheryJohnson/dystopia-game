@@ -48,7 +48,7 @@ pub(crate) fn simulate_combatants(
 
             let combatant_isometry = {
                 let game_state = game_state.lock().unwrap();
-                let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                let (rigid_body_set, _) = game_state.physics_sim.sets();
                 combatant_object.forward_isometry(rigid_body_set)
             };
 
@@ -79,7 +79,7 @@ pub(crate) fn simulate_combatants(
 
         if maybe_position_update.is_none() {
             let game_state = game_state.lock().unwrap();
-            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+            let (rigid_body_set, _) = game_state.physics_sim.sets();
             let combatant_translation = rigid_body_set
                 .get(combatant_object.rigid_body_handle)
                 .unwrap()

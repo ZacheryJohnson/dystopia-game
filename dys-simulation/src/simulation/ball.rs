@@ -30,7 +30,7 @@ pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationSta
             events.push(event);
         } else {
             let mut game_state = game_state.lock().unwrap();
-            let (rigid_body_set, _, _) = game_state.physics_sim.sets_mut();
+            let (rigid_body_set, _) = game_state.physics_sim.sets_mut();
             let ball_rb = rigid_body_set.get_mut(ball_object.rigid_body_handle().unwrap()).unwrap();
 
             events.push(PendingSimulationEvent(
@@ -72,7 +72,7 @@ fn try_move_if_held(
 
     let held_by_combatant_pos = {
         let game_state = game_state.lock().unwrap();
-        let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+        let (rigid_body_set, _) = game_state.physics_sim.sets();
 
         let holding_combatant_object = game_state
             .combatants
@@ -105,7 +105,7 @@ fn explode(
 
     let ball_pos = {
         let game_state = game_state.lock().unwrap();
-        let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+        let (rigid_body_set, _) = game_state.physics_sim.sets();
 
         rigid_body_set
             .get(ball.rigid_body_handle().unwrap())
@@ -162,7 +162,7 @@ fn apply_explosion_forces(
 
     let mut events = vec![];
     let game_state = game_state.lock().unwrap();
-    let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+    let (rigid_body_set, _) = game_state.physics_sim.sets();
     let GameObjectType::Combatant(combatant_id) = game_state.active_colliders.get(&collider_handle).unwrap() else {
         return vec![];
     };

@@ -88,7 +88,7 @@ impl MoveToLocationStrategy {
 
         if self.start_location.is_none() {
             let start_location = {
-                let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                let (rigid_body_set, _) = game_state.physics_sim.sets();
                 let combatant_object = game_state
                     .combatants
                     .get(&self.self_combatant_id)
@@ -103,7 +103,7 @@ impl MoveToLocationStrategy {
             self.target_location = match target_game_object {
                 GameObjectType::Ball(ball_id) => {
                     let ball_object = game_state.balls.get(ball_id).unwrap();
-                    let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                    let (rigid_body_set, _) = game_state.physics_sim.sets();
                     Point3::from(rigid_body_set
                         .get(ball_object.rigid_body_handle().unwrap())
                         .unwrap()
@@ -112,7 +112,7 @@ impl MoveToLocationStrategy {
                 },
                 GameObjectType::Combatant(combatant_id) => {
                     let combatant_object = game_state.combatants.get(combatant_id).unwrap();
-                    let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+                    let (rigid_body_set, _) = game_state.physics_sim.sets();
                     Point3::from(rigid_body_set
                         .get(combatant_object.rigid_body_handle().unwrap())
                         .unwrap()
@@ -171,7 +171,7 @@ impl Strategy for MoveToLocationStrategy {
         let (combatant_isometry, unit_resolution) = {
             let game_state = game_state.lock().unwrap();
 
-            let (rigid_body_set, _, _) = game_state.physics_sim.sets();
+            let (rigid_body_set, _) = game_state.physics_sim.sets();
             let combatant_pos = rigid_body_set
                 .get(agent.combatant().rigid_body_handle)
                 .unwrap()

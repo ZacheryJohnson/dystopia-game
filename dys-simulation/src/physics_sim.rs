@@ -52,12 +52,12 @@ impl PhysicsSim {
         }
     }
 
-    pub fn sets_mut(&mut self) -> (&mut RigidBodySet, &mut ColliderSet, &mut MultibodyJointSet) {
-        (&mut self.rigid_body_set, &mut self.collider_set, &mut self.multibody_joint_set)
+    pub fn sets_mut(&mut self) -> (&mut RigidBodySet, &mut ColliderSet) {
+        (&mut self.rigid_body_set, &mut self.collider_set)
     }
 
-    pub fn sets(&self) -> (&RigidBodySet, &ColliderSet, &MultibodyJointSet) {
-        (&self.rigid_body_set, &self.collider_set, &self.multibody_joint_set)
+    pub fn sets(&self) -> (&RigidBodySet, &ColliderSet) {
+        (&self.rigid_body_set, &self.collider_set)
     }
 
     pub fn collision_events(&mut self) -> &mut Receiver<CollisionEvent> {
