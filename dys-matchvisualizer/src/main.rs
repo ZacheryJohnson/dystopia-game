@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use dys_simulation::{game_log::GameLog, simulation::simulation_event::SimulationEvent};
+use dys_stat::combatant_statline::CombatantStatline;
 
 use bevy::{math::vec2, prelude::*, sprite::MeshMaterial2d};
 use bevy::prelude::Color::Srgba;
@@ -13,7 +14,6 @@ use web_time::{Duration, Instant};
 
 #[cfg(target_family = "wasm")]
 use bevy::asset::AssetMetaCheck;
-use dys_simulation::combatant_statline::CombatantStatline;
 
 mod ui;
 mod visualizer;

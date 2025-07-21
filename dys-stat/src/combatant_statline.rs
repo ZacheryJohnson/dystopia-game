@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
-use crate::game_log::GameLog;
-use crate::game_objects::combatant::CombatantId;
-use crate::game_tick::GameTickNumber;
-use crate::simulation::simulation_event::SimulationEvent;
+use dys_simulation::game_log::GameLog;
+use dys_simulation::game_objects::combatant::CombatantId;
+use dys_simulation::game_tick::GameTickNumber;
+use dys_simulation::simulation::simulation_event::SimulationEvent;
+use crate::game_stat::{GameStat, GameStatPointsScored};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct CombatantStatline {
@@ -23,20 +24,12 @@ impl CombatantStatline {
             .ticks()
             .iter()
             .filter(|tick| tick.tick_number <= through_tick.unwrap_or(GameTickNumber::MAX))
-            .flat_map(|tick| &tick.simulation_events)
+            .flat_map(|tick| tick.simulation_events.to_owned())
             .collect::<Vec<_>>();
 
-        let points_scored = events
-            .iter()
-            .filter(|evt| matches!(evt, SimulationEvent::PointsScoredByCombatant { combatant_id: cid, .. } if *cid == combatant_id ))
-            .map(|evt| {
-                let SimulationEvent::PointsScoredByCombatant { points, ..} = evt else {
-                    return 0;
-                };
-
-                points.to_owned()
-            })
-            .sum();
+        let points_scored = GameStatPointsScored
+            .calculate(combatant_id, &events)
+            .unwrap_or_default() as u8;
 
         // ZJ-TODO: balls thrown at teammates may hit enemies and explode
         //          this would be a "hit", but would not count as a "throw"

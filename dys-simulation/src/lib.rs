@@ -1,4 +1,3 @@
-pub mod combatant_statline;
 pub mod game;
 pub mod game_log;
 pub mod game_objects;
@@ -8,4 +7,3 @@ pub mod simulation;
 pub mod physics_sim;
 
 mod ai;
-mod game_stat;

@@ -1,0 +1,9 @@
+[package]
+name = "dys-stat"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+dys-simulation = { path = "../dys-simulation" }
+
+serde.workspace = true

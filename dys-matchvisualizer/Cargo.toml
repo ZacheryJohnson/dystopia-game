@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 dys-simulation = { path = "../dys-simulation" }
+dys-stat = { path = "../dys-stat" }
 dys-world = { path = "../dys-world" }
 
 bevy.workspace = true
