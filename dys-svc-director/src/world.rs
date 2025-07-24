@@ -4,6 +4,7 @@ use rand::SeedableRng;
 use sqlx::MySql;
 use sqlx::mysql::MySqlArguments;
 use sqlx::query::Query;
+use dys_datastore_mysql::datastore::MySqlDatastore;
 use dys_datastore_mysql::query::MySqlQuery;
 use dys_world::matches::instance::MatchInstanceId;
 use dys_world::schedule::season::Season;
@@ -87,4 +88,40 @@ pub async fn generate_world() -> (Arc<Mutex<World>>, Season) {
     let season = generator.generate_season(&mut StdRng::from_os_rng(), &world);
 
     (Arc::new(Mutex::new(world)), season)
+}
+
+#[tracing::instrument(skip_all)]
+pub async fn save_world(
+    mysql: Arc<Mutex<MySqlDatastore>>,
+    game_world: Arc<Mutex<World>>,
+    season: &Season,
+) {
+    mysql
+        .lock()
+        .unwrap()
+        .prepare_query()
+        .execute(InsertSeasonQuery { season_id: 1 })
+        .await;
+
+    for team in game_world.lock().unwrap().teams.to_owned() {
+        let team = team.lock().unwrap();
+
+        mysql.lock().unwrap().prepare_query().execute(InsertCorporationQuery {
+            corp_id: team.id,
+            corp_name: team.name.clone(),
+        }).await;
+    }
+
+    for series in &season.all_series {
+        for game in &series.matches {
+            let game = game.lock().unwrap();
+
+            mysql.lock().unwrap().prepare_query().execute(InsertGameQuery {
+                game_id: game.match_id,
+                season_id: 1, // ZJ-TODO
+                team_1: game.away_team.lock().unwrap().id,
+                team_2: game.home_team.lock().unwrap().id,
+            }).await;
+        }
+    }
 }
