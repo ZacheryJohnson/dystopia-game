@@ -4,12 +4,11 @@ services:
     build:
       context: ..
       dockerfile: ./dys-svc-director/Dockerfile
+    env_file:
+      - .local.env
     environment:
       - OTEL_ENDPOINT=http://otel-collector:4317
       - RUST_BACKTRACE=1
-      - MYSQL_USER=root
-      - MYSQL_PASS=dev
-      - MYSQL_HOST=mysql
       - MYSQL_DATABASE=dax_director
     ports:
       - "6081:6081"
@@ -25,6 +24,8 @@ services:
     build:
       context: ..
       dockerfile: ./dys-svc-webapp/Dockerfile
+    env_file:
+      - .local.env
     environment:
       - SVC_DIRECTOR_API_BASE_URI=http://director:6081
       - SVC_AUTH_API_BASE_URI=http://auth:6082
@@ -42,6 +43,8 @@ services:
     build:
       context: ..
       dockerfile: ./dys-svc-auth/Dockerfile
+    env_file:
+      - .local.env
     environment:
       - OTEL_ENDPOINT=http://otel-collector:4317
       - RUST_BACKTRACE=1
@@ -139,12 +142,12 @@ services:
     container_name: "mysql"
     image: "mysql:9"
     environment:
-      - MYSQL_ROOT_PASSWORD=dev
+      - MYSQL_ROOT_PASSWORD=${MYSQL_PASS}
     healthcheck:
-      test: mysqladmin ping -h localhost -uroot -pdev || exit 1
-      interval: 5s
+      test: mysqladmin ping -h ${MYSQL_HOST} -u${MYSQL_USER} -p${MYSQL_PASS} || exit 1
+      interval: 10s
       retries: 5
-      timeout: 15s
+      timeout: 25s
   run-svc-migrations:
     container_name: "run-svc-migrations"
     image: "rust:1.88-bookworm"
@@ -164,12 +167,12 @@ services:
           echo "Creating database $${database_name}..."
           echo $(cat $${migration_dir}/*.sql)
           sqlx database create \
-            --database-url=mysql://root:dev@mysql/dax_$${database_name} \
+            --database-url=mysql://${MYSQL_USER}:${MYSQL_PASS}@${MYSQL_HOST}/dax_$${database_name} \
           || exit 1
 
           echo "Running migrations..."
           sqlx migrate run \
-            --database-url=mysql://root:dev@mysql/dax_$${database_name} \
+            --database-url=mysql://${MYSQL_USER}:${MYSQL_PASS}@${MYSQL_HOST}/dax_$${database_name} \
             --source $${migration_dir} \
           || exit 1
         done

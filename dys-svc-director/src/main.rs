@@ -76,34 +76,7 @@ async fn main() {
         MySqlDatastore::connect(mysql_config).await.unwrap()
     ));
 
-    mysql
-        .lock()
-        .unwrap()
-        .prepare_query()
-        .execute(InsertSeasonQuery { season_id: 1 })
-        .await;
-
-    for team in game_world.lock().unwrap().teams.to_owned() {
-        let team = team.lock().unwrap();
-
-        mysql.lock().unwrap().prepare_query().execute(InsertCorporationQuery {
-            corp_id: team.id,
-            corp_name: team.name.clone(),
-        }).await;
-    }
-
-    for series in &season.all_series {
-        for game in &series.matches {
-            let game = game.lock().unwrap();
-
-            mysql.lock().unwrap().prepare_query().execute(InsertGameQuery {
-                game_id: game.match_id,
-                season_id: 1, // ZJ-TODO
-                team_1: game.away_team.lock().unwrap().id,
-                team_2: game.home_team.lock().unwrap().id,
-            }).await;
-        }
-    }
+    world::save_world(mysql.clone(), game_world.clone(), &season).await;
 
     let app_state = AppState {
         game_world: game_world.clone(),
