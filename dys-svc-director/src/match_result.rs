@@ -8,10 +8,10 @@ use crate::AppState;
 #[tracing::instrument(skip_all)]
 pub async fn get_summaries(
     request: MatchRequest,
-    mut app_state: AppState
+    app_state: AppState
     // ZJ-TODO: the error type of the signature should be Result<Response, CustomError>, not NatsError
 ) -> Result<MatchResponse, NatsError> {
-    let mut valkey = app_state.valkey.connection();
+    let mut valkey = app_state.valkey.lock().unwrap().connection();
 
     let match_ids: Vec<u64> = {
         if !request.match_ids.is_empty() {
@@ -108,9 +108,9 @@ pub async fn get_summaries(
 #[tracing::instrument(skip_all)]
 pub async fn get_game_log(
     request: GetGameLogRequest,
-    mut app_state: AppState,
+    app_state: AppState,
 ) -> Result<GetGameLogResponse, NatsError> {
-    let mut valkey = app_state.valkey.connection();
+    let mut valkey = app_state.valkey.lock().unwrap().connection();
     let game_log_serialized: Vec<u8> = valkey.hget(
         format!("env:dev:match.results:id:{}", request.match_id.as_ref().unwrap_or(&0)),
         "game_log"

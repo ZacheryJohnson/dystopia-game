@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n            INSERT INTO game_results(game_id, serialized_results)\n            VALUES (?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "249bb4546bf26c1af7b622eb185dc9b64471157d6b2ad910900a2457f51829ab"
+}

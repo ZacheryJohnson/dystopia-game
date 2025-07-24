@@ -30,6 +30,13 @@ jobs:
     - name: Build
       run: cargo build --release --verbose
 
+  build-docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build Docker images
+        run: docker compose -f docker/local-dev-compose.yaml build
+
   test:
     runs-on: ubuntu-latest
     needs: build

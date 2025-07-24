@@ -7,6 +7,9 @@ resolver = "2"
 [profile.dev.package.rapier3d]
 opt-level = 3
 
+[profile.dev.package.sqlx-macros]
+opt-level = 3
+
 # For smaller + faster WASM artifacts: https://bevy-cheatbook.github.io/platforms/wasm/size-opt.html#link-time-optimization-lto
 [profile.wasm]
 inherits = "release"
@@ -61,6 +64,7 @@ rapier3d = { version = "0.26.1", features = ["serde-serialize", "enhanced-determ
 redis = { version = "0.32.3", features = ["tokio-rustls-comp", "safe_iterators"] }
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = { version = "1.0.120" }
+sqlx = { version = "0.8.6", features = ["mysql", "runtime-tokio"] }
 ts-rs = { version = "11.0.1", features = ["serde-json-impl", "no-serde-warnings"] }
 tokio = { version = "1.40", features = ["full"] }
 # ZJ-TODO: until a release after tonic 0.13.1, we need to pull straight from master

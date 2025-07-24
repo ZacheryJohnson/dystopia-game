@@ -6,7 +6,7 @@ pub use redis::ExpireOption;
 use redis::{Client, ConnectionAddr, ConnectionInfo, IntoConnectionInfo, RedisConnectionInfo, RedisResult};
 use dys_datastore::datastore::Datastore;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct ValkeyDatastore {
     connection: MultiplexedConnection
 }
@@ -58,7 +58,7 @@ impl ValkeyDatastore {
 impl Datastore for ValkeyDatastore {
     type DatastoreConfig = ValkeyConfig;
 
-    async fn connect(config: Self::DatastoreConfig) -> Result<Box<Self>, ()> {
+    async fn connect(config: Self::DatastoreConfig) -> Result<Self, ()> {
         let client = Client::open(config).unwrap(); // ZJ-TODO: handle this
         let config = redis::AsyncConnectionConfig::new();
         let connection = client
@@ -66,12 +66,12 @@ impl Datastore for ValkeyDatastore {
             .await
             .unwrap();
 
-        Ok(Box::new(ValkeyDatastore {
+        Ok(ValkeyDatastore {
             connection
-        }))
+        })
     }
 
-    async fn is_connected(&mut self) -> bool {
+    async fn check_connection(&mut self) -> bool {
         self.connection.ping::<String>().await.is_ok()
     }
 }

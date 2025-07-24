@@ -11,6 +11,7 @@ dys-protocol = { path = "../dys-protocol", features = ["nats"] }
 dys-world = { path = "../dys-world" }
 
 dys-datastore = { path = "../dys-datastore" }
+dys-datastore-mysql = { path = "../dys-datastore-mysql" }
 dys-datastore-valkey = { path = "../dys-datastore-valkey" }
 
 bytes.workspace = true
@@ -18,5 +19,6 @@ chrono.workspace = true
 postcard.workspace = true
 rand.workspace = true
 serde_json.workspace = true
+sqlx.workspace = true
 tokio.workspace = true
 tracing.workspace = true
