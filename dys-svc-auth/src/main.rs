@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex};
 use dys_datastore::datastore::Datastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
 use dys_nats::error::NatsError;
@@ -8,7 +9,7 @@ use dys_protocol::nats::auth::{CreateAccountRequest, CreateAccountResponse, Logi
 
 #[derive(Clone, Debug)]
 struct AppState {
-    valkey: ValkeyDatastore,
+    valkey: Arc<Mutex<ValkeyDatastore>>,
 }
 
 #[tokio::main]
@@ -30,7 +31,9 @@ async fn main() {
     );
 
     let app_state = AppState {
-        valkey: *ValkeyDatastore::connect(valkey_config).await.unwrap(),
+        valkey: Arc::new(Mutex::new(
+            ValkeyDatastore::connect(valkey_config).await.unwrap()
+        )),
     };
 
     let nats = NatsRouter::new()
@@ -43,9 +46,9 @@ async fn main() {
 #[tracing::instrument(skip(app_state))]
 async fn create_account(
     request: CreateAccountRequest,
-    mut app_state: AppState,
+    app_state: AppState,
 ) -> Result<CreateAccountResponse, NatsError> {
-    let mut valkey = app_state.valkey.connection();
+    let mut valkey = app_state.valkey.lock().unwrap().connection();
 
     let _: i32 = valkey.sadd(
         "env:dev:auth:accounts",

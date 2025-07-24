@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n            INSERT INTO game(game_id, season_id, team_1, team_2)\n            VALUES (?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "2f765da503bf978d48a6771db584ad1efe16e6c07abc803d03574e561b71cb3e"
+}

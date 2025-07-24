@@ -1,0 +1,10 @@
+[package]
+name = "dys-datastore-mysql"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+dys-datastore = { path = "../dys-datastore" }
+
+sqlx.workspace = true
+tracing.workspace = true

@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO corporation(corp_id, name) VALUES (?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "01444e3eb9e562a44b3995e4ae09cfe947779ebcda9fcc9287cf0da8b5c28403"
+}

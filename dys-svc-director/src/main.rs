@@ -1,4 +1,5 @@
 mod match_result;
+mod world;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -12,8 +13,10 @@ use dys_world::world::World;
 
 use rand::SeedableRng;
 use rand::rngs::StdRng;
+use sqlx::mysql::MySqlConnectOptions;
 use tokio::time::Instant;
 use dys_datastore::datastore::Datastore;
+use dys_datastore_mysql::datastore::MySqlDatastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
 use dys_nats::error::NatsError;
 use dys_nats::rpc::router::NatsRouter;
@@ -31,13 +34,15 @@ use dys_world::schedule::season::Season;
 use dys_world::schedule::series::SeriesType;
 use dys_world::team::instance::TeamInstance;
 use crate::match_result::{get_game_log, get_summaries};
+use crate::world::{generate_world, InsertCorporationQuery, InsertGameLogQuery, InsertGameQuery, InsertSeasonQuery};
 
 #[derive(Clone, Debug)]
 struct AppState {
     game_world: Arc<Mutex<World>>,
     season: Arc<Mutex<Season>>,
     current_date: Arc<Mutex<Date>>,
-    valkey: ValkeyDatastore,
+    valkey: Arc<Mutex<ValkeyDatastore>>,
+    mysql: Arc<Mutex<MySqlDatastore>>,
 }
 
 #[tokio::main]
@@ -51,14 +56,7 @@ async fn main() {
 
     tracing::info!("Starting server...");
 
-    let (game_world, season) = {
-        let generator = dys_world::generator::Generator::new();
-        let world = generator.generate_world(&mut StdRng::from_os_rng());
-
-        let season = generator.generate_season(&mut StdRng::from_os_rng(), &world);
-
-        (Arc::new(Mutex::new(world)), season)
-    };
+    let (game_world, season) = generate_world().await;
 
     let valkey_config = ValkeyConfig::new(
         std::env::var("VALKEY_USER").unwrap_or(String::from("default")),
@@ -67,20 +65,63 @@ async fn main() {
         std::env::var("VALKEY_PORT").unwrap_or(String::from("6379")).parse::<u16>().unwrap()
     );
 
+    let mysql_config = MySqlConnectOptions::new()
+        .host(&std::env::var("MYSQL_HOST").unwrap_or(String::from("127.0.0.1")))
+        .username(&std::env::var("MYSQL_USER").unwrap_or(String::from("default")))
+        .password(&std::env::var("MYSQL_PASS").unwrap_or(String::from("")))
+        .port(std::env::var("MYSQL_PORT").unwrap_or(String::from("3306")).parse::<u16>().unwrap())
+        .database(&std::env::var("MYSQL_DATABASE").unwrap_or(String::from("")));
+
+    let mysql = Arc::new(Mutex::new(
+        MySqlDatastore::connect(mysql_config).await.unwrap()
+    ));
+
+    mysql
+        .lock()
+        .unwrap()
+        .prepare_query()
+        .execute(InsertSeasonQuery { season_id: 1 })
+        .await;
+
+    for team in game_world.lock().unwrap().teams.to_owned() {
+        let team = team.lock().unwrap();
+
+        mysql.lock().unwrap().prepare_query().execute(InsertCorporationQuery {
+            corp_id: team.id,
+            corp_name: team.name.clone(),
+        }).await;
+    }
+
+    for series in &season.all_series {
+        for game in &series.matches {
+            let game = game.lock().unwrap();
+
+            mysql.lock().unwrap().prepare_query().execute(InsertGameQuery {
+                game_id: game.match_id,
+                season_id: 1, // ZJ-TODO
+                team_1: game.away_team.lock().unwrap().id,
+                team_2: game.home_team.lock().unwrap().id,
+            }).await;
+        }
+    }
+
     let app_state = AppState {
         game_world: game_world.clone(),
         season: Arc::new(Mutex::new(season)),
         current_date: Arc::new(Mutex::new(Date(
             Arguscorp, 1, 10000
         ))),
-        valkey: *ValkeyDatastore::connect(valkey_config).await.unwrap(),
+        valkey: Arc::new(Mutex::new(
+            ValkeyDatastore::connect(valkey_config).await.unwrap()
+        )),
+        mysql,
     };
 
     let app_state_thread_copy = app_state.clone();
     tokio::task::spawn(async move {
         loop {
-            let mut app_state = app_state_thread_copy.clone();
-            let mut valkey = app_state.valkey.connection();
+            let app_state = app_state_thread_copy.clone();
+            let mut valkey = app_state.valkey.lock().unwrap().connection();
             let world = app_state.game_world.lock().unwrap().to_owned();
 
             tracing::info!("Saving world state in valkey...");
@@ -142,15 +183,19 @@ async fn main() {
     nats.run().await;
 }
 
-async fn simulate_matches(mut app_state: AppState) -> Vec<(MatchSummary, Bytes)> {
-    let proposal_jsons: Vec<String> = app_state.valkey.connection().hvals(
-        "env:dev:proposals:latest"
-    ).await.unwrap();
+#[tracing::instrument(skip_all)]
+async fn simulate_matches(app_state: AppState) -> Vec<(MatchSummary, Bytes)> {
+    let proposals = {
+        let mut valkey_connection = app_state.valkey.lock().unwrap().connection();
+        let proposal_jsons: Vec<String> = valkey_connection.hvals(
+            "env:dev:proposals:latest"
+        ).await.unwrap();
 
-    let proposals = proposal_jsons
-        .iter()
-        .map(|proposal_str| serde_json::from_str(proposal_str).unwrap())
-        .collect::<Vec<dys_world::proposal::Proposal>>();
+        proposal_jsons
+            .iter()
+            .map(|proposal_str| serde_json::from_str(proposal_str).unwrap())
+            .collect::<Vec<dys_world::proposal::Proposal>>()
+    };
 
     let current_date = app_state.current_date.lock().unwrap().to_owned();
     let match_instances = app_state.season.lock().unwrap().matches_on_date(&current_date);
@@ -217,8 +262,10 @@ async fn simulate_matches(mut app_state: AppState) -> Vec<(MatchSummary, Bytes)>
 
         // ZJ-TODO: use IDs instead of string comparison
         if let Some(away_team_proposal) = proposals.iter().find(|prop| prop.name.contains(&away_team_name)) {
+            let mut valkey_connection = app_state.valkey.lock().unwrap().connection();
+
             let away_team_proposal_id = away_team_proposal.id;
-            let away_team_proposal_votes: Vec<String> = app_state.valkey.connection().hgetall(
+            let away_team_proposal_votes: Vec<String> = valkey_connection.hgetall(
                 format!("env:dev:votes:proposal:{away_team_proposal_id}"),
             ).await.unwrap();
 
@@ -229,22 +276,24 @@ async fn simulate_matches(mut app_state: AppState) -> Vec<(MatchSummary, Bytes)>
             );
 
             // ZJ-TODO: don't delete, just archive
-            let _: u32 = app_state.valkey.connection()
+            let _: u32 = valkey_connection
                 .del(format!("env:dev:votes:proposal:{away_team_proposal_id}"))
                 .await
                 .unwrap();
         }
 
         if let Some(home_team_proposal) = proposals.iter().find(|prop| prop.name.contains(&home_team_name)) {
+            let mut valkey_connection = app_state.valkey.lock().unwrap().connection();
+
             let home_team_proposal_id = home_team_proposal.id;
-            let home_team_proposal_votes: Vec<String> = app_state.valkey.connection().hgetall(
+            let home_team_proposal_votes: Vec<String> = valkey_connection.hgetall(
                 format!("env:dev:votes:proposal:{home_team_proposal_id}"),
             ).await.unwrap();
 
             apply_most_voted_option(home_team_proposal_votes, home_team_proposal, match_instance.home_team.clone());
 
             // ZJ-TODO: don't delete, just archive
-            let _: u32 = app_state.valkey.connection()
+            let _: u32 = valkey_connection
                 .del(format!("env:dev:votes:proposal:{home_team_proposal_id}"))
                 .await
                 .unwrap();
@@ -253,6 +302,16 @@ async fn simulate_matches(mut app_state: AppState) -> Vec<(MatchSummary, Bytes)>
         let match_id = match_instance.match_id.to_owned();
         let game = Game { match_instance };
         let game_log = game.simulate();
+        let serialized_game_log = postcard::to_allocvec(&game_log)
+            .expect("failed to serialize game log");
+
+        {
+            let query = app_state.mysql.lock().unwrap().prepare_query();
+            query.execute(InsertGameLogQuery {
+                game_id: game.match_instance.match_id,
+                serialized_game_log: serialized_game_log.clone(),
+            }).await;
+        }
 
         let all_combatants = [
             game.match_instance.home_team.lock().unwrap().combatants.clone().as_slice(),
@@ -275,7 +334,7 @@ async fn simulate_matches(mut app_state: AppState) -> Vec<(MatchSummary, Bytes)>
             }),
             home_team_record: None,
             away_team_record: None,
-        }, postcard::to_allocvec(&game_log).expect("failed to serialize game log").into()));
+        }, serialized_game_log.into()));
     }
 
     *app_state.current_date.lock().unwrap() = Date(
@@ -288,11 +347,12 @@ async fn simulate_matches(mut app_state: AppState) -> Vec<(MatchSummary, Bytes)>
 }
 
 #[tracing::instrument(skip_all)]
-async fn run_simulation(mut world_state: AppState) {
+async fn run_simulation(world_state: AppState) {
     let match_summary = simulate_matches(world_state.clone()).await;
 
     let mut latest_ids = vec![];
-    let mut valkey = world_state.valkey.connection();
+    let mut valkey = world_state.valkey.lock().unwrap().connection();
+
     for (mut summary, serialized_game_log) in match_summary {
         latest_ids.push(summary.match_id);
 
@@ -379,43 +439,44 @@ async fn get_season(
     _: GetSeasonRequest,
     app_state: AppState,
 ) -> Result<GetSeasonResponse, NatsError> {
-    let season = app_state.season.lock().unwrap();
-
-    let proto_series = season
-        .all_series
-        .iter()
-        .map(|rs_series| {
-            dys_protocol::nats::world::Series {
-                matches: rs_series
-                    .matches
-                    .iter()
-                    .map(|rs_match| {
-                        let rs_match = rs_match.lock().unwrap();
-                        let x = dys_protocol::nats::world::MatchInstance {
-                            match_id: Some(rs_match.match_id.to_owned()),
-                            home_team_id: Some(rs_match.home_team.lock().unwrap().id.to_owned()),
-                            away_team_id: Some(rs_match.away_team.lock().unwrap().id.to_owned()),
-                            arena_id: Some(0),
-                            // arena_id: rs_match.arena.lock().unwrap().id.to_owned(),
-                            date: Some(dys_protocol::nats::common::Date {
-                                year: rs_match.date.2,
-                                month: 1, // ZJ-TODO: arguscorp
-                                day: rs_match.date.1,
-                            }),
-                            utc_scheduled_time: Some(season.simulation_timings.get(&rs_match.match_id).unwrap().timestamp() as u64)
-                        };
-                        x
-                    })
-                    .collect::<Vec<_>>(),
-                series_type: Some(if matches!(rs_series.series_type, SeriesType::Normal) {
-                    dys_protocol::nats::world::series::SeriesType::Normal
-                } else {
-                    dys_protocol::nats::world::series::SeriesType::FirstTo
-                } as i32),
-                series_type_payload: None
-            }
-        })
-        .collect::<Vec<_>>();
+    let proto_series = {
+        let season = app_state.season.lock().unwrap();
+        season
+            .all_series
+            .iter()
+            .map(|rs_series| {
+                dys_protocol::nats::world::Series {
+                    matches: rs_series
+                        .matches
+                        .iter()
+                        .map(|rs_match| {
+                            let rs_match = rs_match.lock().unwrap();
+                            let x = dys_protocol::nats::world::MatchInstance {
+                                match_id: Some(rs_match.match_id.to_owned()),
+                                home_team_id: Some(rs_match.home_team.lock().unwrap().id.to_owned()),
+                                away_team_id: Some(rs_match.away_team.lock().unwrap().id.to_owned()),
+                                arena_id: Some(0),
+                                // arena_id: rs_match.arena.lock().unwrap().id.to_owned(),
+                                date: Some(dys_protocol::nats::common::Date {
+                                    year: rs_match.date.2,
+                                    month: 1, // ZJ-TODO: arguscorp
+                                    day: rs_match.date.1,
+                                }),
+                                utc_scheduled_time: Some(season.simulation_timings.get(&rs_match.match_id).unwrap().timestamp() as u64)
+                            };
+                            x
+                        })
+                        .collect::<Vec<_>>(),
+                    series_type: Some(if matches!(rs_series.series_type, SeriesType::Normal) {
+                        dys_protocol::nats::world::series::SeriesType::Normal
+                    } else {
+                        dys_protocol::nats::world::series::SeriesType::FirstTo
+                    } as i32),
+                    series_type_payload: None
+                }
+            })
+            .collect::<Vec<_>>()
+    };
 
     let current_date = app_state.current_date.lock().unwrap().to_owned();
 
@@ -433,9 +494,9 @@ async fn get_season(
 #[tracing::instrument(skip(app_state))]
 async fn get_world_state(
     _: WorldStateRequest,
-    mut app_state: AppState,
+    app_state: AppState,
 ) -> Result<WorldStateResponse, NatsError> {
-    let mut valkey = app_state.valkey.connection();
+    let mut valkey = app_state.valkey.lock().unwrap().connection();
     let response_data: String = valkey.hget("env:dev:world", "data").await.unwrap();
 
     Ok(WorldStateResponse {
@@ -446,9 +507,9 @@ async fn get_world_state(
 #[tracing::instrument(skip(app_state))]
 async fn get_voting_proposals(
     _: GetProposalsRequest,
-    mut app_state: AppState,
+    app_state: AppState,
 ) -> Result<GetProposalsResponse, NatsError> {
-    let mut valkey = app_state.valkey.connection();
+    let mut valkey = app_state.valkey.lock().unwrap().connection();
 
     let proposal_jsons: Vec<String> = valkey.hvals(
         "env:dev:proposals:latest"
@@ -487,12 +548,12 @@ async fn get_voting_proposals(
     Ok(response)
 }
 
-#[tracing::instrument(skip(app_state, request))]
+#[tracing::instrument(skip_all)]
 async fn submit_vote(
     request: VoteOnProposalRequest,
-    mut app_state: AppState,
+    app_state: AppState,
 ) -> Result<VoteOnProposalResponse, NatsError> {
-    let mut valkey = app_state.valkey.connection();
+    let mut valkey = app_state.valkey.lock().unwrap().connection();
 
     let _: i32 = valkey.hincr(
         format!("env:dev:votes:proposal:{}", request.proposal_id.unwrap_or_default()),
