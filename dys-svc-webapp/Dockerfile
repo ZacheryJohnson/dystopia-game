@@ -28,6 +28,7 @@ COPY $WORKING_DIR/Cargo.toml /opt/dystopia/Cargo.toml
 COPY $WORKING_DIR/dys-satisfiable/ /opt/dystopia/dys-satisfiable/
 COPY $WORKING_DIR/dys-satisfiable-macros/ /opt/dystopia/dys-satisfiable-macros/
 COPY $WORKING_DIR/dys-simulation/ /opt/dystopia/dys-simulation/
+COPY $WORKING_DIR/dys-stat/ /opt/dystopia/dys-stat/
 COPY $WORKING_DIR/dys-world/ /opt/dystopia/dys-world/
 COPY $WORKING_DIR/dys-matchvisualizer/ /opt/dystopia/dys-matchvisualizer/
 
