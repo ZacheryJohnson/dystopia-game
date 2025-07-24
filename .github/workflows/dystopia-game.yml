@@ -34,8 +34,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
       - name: Build Docker images
-        run: docker compose -f docker/local-dev-compose.yaml build
+        run: docker compose -f docker/homelab-deploy-compose.yaml build
 
   test:
     runs-on: ubuntu-latest
