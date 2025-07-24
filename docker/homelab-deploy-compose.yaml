@@ -7,6 +7,9 @@ services:
     environment:
       - OTEL_ENDPOINT=http://otel-collector:4317
       - RUST_BACKTRACE=1
+      - MYSQL_HOST=$MYSQL_HOST
+      - MYSQL_USER=$MYSQL_USER
+      - MYSQL_PASS=$MYSQL_PASS
       - MYSQL_DATABASE=dax_director
     ports:
       - "6081:6081"
