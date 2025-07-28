@@ -1,0 +1,58 @@
+use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex};
+use serde::{Deserialize, Serialize};
+
+use crate::games::instance::GameInstance;
+use crate::season::serde::serialize_game_instances;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum SeriesType {
+    /// All games of the series will be played as normal.
+    Normal,
+
+    /// The series will be played until one team reaches the provided number of wins.
+    FirstTo(u8),
+}
+
+/// Monotonically increasing value, where games are played incrementally by game index
+pub type SeriesGameIndex = u8;
+
+/// Series are collections of games that are played in order against the same opponent.
+/// This is commonly used in playoff formats,
+/// but in sports like baseball where many games are played over a season,
+/// it makes more logistical sense to play those games in one location to reduce travel costs.
+#[derive(Debug, Clone, Serialize)]
+pub struct Series {
+    #[serde(serialize_with = "serialize_game_instances")]
+    pub games: BTreeMap<SeriesGameIndex, Arc<Mutex<GameInstance>>>,
+    pub series_type: SeriesType,
+}
+
+impl Series {
+    /// Creates a series from an iterable,
+    /// assuming that the games are in the order the series should be played.
+    pub fn from_ordered_games(
+        games: &[Arc<Mutex<GameInstance>>],
+        series_type: SeriesType
+    ) -> Series {
+        let games = games
+            .iter()
+            .enumerate()
+            .map(|(idx, game)| (idx as SeriesGameIndex, game.to_owned()))
+            .collect();
+
+        Series {
+            games,
+            series_type,
+        }
+    }
+
+    /// Returns the games of the series in order.
+    pub fn games(&self) -> Vec<Arc<Mutex<GameInstance>>> {
+        self
+            .games
+            .iter()
+            .map(|(_, game)| game.to_owned())
+            .collect()
+    }
+}

@@ -12,19 +12,19 @@ message GetSeasonRequest {
 
 }
 
-message MatchInstance {
-  optional uint64 match_id = 1;
+message GameInstance {
+  optional uint64 game_id = 1;
   optional uint64 home_team_id = 2;
   optional uint64 away_team_id = 3;
   optional uint64 arena_id = 4;
   optional common.Date date = 5;
-  // Real-life timestamp for when the match will be simulated
+  // Real-life timestamp for when the game will be simulated
   // This does **not** mean the simulation will finish at this time!
   optional uint64 utc_scheduled_time = 6;
 }
 
 message Series {
-  repeated MatchInstance matches = 1;
+  repeated GameInstance games = 1;
 
   enum SeriesType {
     Normal = 0;

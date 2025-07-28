@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, feature::ArenaFeature, plate::ArenaPlate}, matches::instance::MatchInstance};
+use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, feature::ArenaFeature, plate::ArenaPlate}, games::instance::GameInstance};
 use rapier3d::prelude::*;
 use dys_world::arena::Arena;
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
 
 #[derive(Clone)]
 pub struct Game {
-    pub match_instance: MatchInstance,
+    pub game_instance: GameInstance,
 }
 
 impl Game {
@@ -42,7 +42,7 @@ impl Game {
             }
 
             let arena = Arena::new_with_testing_defaults();
-            // let arena = self.match_instance.arena.lock().unwrap();
+            // let arena = self.game_instance.arena.lock().unwrap();
             let arena_features = arena.all_features();
             for feature in arena_features.iter().filter(|feature| feature.shape().is_some()) {
                 let shape = feature.shape().unwrap();
@@ -117,7 +117,7 @@ impl Game {
 mod tests {
     use rand::prelude::StdRng;
     use rand::SeedableRng;
-    use dys_world::{schedule::calendar::{Date, Month}, generator::Generator, matches::instance::MatchInstance};
+    use dys_world::{schedule::calendar::{Date, Month}, generator::Generator, games::instance::GameInstance};
 
     use crate::game::Game;
 
@@ -126,8 +126,8 @@ mod tests {
         let world = Generator::new().generate_world(&mut StdRng::from_os_rng());
 
         let game = Game {
-            match_instance: MatchInstance {
-                match_id: 0,
+            game_instance: GameInstance {
+                game_id: 0,
                 away_team: world.teams[0].clone(),
                 home_team: world.teams[1].clone(),
                 // arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())),

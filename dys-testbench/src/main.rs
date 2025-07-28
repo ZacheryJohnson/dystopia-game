@@ -4,12 +4,12 @@ use dys_simulation::{game::Game, game_log::GameLog};
 use dys_world::{
     arena::Arena,
     generator::Generator,
-    matches::instance::MatchInstance,
     schedule::{calendar::{Date, Month}},
 };
 use tracing::Level;
 use rand::SeedableRng;
 use rand_pcg::Pcg64;
+use dys_world::games::instance::GameInstance;
 
 #[tokio::main]
 async fn main() {
@@ -42,15 +42,15 @@ async fn main() {
     let _arena = Arc::new(Mutex::new(Arena::new_with_testing_defaults()));
     let date = Date(Month::Arguscorp, 1, 10000);
 
-    let match_instance = MatchInstance {
-        match_id: 0,
+    let game_instance = GameInstance {
+        game_id: 0,
         away_team,
         home_team,
         // arena,
         arena_id: 0,
         date,
     };
-    let game = Game { match_instance };
+    let game = Game { game_instance };
 
     let game_log = game.simulate_seeded(&seed);
     let game_log_artifact = postcard::to_allocvec(&game_log).expect("failed to serialize game log");

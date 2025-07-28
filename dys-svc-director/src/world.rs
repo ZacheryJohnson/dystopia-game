@@ -6,8 +6,8 @@ use sqlx::mysql::MySqlArguments;
 use sqlx::query::Query;
 use dys_datastore_mysql::datastore::MySqlDatastore;
 use dys_datastore_mysql::query::MySqlQuery;
-use dys_world::matches::instance::MatchInstanceId;
-use dys_world::schedule::season::Season;
+use dys_world::games::instance::GameInstanceId;
+use dys_world::season::season::Season;
 use dys_world::team::instance::TeamInstanceId;
 use dys_world::world::World;
 
@@ -45,7 +45,7 @@ impl MySqlQuery for InsertCorporationQuery {
 
 #[derive(Debug)]
 pub struct InsertGameLogQuery {
-    pub game_id: MatchInstanceId,
+    pub game_id: GameInstanceId,
     pub serialized_game_log: Vec<u8>,
 }
 
@@ -62,7 +62,7 @@ impl MySqlQuery for InsertGameLogQuery {
 
 #[derive(Debug)]
 pub struct InsertGameQuery {
-    pub game_id: MatchInstanceId,
+    pub game_id: GameInstanceId,
     pub season_id: u32,
     pub team_1: TeamInstanceId,
     pub team_2: TeamInstanceId,
@@ -112,12 +112,12 @@ pub async fn save_world(
         }).await;
     }
 
-    for series in &season.all_series {
-        for game in &series.matches {
+    for series in season.series() {
+        for game in &series.games() {
             let game = game.lock().unwrap();
 
             mysql.lock().unwrap().prepare_query().execute(InsertGameQuery {
-                game_id: game.match_id,
+                game_id: game.game_id,
                 season_id: 1, // ZJ-TODO
                 team_1: game.away_team.lock().unwrap().id,
                 team_2: game.home_team.lock().unwrap().id,

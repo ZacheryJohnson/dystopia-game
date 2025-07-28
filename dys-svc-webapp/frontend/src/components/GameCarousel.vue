@@ -2,13 +2,13 @@
 import {ref, onMounted, type Ref, computed} from "vue";
   import GameCarouselElement from "./GameCarouselElement.vue";
 import {
-  MatchResponse_MatchSummary as MatchSummary
-} from "%/services/match_results/summary.ts";
+  GameSummaryResponse_GameSummary as GameSummary
+} from "%/services/game_results/summary.ts";
 import {date_MonthToJSON, DateMessage} from "%/common/date.ts";
 import {getSeasonStore} from "@/stores/Season.ts";
 
   const seasonStore = getSeasonStore();
-  const hasMatches = computed(() => seasonStore.matchesByDate.size > 0);
+  const hasGames = computed(() => seasonStore.gamesByDate.size > 0);
 
   const dateToStr = (date: DateMessage) => {
     return `${date.year}-${date.month.valueOf()}-${date.day}`;
@@ -31,26 +31,26 @@ import {getSeasonStore} from "@/stores/Season.ts";
 
   onMounted(async () => {
     const payload = await (await fetch(`api/summaries`)).json();
-    const matchSummaries: MatchSummary[] = payload.matchSummaries;
-    const nextMatches: MatchSummary[] = payload.nextMatches;
+    const gameSummaries: GameSummary[] = payload.gameSummaries;
+    const nextGames: GameSummary[] = payload.nextGames;
 
-    seasonStore.matchesByDate = new Map();
+    seasonStore.gamesByDate = new Map();
 
-    for (const match of nextMatches) {
-      const dateStr = dateToStr(match.date!);
-      if (seasonStore.matchesByDate.has(dateStr)) {
-        seasonStore.matchesByDate.get(dateStr)!.push(match);
+    for (const game of nextGames) {
+      const dateStr = dateToStr(game.date!);
+      if (seasonStore.gamesByDate.has(dateStr)) {
+        seasonStore.gamesByDate.get(dateStr)!.push(game);
       } else {
-        seasonStore.matchesByDate.set(dateStr, [match]);
+        seasonStore.gamesByDate.set(dateStr, [game]);
       }
     }
 
-    for (const match of matchSummaries) {
-      const dateStr = dateToStr(match.date!);
-      if (seasonStore.matchesByDate.has(dateStr)) {
-        seasonStore.matchesByDate.get(dateStr)!.push(match);
+    for (const game of gameSummaries) {
+      const dateStr = dateToStr(game.date!);
+      if (seasonStore.gamesByDate.has(dateStr)) {
+        seasonStore.gamesByDate.get(dateStr)!.push(game);
       } else {
-        seasonStore.matchesByDate.set(dateStr, [match]);
+        seasonStore.gamesByDate.set(dateStr, [game]);
       }
     }
   });
@@ -58,7 +58,7 @@ import {getSeasonStore} from "@/stores/Season.ts";
 
 <template>
   <div class="carousel-frame">
-    <template v-if="hasMatches" v-for="[dateStr, matches] of seasonStore.matchesByDate">
+    <template v-if="hasGames" v-for="[dateStr, games] of seasonStore.gamesByDate">
       <div class="date-block" :id="dateStr">
         <span class="date-year">{{dateFromStr(dateStr).year}}</span>
         <br>
@@ -67,15 +67,15 @@ import {getSeasonStore} from "@/stores/Season.ts";
         <span class="date-day">{{dateFromStr(dateStr).day}}</span>
       </div>
       <GameCarouselElement
-          v-for="match of matches"
-          :key="match.matchId"
-          :matchId="match.matchId"
-          :awayAbbr="match.awayTeamName?.substring(0, 3).toUpperCase()"
-          :homeAbbr="match.homeTeamName?.substring(0, 3).toUpperCase()"
-          :awayScore="match.awayTeamScore"
-          :homeScore="match.homeTeamScore"
-          :awayRecord="match.awayTeamRecord"
-          :homeRecord="match.homeTeamRecord"
+          v-for="game of games"
+          :key="game.gameId"
+          :gameId="game.gameId"
+          :awayAbbr="game.awayTeamName?.substring(0, 3).toUpperCase()"
+          :homeAbbr="game.homeTeamName?.substring(0, 3).toUpperCase()"
+          :awayScore="game.awayTeamScore"
+          :homeScore="game.homeTeamScore"
+          :awayRecord="game.awayTeamRecord"
+          :homeRecord="game.homeTeamRecord"
           :dateStr="dateStr"
       />
     </template>

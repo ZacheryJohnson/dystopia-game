@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 
 export const getMatchVisualizerStore = defineStore('matchVisualizer', () => {
   const gameLogData = ref(new Uint8Array);
-  const selectedMatchId = ref(0);
+  const selectedGameId = ref(0);
   const worldStateBytes = ref(new Uint8Array);
   const hasWasmLoaded = ref(false);
 
@@ -11,5 +11,5 @@ export const getMatchVisualizerStore = defineStore('matchVisualizer', () => {
     gameLogData.value = new Uint8Array;
   }
 
-  return { gameLogData, hasWasmLoaded, selectedMatchId, worldStateBytes, $reset };
+  return { gameLogData, hasWasmLoaded, selectedGameId, worldStateBytes, $reset };
 })
