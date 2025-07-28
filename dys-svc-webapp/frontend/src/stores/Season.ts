@@ -1,8 +1,8 @@
 import {type Ref, ref} from 'vue'
 import { defineStore } from 'pinia'
-import {MatchResponse_MatchSummary as MatchSummary} from "%/services/match_results/summary.ts";
+import {GameSummaryResponse_GameSummary as GameSummary} from "%/services/game_results/summary.ts";
 import {WorldStateResponse} from "%/services/world/world.ts";
-import type {GetSeasonResponse, MatchInstance} from "%/services/world/schedule.ts";
+import type {GetSeasonResponse, GameInstance} from "%/services/world/schedule.ts";
 import {DateMessage} from "%/common/date.ts";
 
 const dateToStr = (date: DateMessage) => {
@@ -20,9 +20,9 @@ const getDateFromDateStr = (dateStr: string): DateMessage => {
 
 export const getSeasonStore = defineStore('season', () => {
   /// Sorted by date, such that the first entry is chronologically before the next
-  const matchesByDate: Ref<Map<string, MatchSummary[]>> = ref(new Map());
+  const gamesByDate: Ref<Map<string, GameSummary[]>> = ref(new Map());
   const worldState: Ref<any> = ref({});
-  const season: Ref<Map<string, MatchInstance[]>> = ref(new Map());
+  const season: Ref<Map<string, GameInstance[]>> = ref(new Map());
   const currentDate: Ref<DateMessage> = ref(DateMessage.create());
 
   const fetchMatchSummaries = async () => {
@@ -33,18 +33,18 @@ export const getSeasonStore = defineStore('season', () => {
     const seasonResponse: GetSeasonResponse = await(await fetch("/api/season")).json();
 
     currentDate.value = seasonResponse.currentDate!;
-    const matches = seasonResponse
+    const games = seasonResponse
         .allSeries
-        .map((series, _1, _2) => series.matches)
+        .map((series, _1, _2) => series.games)
         .flat();
 
     season.value.clear();
-    for (const match of matches) {
-      const dateStr = dateToStr(match.date!);
+    for (const game of games) {
+      const dateStr = dateToStr(game.date!);
       if (season.value.has(dateStr)) {
-        season.value.get(dateStr)!.push(match);
+        season.value.get(dateStr)!.push(game);
       } else {
-        season.value.set(dateStr, [match]);
+        season.value.set(dateStr, [game]);
       }
     }
 
@@ -80,5 +80,5 @@ export const getSeasonStore = defineStore('season', () => {
     }
   };
 
-  return { matchesByDate, worldState, season, currentDate, fetchLatestWorldState, fetchSeason };
+  return { gamesByDate, worldState, season, currentDate, fetchLatestWorldState, fetchSeason };
 })

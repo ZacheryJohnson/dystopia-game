@@ -36,11 +36,11 @@ struct AppState {
 
 #[tracing::instrument(skip(app_state))]
 async fn query_latest_games(State(app_state): State<AppState>) -> Result<Response, StatusCode> {
-    let request = proto_nats::match_results::MatchRequest {
-        match_ids: vec![], // ZJ-TODO: make this field useful
+    let request = proto_nats::game_results::GameSummaryRequest {
+        game_ids: vec![], // ZJ-TODO: make this field useful
     };
 
-    let mut client = proto_nats::match_results::summary_svc::MatchesRpcClient::new(
+    let mut client = proto_nats::game_results::summary_svc::GameSummaryRpcClient::new(
         app_state.nats_client.clone(),
     );
 
@@ -146,13 +146,13 @@ async fn get_season(
 #[tracing::instrument(skip(app_state))]
 async fn get_game_log(
     State(app_state): State<AppState>,
-    Path(match_id): Path<u64>,
+    Path(game_id): Path<u64>,
 ) -> Result<Response, Infallible> {
-    let request = proto_nats::match_results::GetGameLogRequest {
-        match_id: Some(match_id)
+    let request = proto_nats::game_results::GetGameLogRequest {
+        game_id: Some(game_id)
     };
 
-    let mut client = proto_nats::match_results::summary_svc::GetGameLogRpcClient::new(
+    let mut client = proto_nats::game_results::summary_svc::GetGameLogRpcClient::new(
         app_state.nats_client.clone()
     );
 

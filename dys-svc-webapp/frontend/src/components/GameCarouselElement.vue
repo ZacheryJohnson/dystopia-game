@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { getMatchVisualizerStore } from '@/stores/MatchVisualizer'
 import {computed, onMounted, ref} from 'vue'
-import type {GetGameLogResponse} from "%/services/match_results/summary.ts";
+import type {GetGameLogResponse} from "%/services/game_results/summary.ts";
 import {getSeasonStore} from "@/stores/Season.ts";
 const matchVisualizerStore = getMatchVisualizerStore()
 const seasonStore = getSeasonStore();
 
 const props = defineProps([
-    'matchId',
+    'gameId',
     'awayAbbr',
     'homeAbbr',
     'awayScore',
@@ -17,7 +17,7 @@ const props = defineProps([
     'dateStr',
 ])
 
-const isSelected = computed(() => matchVisualizerStore.selectedMatchId == props.matchId);
+const isSelected = computed(() => matchVisualizerStore.selectedGameId == props.gameId);
 
 const timeFormat = new Intl.DateTimeFormat(
   undefined, // undefined = runtime default
@@ -29,11 +29,11 @@ const timeFormat = new Intl.DateTimeFormat(
 
 async function onElementClicked() {
   const response: GetGameLogResponse = await (
-      await fetch(`api/game_log/${props.matchId}`)
+      await fetch(`api/game_log/${props.gameId}`)
   ).json();
 
   matchVisualizerStore.gameLogData = response.gameLogSerialized!;
-  matchVisualizerStore.selectedMatchId = props.matchId;
+  matchVisualizerStore.selectedGameId = props.gameId;
 }
 
 onMounted(async() => {
@@ -45,14 +45,14 @@ const awayWin = gameOver && props.awayScore > props.homeScore
 const homeWin = gameOver && props.homeScore > props.awayScore
 
 const getScheduledTimeFn = () => {
-  const matches = getSeasonStore().season.get(props.dateStr);
-  if (!matches) {
+  const games = getSeasonStore().season.get(props.dateStr);
+  if (!games) {
     return "";
   }
 
-  for (const match of matches) {
-    if (match.matchId === props.matchId) {
-      const utcSeconds = match.utcScheduledTime || 0;
+  for (const game of games) {
+    if (game.gameId === props.gameId) {
+      const utcSeconds = game.utcScheduledTime || 0;
       const time = new Date(utcSeconds * 1000);
       return utcSeconds ? timeFormat.format(time) : "";
     }

@@ -2,20 +2,20 @@ syntax = "proto3";
 
 import "common/date.proto";
 
-package match_results;
+package game_results;
 
 service Summary {
-  rpc Matches(MatchRequest) returns (MatchResponse);
+  rpc GameSummary(GameSummaryRequest) returns (GameSummaryResponse);
   rpc GetGameLog(GetGameLogRequest) returns (GetGameLogResponse);
 }
 
-message MatchRequest {
-  repeated uint64 match_ids = 1;
+message GameSummaryRequest {
+  repeated uint64 game_ids = 1;
 }
 
-message MatchResponse {
-  message MatchSummary {
-    optional uint64 match_id = 1;
+message GameSummaryResponse {
+  message GameSummary {
+    optional uint64 game_id = 1;
     optional string away_team_name = 2;
     optional string home_team_name = 3;
     optional uint32 away_team_score = 4;
@@ -25,12 +25,12 @@ message MatchResponse {
     optional string away_team_record = 8;
   }
 
-  repeated MatchSummary match_summaries = 1;
-  repeated MatchSummary next_matches = 2;
+  repeated GameSummary game_summaries = 1;
+  repeated GameSummary next_games = 2;
 }
 
 message GetGameLogRequest {
-  optional uint64 match_id = 1;
+  optional uint64 game_id = 1;
 }
 
 message GetGameLogResponse {
