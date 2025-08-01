@@ -2,9 +2,8 @@ use std::sync::{Arc, Mutex};
 use rand::prelude::StdRng;
 use rand::SeedableRng;
 use sqlx::MySql;
-use sqlx::mysql::MySqlArguments;
-use sqlx::query::Query;
 use dys_datastore_mysql::datastore::MySqlDatastore;
+use dys_datastore_mysql::execute_query;
 use dys_datastore_mysql::query::MySqlQuery;
 use dys_world::games::instance::GameInstanceId;
 use dys_world::season::season::Season;
@@ -17,7 +16,7 @@ pub struct InsertSeasonQuery {
 }
 
 impl MySqlQuery for InsertSeasonQuery {
-    fn query(&self) -> Query<MySql, MySqlArguments> {
+    fn query(&self) -> impl sqlx::Execute<MySql> {
         sqlx::query!("
             INSERT IGNORE INTO season(season_id)
             VALUES (?)
@@ -34,7 +33,7 @@ pub struct InsertCorporationQuery {
 }
 
 impl MySqlQuery for InsertCorporationQuery {
-    fn query(&self) -> Query<MySql, MySqlArguments> {
+    fn query(&self) -> impl sqlx::Execute<MySql> {
         sqlx::query!(
             "INSERT INTO corporation(corp_id, name) VALUES (?, ?)",
             self.corp_id,
@@ -50,7 +49,7 @@ pub struct InsertGameLogQuery {
 }
 
 impl MySqlQuery for InsertGameLogQuery {
-    fn query(&self) -> Query<MySql, MySqlArguments> {
+    fn query(&self) -> impl sqlx::Execute<MySql> {
         sqlx::query!("
             INSERT INTO game_results(game_id, serialized_results)
             VALUES (?, ?)",
@@ -69,7 +68,7 @@ pub struct InsertGameQuery {
 }
 
 impl MySqlQuery for InsertGameQuery {
-    fn query(&self) -> Query<MySql, MySqlArguments> {
+    fn query(&self) -> impl sqlx::Execute<MySql> {
         sqlx::query!("
             INSERT INTO game(game_id, season_id, team_1, team_2)
             VALUES (?, ?, ?, ?)",
@@ -96,32 +95,27 @@ pub async fn save_world(
     game_world: Arc<Mutex<World>>,
     season: &Season,
 ) {
-    mysql
-        .lock()
-        .unwrap()
-        .prepare_query()
-        .execute(InsertSeasonQuery { season_id: 1 })
-        .await;
+    execute_query!(mysql, InsertSeasonQuery { season_id: 1 });
 
     for team in game_world.lock().unwrap().teams.to_owned() {
         let team = team.lock().unwrap();
 
-        mysql.lock().unwrap().prepare_query().execute(InsertCorporationQuery {
+        execute_query!(mysql, InsertCorporationQuery {
             corp_id: team.id,
             corp_name: team.name.clone(),
-        }).await;
+        });
     }
 
     for series in season.series() {
         for game in &series.games() {
             let game = game.lock().unwrap();
 
-            mysql.lock().unwrap().prepare_query().execute(InsertGameQuery {
+            execute_query!(mysql, InsertGameQuery {
                 game_id: game.game_id,
                 season_id: 1, // ZJ-TODO
                 team_1: game.away_team.lock().unwrap().id,
                 team_2: game.home_team.lock().unwrap().id,
-            }).await;
+            });
         }
     }
 }

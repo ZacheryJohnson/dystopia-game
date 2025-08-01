@@ -2629,7 +2629,9 @@ name = "dys-datastore-mysql"
 version = "0.1.0"
 dependencies = [
  "dys-datastore",
+ "lazy_static",
  "sqlx",
+ "tokio",
  "tracing",
 ]
 
