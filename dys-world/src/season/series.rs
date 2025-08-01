@@ -1,9 +1,8 @@
 use std::collections::BTreeMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Mutex, Weak};
 use serde::{Deserialize, Serialize};
 
 use crate::games::instance::GameInstance;
-use crate::season::serde::serialize_game_instances;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum SeriesType {
@@ -23,16 +22,17 @@ pub type SeriesGameIndex = u8;
 /// it makes more logistical sense to play those games in one location to reduce travel costs.
 #[derive(Debug, Clone, Serialize)]
 pub struct Series {
-    #[serde(serialize_with = "serialize_game_instances")]
-    pub games: BTreeMap<SeriesGameIndex, Arc<Mutex<GameInstance>>>,
-    pub series_type: SeriesType,
+    /// Weak references to games that exist in this series.
+    /// The games are authoritatively owned elsewhere, so we must validate they exist before use.
+    games: BTreeMap<SeriesGameIndex, Weak<Mutex<GameInstance>>>,
+    series_type: SeriesType,
 }
 
 impl Series {
     /// Creates a series from an iterable,
     /// assuming that the games are in the order the series should be played.
     pub fn from_ordered_games(
-        games: &[Arc<Mutex<GameInstance>>],
+        games: &[Weak<Mutex<GameInstance>>],
         series_type: SeriesType
     ) -> Series {
         let games = games
@@ -48,11 +48,15 @@ impl Series {
     }
 
     /// Returns the games of the series in order.
-    pub fn games(&self) -> Vec<Arc<Mutex<GameInstance>>> {
+    pub fn games(&self) -> Vec<Weak<Mutex<GameInstance>>> {
         self
             .games
             .iter()
             .map(|(_, game)| game.to_owned())
             .collect()
+    }
+
+    pub fn series_type(&self) -> SeriesType {
+        self.series_type.to_owned()
     }
 }

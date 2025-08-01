@@ -70,6 +70,7 @@ pub async fn get_summaries(
         let current_date = app_state.current_date.lock().unwrap();
 
         for game_instance in season.games_on_date(&current_date) {
+            let game_instance = game_instance.upgrade().unwrap();
             let game_instance = game_instance.lock().unwrap();
             let home_team = game_instance.home_team.lock().unwrap();
             let away_team = game_instance.away_team.lock().unwrap();

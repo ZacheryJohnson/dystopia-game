@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use bytes::Bytes;
-use chrono::DateTime;
+use chrono::{DateTime, Timelike, Utc};
 use dys_observability::logger::LoggerOptions;
 use dys_simulation::game::Game;
 use dys_world::schedule::calendar::Date;
@@ -29,10 +29,11 @@ use dys_protocol::nats::world::{GetSeasonRequest, GetSeasonResponse, WorldStateR
 use dys_protocol::nats::world::schedule_svc::GetSeasonRpcServer;
 use dys_protocol::nats::world::world_svc::WorldStateRpcServer;
 use dys_world::combatant::instance::EffectDuration;
+use dys_world::games::instance::GameInstanceId;
 use dys_world::proposal::ProposalEffect;
 use dys_world::schedule::calendar::Month::Arguscorp;
 use dys_world::season::season::Season;
-use dys_world::season::series::SeriesType;
+use dys_world::season::series::{Series, SeriesType};
 use dys_world::team::instance::TeamInstance;
 use crate::game_result::{get_game_log, get_summaries};
 use crate::world::{generate_world, InsertGameLogQuery};
@@ -44,6 +45,39 @@ struct AppState {
     current_date: Arc<Mutex<Date>>,
     valkey: Arc<Mutex<ValkeyDatastore>>,
     mysql: Arc<Mutex<MySqlDatastore>>,
+}
+
+// ZJ-TODO: move
+fn simulation_timings(series: &Vec<Series>) -> HashMap<GameInstanceId, DateTime<Utc>> {
+    let mut simulation_timings = HashMap::new();
+
+    // Schedule matches every 15 minutes on the dot for now
+    let now_utc = chrono::Utc::now();
+    let second_adjustment = 60 - now_utc.second() as u64 % 60;
+    let second_adjusted_utc = now_utc + Duration::from_secs(second_adjustment);
+
+    let minute_adjustment = 15 - second_adjusted_utc.minute() as u64 % 15;
+
+    let first_game_time_utc = second_adjusted_utc + Duration::from_secs(60 * minute_adjustment);
+
+    // ZJ-TODO: refactor
+    #[allow(unused_assignments)]
+    let mut next_game_time_utc = first_game_time_utc;
+
+    for series in series {
+        for game in &series.games() {
+            let game_instance = game.upgrade().unwrap();
+            let days_since_first = game_instance.lock().unwrap().date.1 - 1;
+            next_game_time_utc = first_game_time_utc + Duration::from_secs(60 * 15 * days_since_first as u64);
+
+            simulation_timings.insert(
+                game_instance.lock().unwrap().game_id,
+                next_game_time_utc
+            );
+        }
+    }
+
+    simulation_timings
 }
 
 #[tokio::main]
@@ -128,9 +162,9 @@ async fn main() {
             // Sleep before simulating more games
             let next_time = {
                 let season = app_state.season.lock().unwrap();
-                let game_times = season.simulation_timings.values().to_owned();
-                game_times
-                    .filter(|time| time.timestamp() >= chrono::Utc::now().timestamp())
+                simulation_timings(season.series())
+                    .values()
+                    .filter(|time| time.timestamp() >= Utc::now().timestamp())
                     .min()
                     .map_or(DateTime::default(), |time| time.to_owned())
             };
@@ -177,7 +211,7 @@ async fn simulate_matches(app_state: AppState) -> Vec<(GameSummary, Bytes)> {
     // Simulate games
     let mut game_results = vec![];
     for game_instance in game_instances {
-        let game_instance = game_instance.lock().unwrap().to_owned();
+        let game_instance = game_instance.upgrade().unwrap().lock().unwrap().to_owned();
         let away_team_name = game_instance.away_team.lock().unwrap().name.clone();
         let home_team_name = game_instance.home_team.lock().unwrap().name.clone();
 
@@ -412,6 +446,10 @@ async fn get_season(
     _: GetSeasonRequest,
     app_state: AppState,
 ) -> Result<GetSeasonResponse, NatsError> {
+    let simulation_timings = simulation_timings(
+        app_state.season.lock().unwrap().series()
+    );
+
     let proto_series = {
         let season = app_state.season.lock().unwrap();
         season
@@ -423,6 +461,7 @@ async fn get_season(
                         .games()
                         .iter()
                         .map(|rs_match| {
+                            let rs_match = rs_match.upgrade().unwrap();
                             let rs_match = rs_match.lock().unwrap();
                             let x = dys_protocol::nats::world::GameInstance {
                                 game_id: Some(rs_match.game_id.to_owned()),
@@ -435,12 +474,12 @@ async fn get_season(
                                     month: 1, // ZJ-TODO: arguscorp
                                     day: rs_match.date.1,
                                 }),
-                                utc_scheduled_time: Some(season.simulation_timings.get(&rs_match.game_id).unwrap().timestamp() as u64)
+                                utc_scheduled_time: Some(simulation_timings.get(&rs_match.game_id).unwrap().timestamp() as u64)
                             };
                             x
                         })
                         .collect::<Vec<_>>(),
-                    series_type: Some(if matches!(rs_series.series_type, SeriesType::Normal) {
+                    series_type: Some(if matches!(rs_series.series_type(), SeriesType::Normal) {
                         dys_protocol::nats::world::series::SeriesType::Normal
                     } else {
                         dys_protocol::nats::world::series::SeriesType::FirstTo
