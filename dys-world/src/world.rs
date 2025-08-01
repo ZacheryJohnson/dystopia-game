@@ -6,6 +6,7 @@ use crate::{
     serde::{serialize_combatants, serialize_teams},
     team::instance::TeamInstance,
 };
+use crate::season::season::Season;
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
@@ -15,6 +16,10 @@ pub struct World {
 
     #[serde(serialize_with = "serialize_teams")]
     pub teams: Vec<Arc<Mutex<TeamInstance>>>,
+
+    #[serde(skip_serializing)]
+    #[ts(skip)]
+    pub season: Season,
 }
 
 #[cfg(test)]
@@ -22,6 +27,7 @@ mod tests {
     use crate::attribute::attribute_type::AttributeType;
     use crate::attribute::instance::AttributeInstance;
     use crate::combatant::limb::{Limb, LimbModifier, LimbType};
+    use crate::season::season::{GamesMapT, ScheduleMapT};
     use super::*;
 
     #[test]
@@ -92,13 +98,19 @@ mod tests {
             )),
         ];
 
+        let season = Season::new(
+            GamesMapT::new(),
+            ScheduleMapT::new(),
+            vec![],
+        );
+
         let world = World {
             combatants,
-            teams
+            teams,
+            season,
         };
 
         let serialized = serde_json::to_string(&world).unwrap();
-
         let deserialized: World = serde_json::from_str(&serialized).unwrap();
 
         assert_eq!(world.combatants.len(), deserialized.combatants.len());

@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::sync::{Arc, Mutex};
-use serde::de::{Error, MapAccess, Visitor};
+use serde::de::{Error, IgnoredAny, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use crate::combatant::instance::{CombatantInstance, CombatantInstanceId};
+use crate::season::season::{GamesMapT, ScheduleMapT, Season};
 use crate::team::instance::TeamInstance;
 use crate::world::World;
 
@@ -12,10 +13,11 @@ impl<'de> Deserialize<'de> for World {
     where
         D: Deserializer<'de>
     {
-        const FIELDS: &[&str] = &["combatants", "teams"];
+        const FIELDS: &[&str] = &["combatants", "teams", "season"];
         enum Field {
             Combatants,
             Teams,
+            Season,
         }
 
         impl<'de> Deserialize<'de> for Field {
@@ -38,6 +40,7 @@ impl<'de> Deserialize<'de> for World {
                         match value {
                             "combatants" => Ok(Field::Combatants),
                             "teams" => Ok(Field::Teams),
+                            "season" => Ok(Field::Season),
                             _ => Err(Error::unknown_field(value, FIELDS)),
                         }
                     }
@@ -69,6 +72,8 @@ impl<'de> Deserialize<'de> for World {
                 let mut world_instance = World {
                     combatants: vec![],
                     teams: vec![],
+                    // ZJ-TODO: below
+                    season: Season::new(GamesMapT::new(), ScheduleMapT::new(), vec![])
                 };
 
                 let mut combatants: Vec<CombatantInstance> = vec![];
@@ -78,6 +83,10 @@ impl<'de> Deserialize<'de> for World {
                     match key {
                         Field::Combatants => combatants = map.next_value()?,
                         Field::Teams => partial_teams = map.next_value()?,
+                        Field::Season => {
+                            // ZJ-TODO
+                            map.next_value::<IgnoredAny>()?;
+                        },
                     }
                 }
 
@@ -108,6 +117,7 @@ impl<'de> Deserialize<'de> for World {
 
                 world_instance.combatants = combatant_arcs;
                 world_instance.teams = teams;
+
                 Ok(world_instance)
             }
         }

@@ -12,7 +12,7 @@ use crate::world::World;
 use crate::games::instance::GameInstance;
 use crate::proposal::{Proposal, ProposalEffect, ProposalOption};
 use crate::schedule::calendar::{Date, Month};
-use crate::season::season::Season;
+use crate::season::season::{GamesMapT, ScheduleMapT, Season};
 use crate::season::series::{Series, SeriesType};
 
 pub struct Generator {
@@ -393,17 +393,20 @@ impl Generator {
             })
             .map(|team| Arc::new(Mutex::new(team)))
             .collect();
+
+        let season = self.generate_season(rng, &teams);
             
         World {
             combatants,
-            teams
+            teams,
+            season
         }
     }
 
     pub fn generate_season(
         &self,
         rng: &mut impl Rng,
-        world: &World
+        teams: &Vec<Arc<Mutex<TeamInstance>>>,
     ) -> Season {
         // ZJ-TODO: I'd love for this to be more interesting
         // For now, just do a simple round-robin of 3 game series
@@ -414,72 +417,81 @@ impl Generator {
 
         // Create a first-pass schedule: we'll make changes + validate after
 
-        let mut all_series = vec![];
+        let mut games = GamesMapT::new();
+        let mut schedule = ScheduleMapT::new();
+        let mut series = vec![];
 
-        let fixed_team = world.teams.first().unwrap().to_owned();
-        let mut rotating_teams = Vec::from_iter(world
-            .teams
-            .iter()
-            .skip(1)
-            .map(|arc| arc.to_owned())
+        let fixed_team = teams.first().unwrap().to_owned();
+        let mut rotating_teams = Vec::from_iter(
+            teams
+                .iter()
+                .skip(1)
+                .map(|arc| arc.to_owned())
         );
 
         let mut game_id = 0;
+        let mut date = Date(Month::Arguscorp, 1, 10000);
         for series_idx in 0..SERIES_COUNT {
             let swap_fixed_matchup = series_idx % 2 >= 1;
             let swap_alt_matchup = series_idx % 4 >= 2;
 
             let fixed_opponent = rotating_teams.pop().unwrap().to_owned();
-
-            let mut fixed_series_matches = vec![];
-            for game_idx in 0..series_len {
-                game_id += 1;
-                fixed_series_matches.push(Arc::new(Mutex::new(GameInstance {
-                    game_id,
-                    away_team: if swap_fixed_matchup { fixed_team.clone() } else { fixed_opponent.clone() },
-                    home_team: if swap_fixed_matchup { fixed_opponent.clone() } else { fixed_team.clone() },
-                    // arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())), // ZJ-TODO
-                    arena_id: 0,
-                    date: Date(
-                        Month::Arguscorp,
-                        1 + (series_len * series_idx) as u32 + game_idx as u32,
-                        10000
-                    ),
-                })));
-            }
-
-            let fixed_series = Series::from_ordered_games(
-                &fixed_series_matches,
-                SeriesType::Normal,
-            );
-
             let alt_opponent_1 = rotating_teams.pop().unwrap().to_owned();
             let alt_opponent_2 = rotating_teams.pop().unwrap().to_owned();
 
-            let mut alt_series_matches = vec![];
-            for game_idx in 0..series_len {
-                game_id += 1;
-                alt_series_matches.push(Arc::new(Mutex::new(GameInstance {
-                    game_id,
-                    away_team: if swap_alt_matchup { alt_opponent_1.clone() } else { alt_opponent_2.clone() },
-                    home_team: if swap_alt_matchup { alt_opponent_2.clone() } else { alt_opponent_1.clone() },
-                    // arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())), // ZJ-TODO
-                    arena_id: 0,
-                    date: Date(
-                        Month::Arguscorp,
-                        1 + (series_len * series_idx) as u32 + game_idx as u32,
-                        10000
-                    ),
-                })));
+            let mut fixed_series_games = vec![];
+            let mut alt_series_games = vec![];
+            for _ in 0..series_len {
+                {
+                    game_id += 1;
+                    let game = Arc::new(Mutex::new(GameInstance {
+                        game_id,
+                        away_team: if swap_fixed_matchup { fixed_team.clone() } else { fixed_opponent.clone() },
+                        home_team: if swap_fixed_matchup { fixed_opponent.clone() } else { fixed_team.clone() },
+                        // arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())), // ZJ-TODO
+                        arena_id: 0,
+                        date: date.clone(),
+                    }));
+
+                    let game_reference = Arc::downgrade(&game);
+                    fixed_series_games.push(game_reference.clone());
+
+                    games.insert(game_id, game);
+                    schedule.entry(date.clone()).or_default().push(game_reference);
+                }
+                {
+                    game_id += 1;
+                    let game = Arc::new(Mutex::new(GameInstance {
+                        game_id,
+                        away_team: if swap_alt_matchup { alt_opponent_1.clone() } else { alt_opponent_2.clone() },
+                        home_team: if swap_alt_matchup { alt_opponent_2.clone() } else { alt_opponent_1.clone() },
+                        // arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())), // ZJ-TODO
+                        arena_id: 0,
+                        date: date.clone(),
+                    }));
+
+                    let game_reference = Arc::downgrade(&game);
+                    alt_series_games.push(game_reference.clone());
+
+                    games.insert(game_id, game);
+                    schedule.entry(date.clone()).or_default().push(game_reference);
+                }
+
+                date.1 += 1;
             }
 
-            let alt_series = Series::from_ordered_games(
-                &alt_series_matches,
+            let fixed_series = Series::from_ordered_games(
+                &fixed_series_games,
                 SeriesType::Normal,
             );
 
-            all_series.push(fixed_series);
-            all_series.push(alt_series);
+            let alt_series = Series::from_ordered_games(
+                &alt_series_games,
+                SeriesType::Normal,
+            );
+
+            series.push(fixed_series);
+            series.push(alt_series);
 
             // When rotating teams:
             // - fixed opponent -> alt 1
@@ -492,7 +504,7 @@ impl Generator {
             rotating_teams.push(alt_opponent_2);
         }
 
-        Season::new(all_series)
+        Season::new(games, schedule, series)
     }
 
     pub fn generate_proposals(
@@ -574,7 +586,7 @@ mod tests {
         let generator = Generator::new();
         let rng = &mut rng();
         let world = generator.generate_world(rng);
-        let season = generator.generate_season(rng, &world);
+        let season = generator.generate_season(rng, &world.teams);
 
         assert_ne!(season.games().len(), 0);
     }

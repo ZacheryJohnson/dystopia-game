@@ -84,7 +84,7 @@ pub async fn generate_world() -> (Arc<Mutex<World>>, Season) {
     let generator = dys_world::generator::Generator::new();
     let world = generator.generate_world(&mut StdRng::from_os_rng());
 
-    let season = generator.generate_season(&mut StdRng::from_os_rng(), &world);
+    let season = generator.generate_season(&mut StdRng::from_os_rng(), &world.teams);
 
     (Arc::new(Mutex::new(world)), season)
 }
@@ -108,6 +108,7 @@ pub async fn save_world(
 
     for series in season.series() {
         for game in &series.games() {
+            let game = game.upgrade().unwrap();
             let game = game.lock().unwrap();
 
             execute_query!(mysql, InsertGameQuery {
