@@ -17,6 +17,7 @@ use sqlx::mysql::MySqlConnectOptions;
 use tokio::time::Instant;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_mysql::datastore::MySqlDatastore;
+use dys_datastore_mysql::execute_query;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
 use dys_nats::error::NatsError;
 use dys_nats::rpc::router::NatsRouter;
@@ -279,11 +280,10 @@ async fn simulate_matches(app_state: AppState) -> Vec<(GameSummary, Bytes)> {
             .expect("failed to serialize game log");
 
         {
-            let query = app_state.mysql.lock().unwrap().prepare_query();
-            query.execute(InsertGameLogQuery {
+            execute_query!(app_state.mysql.clone(), InsertGameLogQuery {
                 game_id: game.game_instance.game_id,
                 serialized_game_log: serialized_game_log.clone(),
-            }).await;
+            });
         }
 
         let all_combatants = [

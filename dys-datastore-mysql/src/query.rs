@@ -1,8 +1,8 @@
 use std::fmt::Debug;
-use sqlx::MySql;
-use sqlx::mysql::MySqlArguments;
-use sqlx::query::Query;
+use sqlx::Execute;
 
 pub trait MySqlQuery: Debug + Sized {
-    fn query(&self) -> Query<MySql, MySqlArguments>;
+    /// Gets a query to be run against a MySQL database.
+    /// The query itself is not yet executed, and must be executed by the caller.
+    fn query(&self) -> impl Execute<sqlx::MySql>;
 }

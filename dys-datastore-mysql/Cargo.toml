@@ -3,8 +3,14 @@ name = "dys-datastore-mysql"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+# When enabled, includes sqlx-powered database queries, which require a database connection
+database-tests = ["lazy_static", "tokio"]
+
 [dependencies]
 dys-datastore = { path = "../dys-datastore" }
 
 sqlx.workspace = true
 tracing.workspace = true
+lazy_static = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
