@@ -4,10 +4,11 @@ use std::sync::{Arc, Mutex};
 use rand::SeedableRng;
 use rand_pcg::Pcg64;
 use dys_simulation::game::Game;
-use dys_simulation::game_objects::combatant::{CombatantId, CombatantState};
+use dys_simulation::game_objects::combatant::CombatantState;
 use dys_simulation::game_state::GameState;
 use dys_simulation::game_tick::{GameTick, GameTickNumber};
 use dys_simulation::simulation::simulate_tick;
+use dys_world::combatant::instance::CombatantInstanceId;
 use dys_world::schedule::calendar::Date;
 use dys_world::schedule::calendar::Month::Arguscorp;
 use dys_world::games::instance::GameInstance;
@@ -16,9 +17,8 @@ use dys_world::generator::Generator;
 struct GamePeekApp {
     game_state: Arc<Mutex<GameState>>,
     simmed_ticks: Vec<GameTick>,
-    combatant_states_by_tick: BTreeMap<GameTickNumber, BTreeMap<CombatantId, CombatantState>>,
-
-    combatant_filter: Option<CombatantId>,
+    combatant_states_by_tick: BTreeMap<GameTickNumber, BTreeMap<CombatantInstanceId, CombatantState>>,
+    combatant_filter: Option<CombatantInstanceId>,
 }
 
 impl GamePeekApp {

@@ -1,7 +1,6 @@
 use bevy::math::Vec3;
 use bevy::prelude::Component;
 use dys_simulation::game_objects::ball::BallId;
-use dys_simulation::game_objects::combatant::CombatantId;
 use dys_world::combatant::instance::CombatantInstanceId;
 
 /// All objects in the simulation visualization will have this component.
@@ -11,8 +10,7 @@ pub struct VisualizationObject;
 
 #[derive(Component)]
 pub struct CombatantVisualizer {
-    pub id: CombatantId,
-    pub instance_id: CombatantInstanceId,
+    pub id: CombatantInstanceId,
     pub desired_location: Vec3,
     pub last_position: Vec3,
 }

@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n            INSERT INTO combatant(combatant_id, corp_id, name, serialized_combatant)\n            VALUES (?, ?, ?, ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "9439727f0e30bbba0b60619751b022bc4c4f9cc1e5c04f69b02445d738ecf01f"
+}

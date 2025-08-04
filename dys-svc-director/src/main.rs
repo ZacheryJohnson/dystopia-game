@@ -2,6 +2,7 @@ mod game_result;
 mod world;
 
 use std::collections::HashMap;
+use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use bytes::Bytes;
@@ -13,11 +14,13 @@ use dys_world::world::World;
 
 use rand::SeedableRng;
 use rand::rngs::StdRng;
-use sqlx::mysql::MySqlConnectOptions;
+use sqlx::{Execute, MySql, QueryBuilder};
+use sqlx::mysql::{MySqlConnectOptions};
 use tokio::time::Instant;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_mysql::datastore::MySqlDatastore;
 use dys_datastore_mysql::execute_query;
+use dys_datastore_mysql::query::MySqlQuery;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
 use dys_nats::error::NatsError;
 use dys_nats::rpc::router::NatsRouter;
@@ -28,6 +31,7 @@ use dys_protocol::nats::vote::vote_svc::{GetProposalsRpcServer, VoteOnProposalRp
 use dys_protocol::nats::world::{GetSeasonRequest, GetSeasonResponse, WorldStateRequest, WorldStateResponse};
 use dys_protocol::nats::world::schedule_svc::GetSeasonRpcServer;
 use dys_protocol::nats::world::world_svc::WorldStateRpcServer;
+use dys_stat::combatant_statline::CombatantStatline;
 use dys_world::combatant::instance::EffectDuration;
 use dys_world::games::instance::GameInstanceId;
 use dys_world::proposal::ProposalEffect;
@@ -51,12 +55,16 @@ struct AppState {
 fn simulation_timings(series: &Vec<Series>) -> HashMap<GameInstanceId, DateTime<Utc>> {
     let mut simulation_timings = HashMap::new();
 
-    // Schedule matches every 15 minutes on the dot for now
-    let now_utc = chrono::Utc::now();
+    let match_every_n_minutes = std::env::var("MINUTES_BETWEEN_MATCHES")
+        .unwrap_or(String::from("15"))
+        .parse::<u64>()
+        .unwrap();
+
+    let now_utc = Utc::now();
     let second_adjustment = 60 - now_utc.second() as u64 % 60;
     let second_adjusted_utc = now_utc + Duration::from_secs(second_adjustment);
 
-    let minute_adjustment = 15 - second_adjusted_utc.minute() as u64 % 15;
+    let minute_adjustment = match_every_n_minutes - second_adjusted_utc.minute() as u64 % match_every_n_minutes;
 
     let first_game_time_utc = second_adjusted_utc + Duration::from_secs(60 * minute_adjustment);
 
@@ -68,7 +76,7 @@ fn simulation_timings(series: &Vec<Series>) -> HashMap<GameInstanceId, DateTime<
         for game in &series.games() {
             let game_instance = game.upgrade().unwrap();
             let days_since_first = game_instance.lock().unwrap().date.1 - 1;
-            next_game_time_utc = first_game_time_utc + Duration::from_secs(60 * 15 * days_since_first as u64);
+            next_game_time_utc = first_game_time_utc + Duration::from_secs(60 * match_every_n_minutes * days_since_first as u64);
 
             simulation_timings.insert(
                 game_instance.lock().unwrap().game_id,
@@ -310,6 +318,56 @@ async fn simulate_matches(app_state: AppState) -> Vec<(GameSummary, Bytes)> {
         let game_id = game_instance.game_id.to_owned();
         let game = Game { game_instance };
         let game_log = game.simulate();
+
+        // ZJ-TODO: write these to the database and show them on the site
+        struct InsertGameStatlines<'q> {
+            game_id: GameInstanceId,
+            statlines: Vec<CombatantStatline>,
+            query_builder: QueryBuilder<'q, MySql>,
+        }
+
+        impl<'q> Debug for InsertGameStatlines<'q> {
+            fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+                f
+                    .debug_struct("InsertGameStatlines")
+                    .field("game_id", &self.game_id)
+                    .field("statlines", &self.statlines)
+                    .finish()
+            }
+        }
+
+        impl<'q> InsertGameStatlines<'q> {
+            pub fn new(game_id: GameInstanceId, statlines: Vec<CombatantStatline>) -> Self {
+                InsertGameStatlines {
+                    game_id,
+                    statlines,
+                    query_builder: QueryBuilder::new(
+                        "INSERT INTO game_statlines (game_id, combatant_id, points, balls_thrown, throws_hit, combatants_shoved) "
+                    ),
+                }
+            }
+        }
+
+        impl<'q> MySqlQuery for InsertGameStatlines<'q> {
+            fn query(&mut self) -> impl Execute<MySql> {
+                self.query_builder.push_values(&self.statlines, |mut builder, statline| {
+                    builder
+                        .push_bind(self.game_id)
+                        .push_bind(statline.combatant_id)
+                        .push_bind(statline.points_scored)
+                        .push_bind(statline.balls_thrown)
+                        .push_bind(statline.throws_hit)
+                        .push_bind(statline.combatants_shoved);
+                }).build()
+            }
+        }
+
+        let combatant_statlines = CombatantStatline::from_game_log(&game_log);
+        execute_query!(app_state.mysql.clone(), InsertGameStatlines::new(
+            game_id,
+            combatant_statlines,
+        ));
+
         let serialized_game_log = postcard::to_allocvec(&game_log)
             .expect("failed to serialize game log");
 

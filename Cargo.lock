@@ -2754,6 +2754,7 @@ name = "dys-stat"
 version = "0.1.0"
 dependencies = [
  "dys-simulation",
+ "dys-world",
  "serde",
 ]
 
@@ -2783,6 +2784,7 @@ dependencies = [
  "dys-observability",
  "dys-protocol",
  "dys-simulation",
+ "dys-stat",
  "dys-world",
  "postcard",
  "rand 0.9.1",
@@ -2814,6 +2816,7 @@ version = "0.1.0"
 dependencies = [
  "dys-observability",
  "dys-simulation",
+ "dys-stat",
  "dys-world",
  "postcard",
  "rand 0.9.1",

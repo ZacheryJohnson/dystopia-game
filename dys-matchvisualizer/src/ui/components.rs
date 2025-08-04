@@ -1,5 +1,5 @@
 use bevy::prelude::Component;
-use dys_simulation::game_objects::combatant::CombatantId;
+use dys_world::combatant::instance::CombatantInstanceId;
 
 /// Shows simulation performance statistics in the visualization.
 /// Intended to be dev-only to understand simulation perf at a glance (particularly in web/WASM).
@@ -33,6 +33,6 @@ pub struct PostgameScoreboard;
 /// Displays the combatant's name underneath them as they move around the arena.
 #[derive(Component)]
 pub struct CombatantIdText {
-    pub combatant_id: CombatantId,
+    pub combatant_id: CombatantInstanceId,
     pub is_stunned: bool,
 }

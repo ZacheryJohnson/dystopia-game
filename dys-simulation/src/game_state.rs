@@ -8,14 +8,13 @@ use rapier3d::prelude::*;
 use dys_world::arena::Arena;
 use dys_world::combatant::instance::CombatantInstanceId;
 use crate::{game::Game, game_objects::{ball::{BallId, BallObject}, combatant::{CombatantObject, TeamAlignment}, game_object::GameObject, game_object_type::GameObjectType, plate::PlateObject}, game_tick::GameTickNumber, physics_sim::PhysicsSim, simulation::config::SimulationConfig};
-use crate::game_objects::combatant::CombatantId;
 
 pub type SeedT = [u8; 32];
 
 // IndexMap is a crate that preserves order of insertions.
 // This is *critical* for ensuring that simulations are deterministic and repeatable.
 
-pub type CombatantsMapT = IndexMap<CombatantId, CombatantObject>;
+pub type CombatantsMapT = IndexMap<CombatantInstanceId, CombatantObject>;
 pub type BallsMapT = IndexMap<BallId, BallObject>;
 pub type PlatesMapT = IndexMap<PlateId, PlateObject>;
 pub type CollidersMapT = IndexMap<ColliderHandle, GameObjectType>;
@@ -26,7 +25,6 @@ pub struct GameState {
     pub rng: Pcg64,
     pub physics_sim: PhysicsSim,
     pub combatants: CombatantsMapT,
-    pub combatant_id_to_instance_id: IndexMap<CombatantId, CombatantInstanceId>,
     pub balls: BallsMapT,
     pub plates: PlatesMapT,
     pub active_colliders: CollidersMapT,
@@ -69,7 +67,6 @@ impl GameState {
         let mut active_colliders = CollidersMapT::new();
         let mut balls = BallsMapT::new();
         let mut combatants = CombatantsMapT::new();
-        let mut combatant_id_to_instance_id = IndexMap::new();
         let mut plates = PlatesMapT::new();
 
         {
@@ -119,10 +116,7 @@ impl GameState {
             let arena = Arena::new_with_testing_defaults();
             let combatant_starts = arena.features::<ArenaCombatantStart>();
 
-            let mut combatant_id = 0;
             for player_start in combatant_starts {
-                combatant_id += 1;
-
                 let team_combatants = if player_start.is_home_team { &mut home_combatants } else { &mut away_combatants };
                 let Some(combatant) = team_combatants.pop() else {
                     // This may not be an error case if we allow more starts than combatants
@@ -132,6 +126,7 @@ impl GameState {
 
                 let team_alignment = if player_start.is_home_team { TeamAlignment::Home } else { TeamAlignment::Away };
 
+                let combatant_id = combatant.lock().unwrap().id.to_owned();
                 let combatant_object = CombatantObject::new(
                     combatant_id,
                     combatant,
@@ -141,7 +136,6 @@ impl GameState {
                     rigid_body_set,
                     collider_set);
                 active_colliders.insert(combatant_object.collider_handle().expect("combatant game objects must have collider handles"), GameObjectType::Combatant(combatant_id));
-                combatant_id_to_instance_id.insert(combatant_id, combatant_object.combatant.lock().unwrap().id);
                 combatants.insert(combatant_id, combatant_object);
             }
         }
@@ -160,7 +154,6 @@ impl GameState {
             rng: Pcg64::from_seed(*seed),
             physics_sim,
             combatants,
-            combatant_id_to_instance_id,
             active_colliders,
             balls,
             plates,

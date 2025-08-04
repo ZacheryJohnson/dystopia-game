@@ -2,20 +2,21 @@ use std::sync::{Arc, Mutex};
 use rand_distr::num_traits::Zero;
 use rapier3d::{na::Vector3, prelude::*};
 use dys_satisfiable::SatisfiableField;
-use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::{combatant::CombatantId, game_object::GameObject}, game_state::{GameState}, simulation::simulation_event::SimulationEvent};
+use dys_world::combatant::instance::CombatantInstanceId;
+use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::game_object::GameObject, game_state::{GameState}, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::SatisfiableBelief;
 use crate::ai::beliefs::belief_set::BeliefSet;
 use crate::game_objects::ball::BallState;
 use crate::simulation::simulation_event::PendingSimulationEvent;
 
 pub struct ThrowBallAtTargetStrategy {
-    self_id: CombatantId,
-    target: CombatantId,
+    self_id: CombatantInstanceId,
+    target: CombatantInstanceId,
     is_complete: bool,
 }
 
 impl ThrowBallAtTargetStrategy {
-    pub fn new(self_combatant_id: CombatantId, target_combatant: CombatantId) -> ThrowBallAtTargetStrategy {
+    pub fn new(self_combatant_id: CombatantInstanceId, target_combatant: CombatantInstanceId) -> ThrowBallAtTargetStrategy {
         ThrowBallAtTargetStrategy {
             self_id: self_combatant_id,
             target: target_combatant,

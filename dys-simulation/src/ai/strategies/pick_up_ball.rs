@@ -2,14 +2,14 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use rapier3d::{na::Vector3};
 use dys_satisfiable::SatisfiableField;
+use dys_world::combatant::instance::CombatantInstanceId;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::ball::BallId, game_state::GameState, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::SatisfiableBelief;
 use crate::ai::beliefs::belief_set::BeliefSet;
-use crate::game_objects::combatant::CombatantId;
 use crate::simulation::simulation_event::PendingSimulationEvent;
 
 pub struct PickUpBallStrategy {
-    self_combatant_id: CombatantId,
+    self_combatant_id: CombatantInstanceId,
     ball_id: BallId,
     believed_ball_position: Vector3<f32>,
     is_complete: bool,
@@ -17,7 +17,7 @@ pub struct PickUpBallStrategy {
 
 impl PickUpBallStrategy {
     pub fn new(
-        self_id: CombatantId,
+        self_id: CombatantInstanceId,
         target_ball: BallId,
         believed_ball_position: Vector3<f32>
     ) -> PickUpBallStrategy {

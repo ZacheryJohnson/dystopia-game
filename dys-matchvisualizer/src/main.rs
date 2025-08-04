@@ -356,24 +356,18 @@ fn setup_after_reload_game_log(
                 // ZJ-TODO: don't assume team by position
                 let home_team = position.x < 50.0;
 
-                let instance_id = game_log
-                    .combatant_id_mapping()
-                    .get(combatant_id)
-                    .unwrap()
-                    .to_owned();
-
                 let world = vis_state.world_state.as_ref().unwrap();
                 let mut name = String::new();
                 for combatant in &world.combatants {
                     let combatant_instance = combatant.lock().unwrap();
-                    if combatant_instance.id == instance_id {
+                    if combatant_instance.id == *combatant_id {
                         name = combatant_instance.name.to_owned();
                         break;
                     }
                 }
 
                 if name.is_empty() {
-                    panic!("failed to find combatant with instance ID {instance_id}");
+                    panic!("failed to find combatant {combatant_id}");
                 };
 
                 name = format!("{} ({})",
@@ -403,7 +397,6 @@ fn setup_after_reload_game_log(
                     VisualizationObject,
                     CombatantVisualizer {
                         id: *combatant_id,
-                        instance_id,
                         desired_location: translation,
                         last_position: translation
                     },
@@ -490,14 +483,13 @@ fn setup_after_reload_game_log(
             }
         });
 
-        let combatant_mapping = vis_state.game_log.as_ref().unwrap().combatant_id_mapping();
         let world = vis_state.world_state.as_ref().unwrap();
         for statline in combatant_statlines {
-            let combatant_instance_id = combatant_mapping.get(&statline.combatant_id).unwrap();
+            let combatant_instance_id = statline.combatant_id;
             let mut combatant_name = statline.combatant_id.to_string();
             for combatant in &world.combatants {
                 let combatant_instance = combatant.lock().unwrap();
-                if combatant_instance.id == *combatant_instance_id {
+                if combatant_instance.id == combatant_instance_id {
                     combatant_name = combatant_instance.name.splitn(2, " ").skip(1).collect::<String>();
                     break;
                 }
@@ -593,7 +585,6 @@ fn update(
         max_y = max_y.max(combatant_transform.translation.y);
 
         combatant_vis.last_position = combatant_transform.translation;
-        debug!("Workaround for ignored field: {}", combatant_vis.instance_id);
 
         let Some(atlas) = &mut sprite.texture_atlas else {
             warn!("expected texture atlas for sprite!");

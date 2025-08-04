@@ -1,10 +1,11 @@
 use std::sync::{Arc, Mutex};
 use rand::prelude::StdRng;
 use rand::SeedableRng;
-use sqlx::MySql;
+use sqlx::{Execute, MySql};
 use dys_datastore_mysql::datastore::MySqlDatastore;
 use dys_datastore_mysql::execute_query;
 use dys_datastore_mysql::query::MySqlQuery;
+use dys_world::combatant::instance::CombatantInstanceId;
 use dys_world::games::instance::GameInstanceId;
 use dys_world::season::season::Season;
 use dys_world::team::instance::TeamInstanceId;
@@ -16,7 +17,7 @@ pub struct InsertSeasonQuery {
 }
 
 impl MySqlQuery for InsertSeasonQuery {
-    fn query(&self) -> impl sqlx::Execute<MySql> {
+    fn query(&mut self) -> impl sqlx::Execute<MySql> {
         sqlx::query!("
             INSERT IGNORE INTO season(season_id)
             VALUES (?)
@@ -33,11 +34,34 @@ pub struct InsertCorporationQuery {
 }
 
 impl MySqlQuery for InsertCorporationQuery {
-    fn query(&self) -> impl sqlx::Execute<MySql> {
+    fn query(&mut self) -> impl sqlx::Execute<MySql> {
         sqlx::query!(
             "INSERT INTO corporation(corp_id, name) VALUES (?, ?)",
             self.corp_id,
             self.corp_name,
+        )
+    }
+}
+
+#[derive(Debug)]
+struct InsertCombatantQuery {
+    pub combatant_id: CombatantInstanceId,
+    pub corp_id: TeamInstanceId,
+    pub name: String,
+    pub serialized_combatant: Vec<u8>,
+}
+
+impl MySqlQuery for InsertCombatantQuery {
+    fn query(&mut self) -> impl Execute<MySql> {
+        sqlx::query!(
+            "
+            INSERT INTO combatant(combatant_id, corp_id, name, serialized_combatant)
+            VALUES (?, ?, ?, ?)
+            ",
+            self.combatant_id,
+            self.corp_id,
+            self.name,
+            self.serialized_combatant,
         )
     }
 }
@@ -49,7 +73,7 @@ pub struct InsertGameLogQuery {
 }
 
 impl MySqlQuery for InsertGameLogQuery {
-    fn query(&self) -> impl sqlx::Execute<MySql> {
+    fn query(&mut self) -> impl sqlx::Execute<MySql> {
         sqlx::query!("
             INSERT INTO game_results(game_id, serialized_results)
             VALUES (?, ?)",
@@ -68,7 +92,7 @@ pub struct InsertGameQuery {
 }
 
 impl MySqlQuery for InsertGameQuery {
-    fn query(&self) -> impl sqlx::Execute<MySql> {
+    fn query(&mut self) -> impl sqlx::Execute<MySql> {
         sqlx::query!("
             INSERT INTO game(game_id, season_id, team_1, team_2)
             VALUES (?, ?, ?, ?)",
@@ -104,6 +128,16 @@ pub async fn save_world(
             corp_id: team.id,
             corp_name: team.name.clone(),
         });
+
+        for combatant in team.combatants.to_owned() {
+            let combatant = combatant.lock().unwrap();
+            execute_query!(mysql, InsertCombatantQuery {
+                combatant_id: combatant.id,
+                corp_id: team.id,
+                name: combatant.name.clone(),
+                serialized_combatant: postcard::to_allocvec(&*combatant).unwrap(),
+            });
+        }
     }
 
     for series in season.series() {
