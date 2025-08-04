@@ -5,8 +5,9 @@ use rapier3d::prelude::*;
 use rapier3d::na::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
 use dys_satisfiable::SatisfiableField;
+use dys_world::combatant::instance::CombatantInstanceId;
 use crate::ai::belief::{Belief, ExpiringBelief, SatisfiableBelief};
-use crate::game_objects::{ball::BallId, combatant::CombatantId};
+use crate::game_objects::ball::BallId;
 use crate::game_objects::ball::BallState;
 use crate::game_objects::combatant::TeamAlignment;
 use crate::game_objects::game_object::GameObject;
@@ -64,70 +65,70 @@ pub enum SimulationEvent {
     },
 
     /// A combatant has moved through the world
-    CombatantPositionUpdate { combatant_id: CombatantId, position: Vector3<f32> },
+    CombatantPositionUpdate { combatant_id: CombatantInstanceId, position: Vector3<f32> },
 
     /// A combatant has begun being on a plate
-    CombatantOnPlate { combatant_id: CombatantId, plate_id: PlateId },
+    CombatantOnPlate { combatant_id: CombatantInstanceId, plate_id: PlateId },
 
     /// A combatant has stopped being on a plate
-    CombatantOffPlate { combatant_id: CombatantId, plate_id: PlateId },
+    CombatantOffPlate { combatant_id: CombatantInstanceId, plate_id: PlateId },
 
     /// A combatant has picked up a ball that was on the ground.
-    CombatantPickedUpBall { combatant_id: CombatantId, ball_id: BallId },
+    CombatantPickedUpBall { combatant_id: CombatantInstanceId, ball_id: BallId },
 
     /// A combatant has dropped a ball without throwing it.
-    CombatantDroppedBall { combatant_id: CombatantId, ball_id: BallId },
+    CombatantDroppedBall { combatant_id: CombatantInstanceId, ball_id: BallId },
 
     /// A ball has been thrown targeting an enemy
     BallThrownAtEnemy {
-        thrower_id: CombatantId,
-        enemy_id: CombatantId,
+        thrower_id: CombatantInstanceId,
+        enemy_id: CombatantInstanceId,
         ball_id: BallId,
         ball_impulse_vector: Vector3<f32>,
     },
 
     /// A ball has been thrown targeting a teammate
     BallThrownAtTeammate {
-        thrower_id: CombatantId,
-        teammate_id: CombatantId,
+        thrower_id: CombatantInstanceId,
+        teammate_id: CombatantInstanceId,
         ball_id: BallId,
         ball_impulse_vector: Vector3<f32>,
     },
 
     ThrownBallCaught {
-        thrower_id: CombatantId,
-        catcher_id: CombatantId,
+        thrower_id: CombatantInstanceId,
+        catcher_id: CombatantInstanceId,
         ball_id: BallId,
     },
 
     /// A ball has collided with an enemy 
-    BallCollisionEnemy { thrower_id: CombatantId, enemy_id: CombatantId, ball_id: BallId },
+    BallCollisionEnemy { thrower_id: CombatantInstanceId, enemy_id: CombatantInstanceId, ball_id: BallId },
 
     /// A ball has collided with the ground, defusing it
-    BallCollisionArena { thrower_id: CombatantId, original_target_id: CombatantId, ball_id: BallId },
+    BallCollisionArena { thrower_id: CombatantInstanceId, original_target_id: CombatantInstanceId, ball_id: BallId },
 
     /// A ball has exploded
     BallExplosion { ball_id: BallId, charge: f32 },
 
     /// A ball explosion has applied explosion force to a combatant
-    BallExplosionForceApplied { ball_id: BallId, combatant_id: CombatantId, force_magnitude: f32, force_direction: Vector3<f32> },
+    BallExplosionForceApplied { ball_id: BallId, combatant_id: CombatantInstanceId, force_magnitude: f32, force_direction: Vector3<f32> },
 
     /// Points have been scored this tick by a combatant on a plate
-    PointsScoredByCombatant { plate_id: PlateId, combatant_id: CombatantId, points: u8 },
+    PointsScoredByCombatant { plate_id: PlateId, combatant_id: CombatantInstanceId, points: u8 },
 
     // ZJ-TODO: refactor this into a StatusEffect enum
-    CombatantStunned { combatant_id: CombatantId, start: bool },
+    CombatantStunned { combatant_id: CombatantInstanceId, start: bool },
 
     CombatantShoveForceApplied {
-        shover_combatant_id: CombatantId,
-        recipient_target_id: CombatantId,
+        shover_combatant_id: CombatantInstanceId,
+        recipient_target_id: CombatantInstanceId,
         force_magnitude: f32,
         force_direction: Vector3<f32>
     },
 
     // ZJ-TODO: TEMP: broadcast this belief to all other combatants (excluding self)
     BroadcastBelief {
-        from_combatant_id: CombatantId,
+        from_combatant_id: CombatantInstanceId,
         belief: Belief,
     }
 }

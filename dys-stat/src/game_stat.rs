@@ -1,7 +1,7 @@
-use dys_simulation::game_objects::combatant::CombatantId;
 use dys_simulation::simulation::simulation_event::SimulationEvent;
+use dys_world::combatant::instance::CombatantInstanceId;
 
-type ValueFnT<ValueT> = fn(CombatantId, &Vec<SimulationEvent>) -> Option<ValueT>;
+type ValueFnT<ValueT> = fn(CombatantInstanceId, &Vec<SimulationEvent>) -> Option<ValueT>;
 
 pub trait GameStat {
     type ValueT;
@@ -9,7 +9,7 @@ pub trait GameStat {
     fn name(&self) -> impl Into<String>;
     fn value_fn(&self) -> ValueFnT<Self::ValueT>;
 
-    fn calculate(&self, combatant_id: CombatantId, events: &Vec<SimulationEvent>) -> Option<Self::ValueT> {
+    fn calculate(&self, combatant_id: CombatantInstanceId, events: &Vec<SimulationEvent>) -> Option<Self::ValueT> {
         self.value_fn()(combatant_id, events)
     }
 }
@@ -57,5 +57,30 @@ mod tests {
 
         let value = GameStatPointsScored.calculate(combatant_id, &events);
         assert_eq!(Some(2), value);
+    }
+
+    #[test]
+    fn test_multiple_combatants() {
+        let events = vec![
+            SimulationEvent::PointsScoredByCombatant {
+                plate_id: 1,
+                combatant_id: 1,
+                points: 1,
+            },
+            SimulationEvent::PointsScoredByCombatant {
+                plate_id: 1,
+                combatant_id: 2,
+                points: 1,
+            },
+            SimulationEvent::PointsScoredByCombatant {
+                plate_id: 1,
+                combatant_id: 1,
+                points: 2,
+            },
+        ];
+
+        assert_eq!(Some(3), GameStatPointsScored.calculate(1, &events));
+        assert_eq!(Some(1), GameStatPointsScored.calculate(2, &events));
+        assert_eq!(Some(0), GameStatPointsScored.calculate(3, &events));
     }
 }

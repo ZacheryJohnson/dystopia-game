@@ -6,6 +6,7 @@ use rapier3d::na::Isometry3;
 use rapier3d::prelude::*;
 use dys_satisfiable::{SatisfiabilityTest, SatisfiableField};
 use dys_world::attribute::attribute_type::AttributeType;
+use dys_world::combatant::instance::CombatantInstanceId;
 use crate::{ai::{action::Action, agent::Agent, belief::Belief, planner}, game_state::GameState, game_tick::GameTickNumber, simulation::simulation_event::SimulationEvent};
 use crate::ai::belief::SatisfiableBelief;
 use crate::ai::beliefs::belief_set::BeliefSet;
@@ -15,8 +16,6 @@ use crate::ai::sensors::proximity::ProximitySensor;
 use crate::simulation::simulation_event::PendingSimulationEvent;
 use crate::simulation::simulation_event::SimulationEvent::BroadcastBelief;
 use super::{ball::BallId, game_object::GameObject};
-
-pub type CombatantId = u64;
 
 const COMBATANT_HALF_HEIGHT: f32 = 1.0; // ZJ-TODO: this should be derived from the character's limbs
 const COMBATANT_RADIUS: f32 = 0.5; // ZJ-TODO: this should be derived from the character's limbs
@@ -30,7 +29,7 @@ pub enum TeamAlignment {
 
 #[derive(Clone)]
 pub struct CombatantObject {
-    pub id: CombatantId,
+    pub id: CombatantInstanceId,
     pub combatant: Arc<Mutex<CombatantInstance>>,
     pub combatant_state: Arc<Mutex<CombatantState>>,
     pub team: TeamAlignment,
@@ -55,7 +54,7 @@ pub struct CombatantState {
 
 impl CombatantObject {
     pub fn new(
-        id: CombatantId,
+        id: CombatantInstanceId,
         combatant: Arc<Mutex<CombatantInstance>>,
         position: Vector3<f32>,
         rotation: Vector3<f32>,
@@ -220,7 +219,7 @@ impl CombatantObject {
 }
 
 impl GameObject for CombatantObject {
-    type GameObjectIdT = CombatantId;
+    type GameObjectIdT = CombatantInstanceId;
     // ZJ-TODO: remove
     type GameStateT = ();
 

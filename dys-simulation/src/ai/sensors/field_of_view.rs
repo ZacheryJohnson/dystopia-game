@@ -3,10 +3,10 @@ use rapier3d::geometry::{ColliderHandle, Cuboid};
 use rapier3d::prelude::*;
 use rapier3d::na::{vector, Isometry3, Vector3};
 use rapier3d::pipeline::QueryFilter;
+use dys_world::combatant::instance::CombatantInstanceId;
 use crate::ai::belief::{Belief, ExpiringBelief};
 use crate::ai::sensor::Sensor;
 use crate::game_objects::ball::BallState;
-use crate::game_objects::combatant::CombatantId;
 use crate::game_objects::game_object::GameObject;
 use crate::game_objects::game_object_type::GameObjectType;
 use crate::game_state::GameState;
@@ -16,14 +16,14 @@ pub struct FieldOfViewSensor {
     enabled: bool,
     shape: Cuboid,
     isometry_offset: Isometry3<f32>,
-    owner_combatant_id: CombatantId,
+    owner_combatant_id: CombatantInstanceId,
     owner_collider_handle: ColliderHandle,
 }
 
 impl FieldOfViewSensor {
     pub fn new(
         sight_distance: f32,
-        owner_combatant_id: CombatantId,
+        owner_combatant_id: CombatantInstanceId,
         owner_collider_handle: ColliderHandle,
     ) -> FieldOfViewSensor {
         let half_dist = sight_distance / 2.0;

@@ -1,13 +1,13 @@
 use dys_world::arena::plate::PlateId;
-
-use super::{ball::BallId, combatant::CombatantId};
+use dys_world::combatant::instance::CombatantInstanceId;
+use super::ball::BallId;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GameObjectType {
     Invalid,
     Barrier,
     Ball(BallId),
-    Combatant(CombatantId),
+    Combatant(CombatantInstanceId),
     BallSpawn,
     Plate(PlateId),
 }

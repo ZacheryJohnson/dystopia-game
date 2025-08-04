@@ -64,7 +64,7 @@ pub struct MySqlDatastoreQueryWrapper {
 
 impl MySqlDatastoreQueryWrapper {
     #[tracing::instrument(skip(self))]
-    pub async fn execute(&self, query: impl MySqlQuery) {
+    pub async fn execute(&self, mut query: impl MySqlQuery) {
         self
             .connection
             .execute(query.query())
@@ -73,7 +73,7 @@ impl MySqlDatastoreQueryWrapper {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn fetch(&self, query: impl MySqlQuery) -> Option<MySqlRow> {
+    pub async fn fetch(&self, mut query: impl MySqlQuery) -> Option<MySqlRow> {
         self
             .connection
             .fetch_optional(query.query())
@@ -82,7 +82,7 @@ impl MySqlDatastoreQueryWrapper {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn fetch_all(&self, query: impl MySqlQuery) -> Vec<MySqlRow> {
+    pub async fn fetch_all(&self, mut query: impl MySqlQuery) -> Vec<MySqlRow> {
         self
             .connection
             .fetch_all(query.query())
@@ -155,7 +155,7 @@ mod tests {
             value: i64
         }
         impl MySqlQuery for TestQuery {
-            fn query(&self) -> impl Execute<MySql> {
+            fn query(&mut self) -> impl Execute<MySql> {
                 sqlx::query!("SELECT ? as col", self.value)
             }
         }
@@ -177,7 +177,7 @@ mod tests {
             value: i64,
         }
         impl MySqlQuery for TestQuery {
-            fn query(&self) -> impl Execute<MySql> {
+            fn query(&mut self) -> impl Execute<MySql> {
                 sqlx::query!("SELECT ? as col", self.value)
             }
         }
@@ -205,7 +205,7 @@ mod tests {
             value: i64,
         }
         impl MySqlQuery for TestQuery {
-            fn query(&self) -> impl Execute<MySql> {
+            fn query(&mut self) -> impl Execute<MySql> {
                 sqlx::query!("SELECT ? as col WHERE 1 = 2", self.value)
             }
         }
@@ -228,7 +228,7 @@ mod tests {
             value_2: i64,
         }
         impl MySqlQuery for TestQuery {
-            fn query(&self) -> impl Execute<MySql> {
+            fn query(&mut self) -> impl Execute<MySql> {
                 sqlx::query!("SELECT ? as col UNION SELECT ? as col", self.value_1, self.value_2)
             }
         }
@@ -269,7 +269,7 @@ mod tests {
             value_2: i64,
         }
         impl MySqlQuery for TestQuery {
-            fn query(&self) -> impl Execute<MySql> {
+            fn query(&mut self) -> impl Execute<MySql> {
                 sqlx::query!("SELECT ? as col WHERE 1 = 2 UNION SELECT ? as col WHERE 1 = 2",
                     self.value_1,
                     self.value_2

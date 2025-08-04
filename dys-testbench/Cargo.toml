@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 dys-simulation = { path = "../dys-simulation" }
+dys-stat = { path = "../dys-stat" }
 dys-observability = { path = "../dys-observability" }
 dys-world = { path = "../dys-world" }
 

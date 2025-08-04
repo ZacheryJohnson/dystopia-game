@@ -1,23 +1,23 @@
 CREATE TABLE corporation (
-    corp_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    corp_id INT UNSIGNED NOT NULL PRIMARY KEY,
     name TEXT NOT NULL
-) AUTO_INCREMENT = 1;
+);
 
 CREATE TABLE combatant (
-    combatant_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    combatant_id INT UNSIGNED NOT NULL PRIMARY KEY,
     corp_id INT UNSIGNED,
     name TEXT NOT NULL,
     serialized_combatant MEDIUMBLOB NOT NULL,
 
     FOREIGN KEY (corp_id) REFERENCES corporation(corp_id)
-) AUTO_INCREMENT = 1;
+);
 
 CREATE TABLE season (
-    season_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT
-) AUTO_INCREMENT = 1;
+    season_id INT UNSIGNED NOT NULL PRIMARY KEY
+);
 
 CREATE TABLE game (
-    game_id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    game_id INT UNSIGNED NOT NULL PRIMARY KEY,
     season_id INT UNSIGNED,
     team_1 INT UNSIGNED NOT NULL,
     team_2 INT UNSIGNED NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE game (
     FOREIGN KEY (season_id) REFERENCES season(season_id),
     FOREIGN KEY (team_1) REFERENCES corporation(corp_id),
     FOREIGN KEY (team_2) REFERENCES corporation(corp_id)
-) AUTO_INCREMENT = 1;
+);
 
 CREATE TABLE game_schedule (
     game_id INT UNSIGNED NOT NULL,

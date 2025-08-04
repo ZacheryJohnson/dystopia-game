@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 dys-nats = { path = "../dys-nats" }
 dys-simulation = { path = "../dys-simulation" }
+dys-stat = { path = "../dys-stat" }
 dys-observability = { path = "../dys-observability" }
 dys-protocol = { path = "../dys-protocol", features = ["nats"] }
 dys-world = { path = "../dys-world" }

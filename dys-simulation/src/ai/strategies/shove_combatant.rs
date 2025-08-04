@@ -1,24 +1,24 @@
 use std::sync::{Arc, Mutex};
 use dys_satisfiable::SatisfiableField;
 use dys_world::attribute::attribute_type::AttributeType;
+use dys_world::combatant::instance::CombatantInstanceId;
 use crate::ai::agent::Agent;
 use crate::ai::belief::SatisfiableBelief;
 use crate::ai::beliefs::belief_set::BeliefSet;
 use crate::ai::strategy::Strategy;
-use crate::game_objects::combatant::CombatantId;
 use crate::game_state::GameState;
 use crate::simulation::simulation_event::{PendingSimulationEvent, SimulationEvent};
 
 const SHOVE_FORCE_MULTIPLIER: f32 = 15000.0;
 
 pub struct ShoveCombatantStrategy {
-    self_combatant_id: CombatantId,
-    target_combatant_id: CombatantId,
+    self_combatant_id: CombatantInstanceId,
+    target_combatant_id: CombatantInstanceId,
     is_complete: bool,
 }
 
 impl ShoveCombatantStrategy {
-    pub fn new(self_combatant_id: CombatantId, target_combatant_id: CombatantId) -> ShoveCombatantStrategy {
+    pub fn new(self_combatant_id: CombatantInstanceId, target_combatant_id: CombatantInstanceId) -> ShoveCombatantStrategy {
         ShoveCombatantStrategy {
             self_combatant_id,
             target_combatant_id,

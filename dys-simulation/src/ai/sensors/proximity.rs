@@ -3,10 +3,10 @@ use rapier3d::geometry::ColliderHandle;
 use rapier3d::na::Isometry3;
 use rapier3d::pipeline::QueryFilter;
 use rapier3d::prelude::Cylinder;
+use dys_world::combatant::instance::CombatantInstanceId;
 use crate::ai::belief::{Belief, ExpiringBelief};
 use crate::ai::sensor::Sensor;
 use crate::game_objects::ball::BallState;
-use crate::game_objects::combatant::CombatantId;
 use crate::game_objects::game_object_type::GameObjectType;
 use crate::game_state::GameState;
 
@@ -15,7 +15,7 @@ use crate::game_state::GameState;
 pub struct ProximitySensor {
     enabled: bool,
     shape: Cylinder,
-    owner_combatant_id: CombatantId,
+    owner_combatant_id: CombatantInstanceId,
     owner_collider_handle: ColliderHandle,
 
     // ZJ-TODO: revisit this approach later
@@ -24,7 +24,7 @@ pub struct ProximitySensor {
 
 impl ProximitySensor {
     pub fn new(
-        owner_combatant_id: CombatantId,
+        owner_combatant_id: CombatantInstanceId,
         owner_height: f32,
         radius: f32,
         owner_collider_handle: ColliderHandle,

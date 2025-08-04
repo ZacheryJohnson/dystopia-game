@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 use dys_simulation::game_log::GameLog;
-use dys_simulation::game_objects::combatant::CombatantId;
 use dys_simulation::game_tick::GameTickNumber;
 use dys_simulation::simulation::simulation_event::SimulationEvent;
+use dys_world::combatant::instance::CombatantInstanceId;
 use crate::game_stat::{GameStat, GameStatPointsScored};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct CombatantStatline {
-    pub combatant_id: CombatantId,
+    pub combatant_id: CombatantInstanceId,
     pub points_scored: u8,
     pub balls_thrown: u16,
     pub throws_hit: u16,
@@ -17,7 +17,7 @@ pub struct CombatantStatline {
 impl CombatantStatline {
     fn combatant_statline_from_game_log(
         game_log: &GameLog,
-        combatant_id: CombatantId,
+        combatant_id: CombatantInstanceId,
         through_tick: Option<GameTickNumber>,
     ) -> CombatantStatline {
         let events = game_log
@@ -60,8 +60,8 @@ impl CombatantStatline {
     /// Parses statlines for all combatants in a game log.
     pub fn from_game_log(game_log: &GameLog) -> Vec<CombatantStatline> {
         game_log
-            .combatant_id_mapping()
-            .keys()
+            .combatants()
+            .iter()
             .map(|combatant_id| {
                 CombatantStatline::combatant_statline_from_game_log(
                     game_log,
@@ -80,8 +80,8 @@ impl CombatantStatline {
         through_tick: GameTickNumber,
     ) -> Vec<CombatantStatline> {
         game_log
-            .combatant_id_mapping()
-            .keys()
+            .combatants()
+            .iter()
             .map(|combatant_id| {
                 CombatantStatline::combatant_statline_from_game_log(
                     game_log,

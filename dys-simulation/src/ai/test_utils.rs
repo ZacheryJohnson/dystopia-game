@@ -1,17 +1,16 @@
 #![cfg(test)]
 
 use std::sync::{Arc, Mutex};
-use indexmap::IndexMap;
 use rand::SeedableRng;
 use rand_pcg::Pcg64;
-use dys_world::combatant::instance::CombatantInstance;
+use dys_world::combatant::instance::{CombatantInstance, CombatantInstanceId};
 use rapier3d::prelude::{ColliderHandle, RigidBodyHandle};
 use dys_world::arena::Arena;
 use dys_world::arena::navmesh::{ArenaNavmesh, ArenaNavmeshConfig};
 use dys_world::schedule::calendar::{Date, Month};
 use dys_world::games::instance::GameInstance;
 use dys_world::team::instance::TeamInstance;
-use crate::{game_objects::combatant::{CombatantId, CombatantObject, CombatantState, TeamAlignment}, game_state::GameState};
+use crate::{game_objects::combatant::{CombatantObject, CombatantState, TeamAlignment}, game_state::GameState};
 use crate::ai::beliefs::belief_set::BeliefSet;
 use crate::game::Game;
 use crate::game_state::{BallsMapT, CollidersMapT, CombatantsMapT, PlatesMapT};
@@ -27,7 +26,7 @@ pub struct TestAgent {
 
 #[derive(Default)]
 pub struct TestAgentSettings {
-    combatant_object_id_override: Option<CombatantId>,
+    combatant_object_id_override: Option<CombatantInstanceId>,
     combatant_override: Option<CombatantInstance>,
     combatant_state_override: Option<CombatantState>,
     team_override: Option<TeamAlignment>,
@@ -116,7 +115,6 @@ pub fn make_test_game_state(with_physics_sim: Option<PhysicsSim>) -> Arc<Mutex<G
             PhysicsSim::new(simulation_config.ticks_per_second())
         },
         combatants: CombatantsMapT::new(),
-        combatant_id_to_instance_id: IndexMap::new(),
         balls: BallsMapT::new(),
         plates: PlatesMapT::new(),
         active_colliders: CollidersMapT::new(),

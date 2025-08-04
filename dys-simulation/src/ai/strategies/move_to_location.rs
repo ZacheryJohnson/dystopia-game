@@ -2,9 +2,9 @@ use std::sync::{Arc, Mutex};
 use dys_world::arena::navmesh::{ArenaNavmeshNode, ArenaNavmeshPath};
 use rapier3d::na::Point3;
 use rapier3d::prelude::*;
+use dys_world::combatant::instance::CombatantInstanceId;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
 use crate::ai::beliefs::belief_set::BeliefSet;
-use crate::game_objects::combatant::CombatantId;
 use crate::game_objects::game_object::GameObject;
 use crate::game_objects::game_object_type::GameObjectType;
 use crate::simulation::simulation_event::PendingSimulationEvent;
@@ -13,7 +13,7 @@ pub struct MoveToLocationStrategy {
     is_complete: bool,
     path: ArenaNavmeshPath,
     next_node: Option<ArenaNavmeshNode>,
-    self_combatant_id: CombatantId,
+    self_combatant_id: CombatantInstanceId,
     start_location: Option<Point3<f32>>,
     target_game_object: Option<GameObjectType>,
     target_location: Point3<f32>,
@@ -23,7 +23,7 @@ pub struct MoveToLocationStrategy {
 
 impl MoveToLocationStrategy {
     pub fn new(
-        self_combatant_id: CombatantId,
+        self_combatant_id: CombatantInstanceId,
         target_location: Point3<f32>,
         max_ticks: u16,
     ) -> MoveToLocationStrategy {
@@ -44,7 +44,7 @@ impl MoveToLocationStrategy {
     }
 
     pub fn new_with_target_object(
-        self_combatant_id: CombatantId,
+        self_combatant_id: CombatantInstanceId,
         target_object: GameObjectType,
         max_ticks: u16,
     ) -> MoveToLocationStrategy {
@@ -62,7 +62,7 @@ impl MoveToLocationStrategy {
     }
 
     pub fn new_with_target_tracking(
-        self_combatant_id: CombatantId,
+        self_combatant_id: CombatantInstanceId,
         target_object: GameObjectType,
     ) -> MoveToLocationStrategy {
         MoveToLocationStrategy {
