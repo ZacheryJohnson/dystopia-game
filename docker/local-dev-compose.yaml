@@ -146,38 +146,20 @@ services:
       - MYSQL_ROOT_PASSWORD=${MYSQL_PASS}
     healthcheck:
       test: mysqladmin ping -h ${MYSQL_HOST} -u${MYSQL_USER} -p${MYSQL_PASS} || exit 1
-      interval: 10s
-      retries: 5
+      interval: 2s
+      retries: 15
       timeout: 25s
   run-svc-migrations:
     container_name: "run-svc-migrations"
-    image: "rust:1.88-bookworm"
+    build:
+      context: ..
+      dockerfile: ./docker/dockerfiles/migrations.Dockerfile
+    environment:
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASS=${MYSQL_PASS}
+      - MYSQL_HOST=${MYSQL_HOST}
     volumes:
       - director-migrations:/migrations/director:ro
-    command:
-      - "/bin/bash"
-      - "-c"
-      - |        
-        cargo install sqlx-cli
-
-        echo "find results = $(find /migrations -type d -not -name migrations)"
-        for migration_dir in $(find /migrations -type d -not -name migrations);
-        do
-          echo "Running following migrations in $${migration_dir}..."
-          database_name=$(echo $${migration_dir} | sed -E "s/\/migrations\/(.*)/\1/g")
-          echo "Creating database $${database_name}..."
-          echo $(cat $${migration_dir}/*.sql)
-          sqlx database create \
-            --database-url=mysql://${MYSQL_USER}:${MYSQL_PASS}@${MYSQL_HOST}/dax_$${database_name} \
-          || exit 1
-
-          echo "Running migrations..."
-          sqlx migrate run \
-            --database-url=mysql://${MYSQL_USER}:${MYSQL_PASS}@${MYSQL_HOST}/dax_$${database_name} \
-            --source $${migration_dir} \
-          || exit 1
-        done
-        exit 0
     depends_on:
       mysql:
         condition: service_healthy
