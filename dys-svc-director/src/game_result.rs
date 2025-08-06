@@ -13,7 +13,7 @@ pub async fn get_summaries(
 ) -> Result<GameSummaryResponse, NatsError> {
     let mut valkey = app_state.valkey.lock().unwrap().connection();
 
-    let game_ids: Vec<u64> = {
+    let game_ids: Vec<u32> = {
         if !request.game_ids.is_empty() {
             request.game_ids
         } else {

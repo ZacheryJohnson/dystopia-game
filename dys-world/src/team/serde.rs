@@ -70,8 +70,8 @@ impl<'de> Deserialize<'de> for World {
                 V: MapAccess<'de>,
             {
                 let mut world_instance = World {
-                    combatants: vec![],
-                    teams: vec![],
+                    combatants: HashMap::new(),
+                    teams: HashMap::new(),
                     // ZJ-TODO: below
                     season: Season::new(GamesMapT::new(), ScheduleMapT::new(), vec![])
                 };
@@ -90,21 +90,15 @@ impl<'de> Deserialize<'de> for World {
                     }
                 }
 
-                let combatant_arcs: Vec<Arc<Mutex<CombatantInstance>>> = combatants
+                let combatants: HashMap<CombatantInstanceId, Arc<Mutex<CombatantInstance>>> = combatants
                     .into_iter()
-                    .map(|combatant| Arc::new(Mutex::new(combatant)))
+                    .map(|combatant| (combatant.id, Arc::new(Mutex::new(combatant))))
                     .collect();
-
-                let mut combatant_id_to_arcs: HashMap<CombatantInstanceId, Arc<Mutex<CombatantInstance>>> = HashMap::new();
-                for combatant_arc in &combatant_arcs {
-                    let combatant_id = combatant_arc.lock().unwrap().id;
-                    combatant_id_to_arcs.insert(combatant_id, combatant_arc.clone());
-                }
 
                 for partial_team in &mut partial_teams {
                     for combatant_id in &partial_team.team_member_ids {
                         partial_team.team_instance.combatants.push(
-                            combatant_id_to_arcs.get(combatant_id).unwrap().clone(),
+                            combatants.get(combatant_id).unwrap().clone(),
                         );
                     }
                 }
@@ -112,10 +106,10 @@ impl<'de> Deserialize<'de> for World {
                 let teams = partial_teams
                     .into_iter()
                     .map(|partial_team| partial_team.team_instance)
-                    .map(|team_instance| Arc::new(Mutex::new(team_instance)))
+                    .map(|team_instance| (team_instance.id, Arc::new(Mutex::new(team_instance))))
                     .collect();
 
-                world_instance.combatants = combatant_arcs;
+                world_instance.combatants = combatants;
                 world_instance.teams = teams;
 
                 Ok(world_instance)

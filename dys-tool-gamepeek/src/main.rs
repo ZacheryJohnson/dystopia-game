@@ -186,8 +186,8 @@ fn main() -> eframe::Result {
             Game {
                 game_instance: GameInstance {
                     game_id: 0,
-                    away_team: world.teams[0].to_owned(),
-                    home_team: world.teams[1].to_owned(),
+                    away_team: world.teams[&0].to_owned(),
+                    home_team: world.teams[&1].to_owned(),
                     // arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())),
                     arena_id: 0,
                     date: Date(Arguscorp, 1, 1000),

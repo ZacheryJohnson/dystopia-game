@@ -32,7 +32,7 @@ export const getSeasonStore = defineStore('season', () => {
   const gamesByDate: Ref<Map<string, GameSummary[]>> = ref(new Map());
   const worldState: Ref<World> = ref({combatants: [], teams: []});
   const season: Ref<Map<string, GameInstance[]>> = ref(new Map());
-  const stats: Ref<Map<bigint, Stats>> = ref(new Map());
+  const stats: Ref<Map<number, Stats>> = ref(new Map());
   const currentDate: Ref<DateMessage> = ref(DateMessage.create());
 
   const fetchMatchSummaries = async () => {
@@ -84,7 +84,7 @@ export const getSeasonStore = defineStore('season', () => {
       const response: GetSeasonTotalsResponse = await (await fetch(`/api/season_stats/${season_id}`)).json();
       for (const [combatantId, statline] of Object.entries(response.combatantStatlines)) {
           const statlines: Stats = JSON.parse(String.fromCharCode(...statline!));
-          stats.value.set(BigInt(combatantId), statlines);
+          stats.value.set(Number(combatantId), statlines);
       }
   };
 

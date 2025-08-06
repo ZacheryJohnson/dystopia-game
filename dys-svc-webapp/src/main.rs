@@ -146,7 +146,7 @@ async fn get_season(
 #[tracing::instrument(skip(app_state))]
 async fn get_game_log(
     State(app_state): State<AppState>,
-    Path(game_id): Path<u64>,
+    Path(game_id): Path<u32>,
 ) -> Result<Response, Infallible> {
     let request = proto_nats::game_results::GetGameLogRequest {
         game_id: Some(game_id)
@@ -165,7 +165,7 @@ async fn get_game_log(
 #[tracing::instrument(skip(app_state))]
 async fn season_stats(
     State(app_state): State<AppState>,
-    Path(season_id): Path<u64>,
+    Path(season_id): Path<u32>,
 ) -> Result<Response, Infallible> {
     let request = proto_nats::stats::GetSeasonTotalsRequest {
         season_id

@@ -10,12 +10,12 @@ service Summary {
 }
 
 message GameSummaryRequest {
-  repeated uint64 game_ids = 1;
+  repeated uint32 game_ids = 1;
 }
 
 message GameSummaryResponse {
   message GameSummary {
-    optional uint64 game_id = 1;
+    optional uint32 game_id = 1;
     optional string away_team_name = 2;
     optional string home_team_name = 3;
     optional uint32 away_team_score = 4;
@@ -30,7 +30,7 @@ message GameSummaryResponse {
 }
 
 message GetGameLogRequest {
-  optional uint64 game_id = 1;
+  optional uint32 game_id = 1;
 }
 
 message GetGameLogResponse {

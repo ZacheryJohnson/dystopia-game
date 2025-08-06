@@ -1,13 +1,14 @@
+use std::collections::{BTreeMap, HashMap};
 use std::ops::RangeInclusive;
 use std::sync::{Arc, Mutex};
 use rand::prelude::IteratorRandom;
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
-use crate::combatant::instance::CombatantInstance;
+use crate::combatant::instance::{CombatantInstance, CombatantInstanceId};
 use crate::combatant::limb::{Limb, LimbModifier, LimbType};
 use crate::attribute::instance::AttributeInstance;
 use crate::attribute::attribute_type::AttributeType;
-use crate::team::instance::TeamInstance;
+use crate::team::instance::{TeamInstance, TeamInstanceId};
 use crate::world::World;
 use crate::games::instance::GameInstance;
 use crate::proposal::{Proposal, ProposalEffect, ProposalOption};
@@ -346,7 +347,7 @@ impl Generator {
         ]
     } 
 
-    fn generate_combatant(&self, id: u64, rng: &mut impl Rng) -> CombatantInstance {
+    fn generate_combatant(&self, id: u32, rng: &mut impl Rng) -> CombatantInstance {
         let combatant_given_name = self.given_names.iter().choose(rng).unwrap().to_owned();
         let combatant_surname = self.surnames.iter().choose(rng).unwrap().to_owned();
 
@@ -364,12 +365,16 @@ impl Generator {
         }
     }
     
-    pub fn generate_combatants(&self, count: u64, rng: &mut impl Rng) -> Vec<Arc<Mutex<CombatantInstance>>> {
-        let mut combatants = vec![];
+    pub fn generate_combatants(
+        &self,
+        count: u32,
+        rng: &mut impl Rng
+    ) -> HashMap<CombatantInstanceId, Arc<Mutex<CombatantInstance>>> {
+        let mut combatants = HashMap::new();
 
         for i in 0..count {
             let new_combatant = self.generate_combatant(i, rng);
-            combatants.push(Arc::new(Mutex::new(new_combatant)));
+            combatants.insert(new_combatant.id, Arc::new(Mutex::new(new_combatant)));
         }
     
         combatants
@@ -382,16 +387,19 @@ impl Generator {
         let total_combatants_to_generate = number_of_teams * players_per_team;
 
         let combatants = self.generate_combatants(total_combatants_to_generate, rng);
-        let teams = combatants
-            .clone()
+        let sorted_combatants = BTreeMap::from_iter(&combatants);
+
+        let teams = sorted_combatants
+            .values()
+            .collect::<Vec<_>>()
             .chunks(players_per_team as usize)
             .enumerate()
             .map(|(id, combatants)| TeamInstance {
-                id: id as u64 + 1,
+                id: id as u32 + 1,
                 name: self.team_names[id].clone(),
-                combatants: combatants.to_vec(),
+                combatants: combatants.iter().map(|arc| (**arc).to_owned()).collect::<Vec<_>>(),
             })
-            .map(|team| Arc::new(Mutex::new(team)))
+            .map(|team| (team.id, Arc::new(Mutex::new(team))))
             .collect();
 
         let season = self.generate_season(rng, &teams);
@@ -406,7 +414,7 @@ impl Generator {
     pub fn generate_season(
         &self,
         rng: &mut impl Rng,
-        teams: &Vec<Arc<Mutex<TeamInstance>>>,
+        teams: &HashMap<TeamInstanceId, Arc<Mutex<TeamInstance>>>,
     ) -> Season {
         // ZJ-TODO: I'd love for this to be more interesting
         // For now, just do a simple round-robin of 3 game series
@@ -421,12 +429,13 @@ impl Generator {
         let mut schedule = ScheduleMapT::new();
         let mut series = vec![];
 
+        let teams = teams.values().collect::<Vec<_>>();
         let fixed_team = teams.first().unwrap().to_owned();
         let mut rotating_teams = Vec::from_iter(
             teams
                 .iter()
                 .skip(1)
-                .map(|arc| arc.to_owned())
+                .map(|arc| (*arc).to_owned())
         );
 
         let mut game_id = 0;
@@ -514,7 +523,7 @@ impl Generator {
     ) -> Vec<Proposal> {
         let mut proposals = vec![];
 
-        for (proposal_id, team) in world.teams.iter().enumerate() {
+        for (proposal_id, (_, team)) in world.teams.iter().enumerate() {
             // enumerate is zero-indexed and usize, but we expect one-indexed and u64 elsewhere
             let proposal_id = (proposal_id + 1) as u64;
 

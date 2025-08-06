@@ -9,5 +9,5 @@ pub(crate) fn serialize_team_instance_to_id<S>(
 where
     S: Serializer,
 {
-    s.serialize_u64(team.lock().unwrap().id)
+    s.serialize_u32(team.lock().unwrap().id)
 }

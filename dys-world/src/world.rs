@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use serde::Serialize;
 use ts_rs::TS;
@@ -6,16 +7,18 @@ use crate::{
     serde::{serialize_combatants, serialize_teams},
     team::instance::TeamInstance,
 };
+use crate::combatant::instance::CombatantInstanceId;
 use crate::season::season::Season;
+use crate::team::instance::TeamInstanceId;
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 pub struct World {
     #[serde(serialize_with = "serialize_combatants")]
-    pub combatants: Vec<Arc<Mutex<CombatantInstance>>>,
+    pub combatants: HashMap<CombatantInstanceId, Arc<Mutex<CombatantInstance>>>,
 
     #[serde(serialize_with = "serialize_teams")]
-    pub teams: Vec<Arc<Mutex<TeamInstance>>>,
+    pub teams: HashMap<TeamInstanceId, Arc<Mutex<TeamInstance>>>,
 
     #[serde(skip_serializing)]
     #[ts(skip)]
@@ -32,8 +35,8 @@ mod tests {
 
     #[test]
     fn serialize_into_deserialize() {
-        let combatants = vec![
-            Arc::new(Mutex::new(
+        let combatants = HashMap::from([
+            (1, Arc::new(Mutex::new(
                 CombatantInstance {
                     id: 1,
                     name: String::from("Combatant 1"),
@@ -53,8 +56,8 @@ mod tests {
                     ],
                     effect_modifiers: vec![],
                 }
-            )),
-            Arc::new(Mutex::new(
+            ))),
+            (2, Arc::new(Mutex::new(
                 CombatantInstance {
                     id: 2,
                     name: String::from("Combatant 2"),
@@ -74,29 +77,29 @@ mod tests {
                     ],
                     effect_modifiers: vec![],
                 }
-            )),
-        ];
+            ))),
+        ]);
 
-        let teams = vec![
-            Arc::new(Mutex::new(
+        let teams = HashMap::from([
+            (1, Arc::new(Mutex::new(
                 TeamInstance {
                     id: 1,
                     name: "Team 1".to_string(),
                     combatants: vec![
-                        combatants[0].clone(),
+                        combatants.get(&1).unwrap().clone(),
                     ],
                 }
-            )),
-            Arc::new(Mutex::new(
+            ))),
+            (2, Arc::new(Mutex::new(
                 TeamInstance {
                     id: 2,
                     name: "Team 2".to_string(),
                     combatants: vec![
-                        combatants[1].clone(),
+                        combatants.get(&2).unwrap().clone(),
                     ],
                 }
-            )),
-        ];
+            ))),
+        ]);
 
         let season = Season::new(
             GamesMapT::new(),

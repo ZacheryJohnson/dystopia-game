@@ -358,9 +358,9 @@ fn setup_after_reload_game_log(
 
                 let world = vis_state.world_state.as_ref().unwrap();
                 let mut name = String::new();
-                for combatant in &world.combatants {
-                    let combatant_instance = combatant.lock().unwrap();
-                    if combatant_instance.id == *combatant_id {
+                for (com_id, combatant_instance) in &world.combatants {
+                    let combatant_instance = combatant_instance.lock().unwrap();
+                    if com_id == combatant_id {
                         name = combatant_instance.name.to_owned();
                         break;
                     }
@@ -487,9 +487,9 @@ fn setup_after_reload_game_log(
         for statline in combatant_statlines {
             let combatant_instance_id = statline.combatant_id;
             let mut combatant_name = statline.combatant_id.to_string();
-            for combatant in &world.combatants {
-                let combatant_instance = combatant.lock().unwrap();
-                if combatant_instance.id == combatant_instance_id {
+            for (com_id, combatant_instance) in &world.combatants {
+                let combatant_instance = combatant_instance.lock().unwrap();
+                if *com_id == combatant_instance_id {
                     combatant_name = combatant_instance.name.splitn(2, " ").skip(1).collect::<String>();
                     break;
                 }

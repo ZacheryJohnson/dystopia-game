@@ -10,9 +10,31 @@ const tableData = computed(() => {
     for (const [combatantId, stats] of mapData) {
         let row = [];
 
-        const combatantInstance = getSeasonStore().worldState.combatants.find(com => com.id == combatantId);
+        const combatantInstance = getSeasonStore().worldState.combatants[combatantId];
         row.push(combatantInstance?.name || "<fixme>");
-        row.push('zj-todo');
+
+        // ZJ-TODO: this entire block should be removed
+        //          combatants should hold references to the team they play for
+        let teamName = null;
+        for (const [_, team] of Object.entries(getSeasonStore().worldState.teams)) {
+            if (teamName) {
+                break;
+            }
+
+            // ZJ-TODO: this should be combatant, not teamCombatantId, but shit's broke yo
+            for (const teamCombatantId of team?.combatants!) {
+                if (teamName) {
+                    break;
+                }
+
+                // @ts-ignore: above ZJ-TODO
+                if (teamCombatantId == combatantId) {
+                    teamName = team?.name;
+                    break;
+                }
+            }
+        }
+        row.push(teamName || "Free Agent");
         for (const field in stats) {
             row.push((stats as any)[field]);
         }

@@ -6,7 +6,7 @@ use crate::{
     serde::serialize_combatants_to_ids,
 };
 
-pub type TeamInstanceId = u64;
+pub type TeamInstanceId = u32;
 
 #[derive(Debug, Serialize, TS)]
 #[ts(export)]
