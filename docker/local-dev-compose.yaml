@@ -10,6 +10,7 @@ services:
       - OTEL_ENDPOINT=http://otel-collector:4317
       - RUST_BACKTRACE=1
       - MYSQL_DATABASE=dax_director
+      - MINUTES_BETWEEN_MATCHES=3
     ports:
       - "6081:6081"
     volumes:

@@ -11,6 +11,7 @@ services:
       - MYSQL_USER=$MYSQL_USER
       - MYSQL_PASS=$MYSQL_PASS
       - MYSQL_DATABASE=dax_director
+      - MINUTES_BETWEEN_MATCHES=15
     ports:
       - "6081:6081"
     volumes:
@@ -155,7 +156,6 @@ services:
           echo "Running following migrations in $${migration_dir}..."
           database_name=$(echo $${migration_dir} | sed -E "s/\/migrations\/(.*)/\1/g")
           echo "Creating database $${database_name}..."
-          echo $(cat $${migration_dir}/*.sql)
           sqlx database create \
             --database-url=mysql://${MYSQL_USER}:${MYSQL_PASS}@${MYSQL_HOST}/dax_$${database_name} \
           || exit 1
