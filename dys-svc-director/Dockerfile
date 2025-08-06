@@ -40,6 +40,4 @@ FROM debian:bookworm-slim AS runtime
 COPY --from=builder /opt/dystopia/target/release/dys-svc-director /dys-svc-director
 COPY --from=builder /opt/dystopia/migrations /migrations
 
-ENV MINUTES_BETWEEN_MATCHES=3
-
 CMD [ "/dys-svc-director" ]
