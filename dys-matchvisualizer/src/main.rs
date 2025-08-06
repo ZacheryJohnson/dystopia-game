@@ -14,6 +14,7 @@ use web_time::{Duration, Instant};
 
 #[cfg(target_family = "wasm")]
 use bevy::asset::AssetMetaCheck;
+use dys_simulation::game_objects::combatant::TeamAlignment;
 
 mod ui;
 mod visualizer;
@@ -397,6 +398,7 @@ fn setup_after_reload_game_log(
                     VisualizationObject,
                     CombatantVisualizer {
                         id: *combatant_id,
+                        team: if home_team { TeamAlignment::Home } else { TeamAlignment::Away },
                         desired_location: translation,
                         last_position: translation
                     },
@@ -696,11 +698,13 @@ fn update(
                     combatant_vis.desired_location = Vec3::new(position.x, position.z, position.y);
                 },
                 SimulationEvent::PointsScoredByCombatant { plate_id: _, combatant_id, points } => {
-                    let is_home_team = *combatant_id <= 5;
-                    if is_home_team {
-                        new_home_score += *points as u16;
-                    } else {
-                        new_away_score += *points as u16;
+                    let (combatant_vis, _, _, _) = combatants_query.iter()
+                        .find(|(combatant_vis, _, _, _)| combatant_vis.id == *combatant_id)
+                        .unwrap();
+
+                    match combatant_vis.team {
+                        TeamAlignment::Home => new_home_score += *points as u16,
+                        TeamAlignment::Away => new_away_score += *points as u16,
                     }
                 },
                 SimulationEvent::BallExplosion { ball_id, charge } => {

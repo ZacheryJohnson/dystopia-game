@@ -81,11 +81,15 @@ export const getSeasonStore = defineStore('season', () => {
       let world: World = JSON.parse(String.fromCharCode(...response.worldStateJson!));
 
       // ZJ-TODO: the world is serialized by the backend as a vector, not a map.
-      //          The IDs that are used as keys do not map the team instance IDs.
+      //          The IDs that are used as keys do not map to combatant/team instance IDs.
       //          The backend should be sending a correct serialization from the get-go
-      let correctedWorld: World = { combatants: world.combatants, teams: {} };
+      let correctedWorld: World = { combatants: {}, teams: {} };
+      for (let combatant of Object.values(world.combatants)) {
+          correctedWorld.combatants[combatant!.id] = combatant;
+      }
+
       for (let team of Object.values(world.teams)) {
-          correctedWorld.teams[team!.id] = team
+          correctedWorld.teams[team!.id] = team;
       }
 
       worldState.value = correctedWorld;
