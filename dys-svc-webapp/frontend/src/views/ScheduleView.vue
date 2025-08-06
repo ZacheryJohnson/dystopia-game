@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, type Ref, ref } from 'vue'
+import { onMounted } from 'vue'
 import { DateMessage } from '%/common/date.ts'
 import { getSeasonStore } from '@/stores/Season.ts'
-import type { GameSummaryResponse_GameSummary } from '%/services/game_results/summary.ts'
 import type { GameInstance } from '%/services/world/schedule.ts'
 
 const getDateFromDateStr = (dateStr: string): DateMessage => {

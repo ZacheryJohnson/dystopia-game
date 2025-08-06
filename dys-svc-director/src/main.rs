@@ -1,5 +1,6 @@
 mod game_result;
 mod world;
+mod stats;
 
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
@@ -26,6 +27,7 @@ use dys_nats::error::NatsError;
 use dys_nats::rpc::router::NatsRouter;
 use dys_protocol::nats::game_results::game_summary_response::GameSummary;
 use dys_protocol::nats::game_results::summary_svc::{GameSummaryRpcServer, GetGameLogRpcServer};
+use dys_protocol::nats::stats::stats_svc::GetSeasonTotalsRpcServer;
 use dys_protocol::nats::vote::{GetProposalsRequest, GetProposalsResponse, Proposal, ProposalOption, VoteOnProposalRequest, VoteOnProposalResponse};
 use dys_protocol::nats::vote::vote_svc::{GetProposalsRpcServer, VoteOnProposalRpcServer};
 use dys_protocol::nats::world::{GetSeasonRequest, GetSeasonResponse, WorldStateRequest, WorldStateResponse};
@@ -40,6 +42,7 @@ use dys_world::season::season::Season;
 use dys_world::season::series::{Series, SeriesType};
 use dys_world::team::instance::TeamInstance;
 use crate::game_result::{get_game_log, get_summaries};
+use crate::stats::get_season_stats;
 use crate::world::{generate_world, InsertGameLogQuery};
 
 #[derive(Clone, Debug)]
@@ -194,7 +197,8 @@ async fn main() {
         .service(GetSeasonRpcServer::with_handler_and_state(get_season, app_state.clone()))
         .service(WorldStateRpcServer::with_handler_and_state(get_world_state, app_state.clone()))
         .service(GetProposalsRpcServer::with_handler_and_state(get_voting_proposals, app_state.clone()))
-        .service(VoteOnProposalRpcServer::with_handler_and_state(submit_vote, app_state.clone()));
+        .service(VoteOnProposalRpcServer::with_handler_and_state(submit_vote, app_state.clone()))
+        .service(GetSeasonTotalsRpcServer::with_handler_and_state(get_season_stats, app_state.clone()));
 
     nats.run().await;
 }
@@ -342,7 +346,7 @@ async fn simulate_matches(app_state: AppState) -> Vec<(GameSummary, Bytes)> {
                     game_id,
                     statlines,
                     query_builder: QueryBuilder::new(
-                        "INSERT INTO game_statlines (game_id, combatant_id, points, balls_thrown, throws_hit, combatants_shoved) "
+                        "INSERT INTO game_statline (game_id, combatant_id, points, balls_thrown, throws_hit, combatants_shoved) "
                     ),
                 }
             }

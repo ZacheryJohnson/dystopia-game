@@ -15,7 +15,8 @@ const matchVisualizerStore = getMatchVisualizerStore();
       <GameCarousel />
       <nav>
         <RouterLink to="/"><h1>DAX</h1></RouterLink>
-        <RouterLink to="/schedule"><h1>Schedule</h1></RouterLink>
+          <RouterLink to="/schedule"><h1>Schedule</h1></RouterLink>
+          <RouterLink to="/stats"><h1>Stats</h1></RouterLink>
         <Auth></Auth>
       </nav>
     </div>

@@ -1,0 +1,64 @@
+{
+  "db_name": "MySQL",
+  "query": "\n            SELECT\n                combatant_id,\n                CAST(SUM(points) AS SIGNED) AS points,\n                CAST(SUM(balls_thrown) AS UNSIGNED) AS balls_thrown,\n                CAST(SUM(throws_hit) AS UNSIGNED) AS throws_hit,\n                CAST(SUM(combatants_shoved) AS UNSIGNED) AS combatants_shoved\n            FROM game_statline\n            LEFT JOIN game ON game_statline.game_id = game.game_id\n            WHERE game.season_id = (?)\n            GROUP BY combatant_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "combatant_id",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | PRIMARY_KEY | MULTIPLE_KEY | UNSIGNED | NO_DEFAULT_VALUE",
+          "max_size": 10
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "points",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "BINARY",
+          "max_size": 21
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "balls_thrown",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "UNSIGNED | BINARY",
+          "max_size": 21
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "throws_hit",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "UNSIGNED | BINARY",
+          "max_size": 21
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "combatants_shoved",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "UNSIGNED | BINARY",
+          "max_size": 21
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "140e67e981680c06cdd66d2d3045de4eac8ce3086a98a02fcd8bad4a2d3cc87f"
+}

@@ -1,9 +1,11 @@
-import {type Ref, ref} from 'vue'
+import { computed, type Ref, ref} from 'vue'
 import { defineStore } from 'pinia'
 import {GameSummaryResponse_GameSummary as GameSummary} from "%/services/game_results/summary.ts";
 import {WorldStateResponse} from "%/services/world/world.ts";
 import type {GetSeasonResponse, GameInstance} from "%/services/world/schedule.ts";
 import {DateMessage} from "%/common/date.ts";
+import type { GetSeasonTotalsResponse } from '%/services/game_results/stats.ts'
+import type { World } from '%/rust_types/World.ts'
 
 const dateToStr = (date: DateMessage) => {
   return `${date.year}-${date.month.valueOf()}-${date.day}`;
@@ -18,11 +20,19 @@ const getDateFromDateStr = (dateStr: string): DateMessage => {
   });
 };
 
+export type Stats = {
+    points: number,
+    throws: number,
+    hits: number,
+    shoves: number,
+};
+
 export const getSeasonStore = defineStore('season', () => {
   /// Sorted by date, such that the first entry is chronologically before the next
   const gamesByDate: Ref<Map<string, GameSummary[]>> = ref(new Map());
-  const worldState: Ref<any> = ref({});
+  const worldState: Ref<World> = ref({combatants: [], teams: []});
   const season: Ref<Map<string, GameInstance[]>> = ref(new Map());
+  const stats: Ref<Map<bigint, Stats>> = ref(new Map());
   const currentDate: Ref<DateMessage> = ref(DateMessage.create());
 
   const fetchMatchSummaries = async () => {
@@ -66,19 +76,17 @@ export const getSeasonStore = defineStore('season', () => {
 
   const fetchLatestWorldState = async () => {
     const response: WorldStateResponse = await (await fetch("/api/world_state")).json();
-    const responseObject = JSON.parse(String.fromCharCode(...response.worldStateJson!));
-    worldState.value = {};
-    for (const key in responseObject) {
-      // ZJ-TODO: handle world state values that aren't arrays
-      //          we don't have those yet
-      worldState.value[key] = {};
-      const values = responseObject[key];
-
-      for (const value of values) {
-        worldState.value[key][value["id"]] = value;
-      }
-    }
+    worldState.value = JSON.parse(String.fromCharCode(...response.worldStateJson!));
   };
 
-  return { gamesByDate, worldState, season, currentDate, fetchLatestWorldState, fetchSeason };
+  const fetchSeasonStats = async() => {
+      const season_id: number = 1;
+      const response: GetSeasonTotalsResponse = await (await fetch(`/api/season_stats/${season_id}`)).json();
+      for (const [combatantId, statline] of Object.entries(response.combatantStatlines)) {
+          const statlines: Stats = JSON.parse(String.fromCharCode(...statline!));
+          stats.value.set(BigInt(combatantId), statlines);
+      }
+  };
+
+  return { gamesByDate, worldState, season, stats, currentDate, fetchLatestWorldState, fetchSeason, fetchSeasonStats };
 })
