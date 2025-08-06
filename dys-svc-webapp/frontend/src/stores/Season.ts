@@ -1,4 +1,4 @@
-import { computed, type Ref, ref} from 'vue'
+import { computed, type Ref, ref } from 'vue'
 import { defineStore } from 'pinia'
 import {GameSummaryResponse_GameSummary as GameSummary} from "%/services/game_results/summary.ts";
 import {WorldStateResponse} from "%/services/world/world.ts";
@@ -6,6 +6,7 @@ import type {GetSeasonResponse, GameInstance} from "%/services/world/schedule.ts
 import {DateMessage} from "%/common/date.ts";
 import type { GetSeasonTotalsResponse } from '%/services/game_results/stats.ts'
 import type { World } from '%/rust_types/World.ts'
+import { fetchApi } from '@/utils.ts'
 
 const dateToStr = (date: DateMessage) => {
   return `${date.year}-${date.month.valueOf()}-${date.day}`;
@@ -30,6 +31,7 @@ export type Stats = {
 export const getSeasonStore = defineStore('season', () => {
   /// Sorted by date, such that the first entry is chronologically before the next
   const gamesByDate: Ref<Map<string, GameSummary[]>> = ref(new Map());
+  const gamesById: Ref<Map<number, GameSummary>> = ref(new Map());
   const worldState: Ref<World> = ref({combatants: [], teams: []});
   const season: Ref<Map<string, GameInstance[]>> = ref(new Map());
   const stats: Ref<Map<number, Stats>> = ref(new Map());
@@ -40,7 +42,7 @@ export const getSeasonStore = defineStore('season', () => {
   }
 
   const fetchSeason = async () => {
-    const seasonResponse: GetSeasonResponse = await(await fetch("/api/season")).json();
+    const seasonResponse: GetSeasonResponse = await fetchApi("season");
 
     currentDate.value = seasonResponse.currentDate!;
     const games = seasonResponse
@@ -75,18 +77,28 @@ export const getSeasonStore = defineStore('season', () => {
   };
 
   const fetchLatestWorldState = async () => {
-    const response: WorldStateResponse = await (await fetch("/api/world_state")).json();
-    worldState.value = JSON.parse(String.fromCharCode(...response.worldStateJson!));
+      const response: WorldStateResponse = await fetchApi("world_state");
+      let world: World = JSON.parse(String.fromCharCode(...response.worldStateJson!));
+
+      // ZJ-TODO: the world is serialized by the backend as a vector, not a map.
+      //          The IDs that are used as keys do not map the team instance IDs.
+      //          The backend should be sending a correct serialization from the get-go
+      let correctedWorld: World = { combatants: world.combatants, teams: {} };
+      for (let team of Object.values(world.teams)) {
+          correctedWorld.teams[team!.id] = team
+      }
+
+      worldState.value = correctedWorld;
   };
 
   const fetchSeasonStats = async() => {
       const season_id: number = 1;
-      const response: GetSeasonTotalsResponse = await (await fetch(`/api/season_stats/${season_id}`)).json();
+      const response: GetSeasonTotalsResponse = await fetchApi(`season_stats/${season_id}`);
       for (const [combatantId, statline] of Object.entries(response.combatantStatlines)) {
           const statlines: Stats = JSON.parse(String.fromCharCode(...statline!));
           stats.value.set(Number(combatantId), statlines);
       }
   };
 
-  return { gamesByDate, worldState, season, stats, currentDate, fetchLatestWorldState, fetchSeason, fetchSeasonStats };
+  return { gamesByDate, gamesById, worldState, season, stats, currentDate, fetchLatestWorldState, fetchSeason, fetchSeasonStats };
 })

@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "common/date.proto";
+
 package stats;
 
 service Stats {
@@ -8,9 +10,7 @@ service Stats {
 }
 
 message GetGameStatlinesRequest {
-  // Must contain at least one value.
-  // Values will be returned in the same order as they were requested
-  repeated uint32 game_ids = 1;
+  optional uint32 number_of_most_recent_games = 1;
 
   // If set, only combatants whose IDs are in this set will be returned.
   repeated uint32 combatant_ids = 2;

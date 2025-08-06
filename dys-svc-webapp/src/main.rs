@@ -181,6 +181,30 @@ async fn season_stats(
     }
 }
 
+#[tracing::instrument(skip(app_state))]
+async fn recent_stats(
+    State(app_state): State<AppState>,
+    request: Bytes,
+) -> Result<Response, Infallible> {
+    tracing::info!("recent_stats request");
+
+    let http_request: proto_http::stats::GetGameStatlinesRequest = serde_json::from_slice(request.as_ref()).unwrap();
+
+    let request = proto_nats::stats::GetGameStatlinesRequest {
+        number_of_most_recent_games: http_request.number_of_most_recent_games,
+        combatant_ids: http_request.combatant_ids,
+    };
+
+    let mut client = proto_nats::stats::stats_svc::GetGameStatlinesRpcClient::new(
+        app_state.nats_client.clone()
+    );
+
+    match client.send_request(request).await {
+        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
+        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
+    }
+}
+
 async fn health_check(_: Request) -> Result<impl IntoResponse, Infallible> {
     Ok(StatusCode::OK)
 }
@@ -215,6 +239,7 @@ async fn main() {
                 .route("/get_voting_proposals", get(get_voting_proposals))
                 .route("/vote", post(submit_vote))
                 .route("/season_stats/{season_id}", get(season_stats))
+                .route("/game_results/stats", post(recent_stats))
                 .with_state(app_state.clone())
         )
         .nest_service(
