@@ -9,7 +9,7 @@ use crate::AppState;
 
 #[derive(Debug)]
 struct GetSeasonTotalsQuery {
-    season_id: u64,
+    season_id: u32,
 }
 
 impl MySqlQuery for GetSeasonTotalsQuery {

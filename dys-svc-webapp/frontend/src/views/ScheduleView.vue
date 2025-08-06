@@ -35,7 +35,7 @@ const getTeamLogoPath = (teamId: number): string => {
 }
 
 const resolveTeamIdToName = (teamId: number): string => {
-    return getSeasonStore().worldState['teams'][teamId]['name']
+    return getSeasonStore().worldState.teams[teamId]?.name || "failed to load name";
 }
 
 const gameIsFinished = (game: GameInstance): boolean => {

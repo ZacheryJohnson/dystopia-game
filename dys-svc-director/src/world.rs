@@ -121,7 +121,7 @@ pub async fn save_world(
 ) {
     execute_query!(mysql, InsertSeasonQuery { season_id: 1 });
 
-    for team in game_world.lock().unwrap().teams.to_owned() {
+    for (_, team) in game_world.lock().unwrap().teams.to_owned() {
         let team = team.lock().unwrap();
 
         execute_query!(mysql, InsertCorporationQuery {

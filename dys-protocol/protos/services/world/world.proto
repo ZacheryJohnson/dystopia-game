@@ -9,7 +9,7 @@ service World {
 message WorldStateRequest {
   // Revision of the world state.
   // Omitting this value implies the latest possible world state.
-  optional uint64 revision = 1;
+  optional uint32 revision = 1;
 }
 
 message WorldStateResponse {

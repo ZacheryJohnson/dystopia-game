@@ -5,7 +5,7 @@ use crate::games::serde::serialize_team_instance_to_id;
 use crate::team::instance::TeamInstance;
 use crate::schedule::calendar::Date;
 
-pub type GameInstanceId = u64;
+pub type GameInstanceId = u32;
 
 /// GameInstances are games that are scheduled between two teams.
 /// The games may or may not have already been simulated.

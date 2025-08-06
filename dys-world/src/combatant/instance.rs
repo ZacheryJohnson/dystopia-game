@@ -5,7 +5,7 @@ use crate::attribute::attribute_type::AttributeType;
 use crate::attribute::instance::{AttributeInstance, AttributeValueT};
 use crate::combatant::limb::Limb;
 
-pub type CombatantInstanceId = u64;
+pub type CombatantInstanceId = u32;
 
 #[derive(Debug, Deserialize, Serialize, TS)]
 #[ts(export)]

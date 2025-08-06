@@ -125,11 +125,13 @@ mod tests {
     fn test_deterministic_simulations() {
         let world = Generator::new().generate_world(&mut StdRng::from_os_rng());
 
+        let mut teams = world.teams.values();
+
         let game = Game {
             game_instance: GameInstance {
                 game_id: 0,
-                away_team: world.teams[0].clone(),
-                home_team: world.teams[1].clone(),
+                away_team: teams.next().unwrap().to_owned(),
+                home_team: teams.next().unwrap().to_owned(),
                 // arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())),
                 arena_id: 0,
                 date: Date(Month::Arguscorp, 1, 10000),
