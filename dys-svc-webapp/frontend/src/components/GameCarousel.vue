@@ -6,6 +6,7 @@ import {
 } from "%/services/game_results/summary.ts";
 import {date_MonthToJSON, DateMessage} from "%/common/date.ts";
 import {getSeasonStore} from "@/stores/Season.ts";
+import { fetchApi } from '@/utils.ts'
 
   const seasonStore = getSeasonStore();
   const hasGames = computed(() => seasonStore.gamesByDate.size > 0);
@@ -30,11 +31,12 @@ import {getSeasonStore} from "@/stores/Season.ts";
   };
 
   onMounted(async () => {
-    const payload = await (await fetch(`api/summaries`)).json();
+    const payload = await fetchApi("summaries");
     const gameSummaries: GameSummary[] = payload.gameSummaries;
     const nextGames: GameSummary[] = payload.nextGames;
 
     seasonStore.gamesByDate = new Map();
+    seasonStore.gamesById = new Map();
 
     for (const game of nextGames) {
       const dateStr = dateToStr(game.date!);
@@ -52,6 +54,8 @@ import {getSeasonStore} from "@/stores/Season.ts";
       } else {
         seasonStore.gamesByDate.set(dateStr, [game]);
       }
+
+        seasonStore.gamesById.set(game.gameId!, game);
     }
   });
 </script>

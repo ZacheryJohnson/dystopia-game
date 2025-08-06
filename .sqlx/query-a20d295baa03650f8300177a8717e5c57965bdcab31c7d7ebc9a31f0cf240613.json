@@ -1,0 +1,64 @@
+{
+  "db_name": "MySQL",
+  "query": "\n            SELECT\n                game_id,\n                points,\n                balls_thrown,\n                throws_hit,\n                combatants_shoved\n            FROM game_statline\n            WHERE combatant_id = ?\n            ORDER BY game_id DESC -- ZJ-TODO: this should be by game date, not game id\n            LIMIT ?\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "game_id",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | PRIMARY_KEY | UNSIGNED | NO_DEFAULT_VALUE",
+          "max_size": 10
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "points",
+        "type_info": {
+          "type": "Long",
+          "flags": "",
+          "max_size": 11
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "balls_thrown",
+        "type_info": {
+          "type": "Long",
+          "flags": "UNSIGNED",
+          "max_size": 10
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "throws_hit",
+        "type_info": {
+          "type": "Long",
+          "flags": "UNSIGNED",
+          "max_size": 10
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "combatants_shoved",
+        "type_info": {
+          "type": "Long",
+          "flags": "UNSIGNED",
+          "max_size": 10
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "a20d295baa03650f8300177a8717e5c57965bdcab31c7d7ebc9a31f0cf240613"
+}

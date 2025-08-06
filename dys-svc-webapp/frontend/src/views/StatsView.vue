@@ -8,33 +8,31 @@ const tableData = computed(() => {
     let tableData = [];
     const mapData = getSeasonStore().stats;
     for (const [combatantId, stats] of mapData) {
-        let row = [];
-
-        const combatantInstance = getSeasonStore().worldState.combatants[combatantId];
-        row.push(combatantInstance?.name || "<fixme>");
+        let row: (number | null)[] = [];
+        row.push(combatantId);
 
         // ZJ-TODO: this entire block should be removed
         //          combatants should hold references to the team they play for
-        let teamName = null;
+        let teamId: number | null = null;
         for (const [_, team] of Object.entries(getSeasonStore().worldState.teams)) {
-            if (teamName) {
+            if (teamId) {
                 break;
             }
 
             // ZJ-TODO: this should be combatant, not teamCombatantId, but shit's broke yo
             for (const teamCombatantId of team?.combatants!) {
-                if (teamName) {
+                if (teamId) {
                     break;
                 }
 
                 // @ts-ignore: above ZJ-TODO
                 if (teamCombatantId == combatantId) {
-                    teamName = team?.name;
+                    teamId = team?.id || null;
                     break;
                 }
             }
         }
-        row.push(teamName || "Free Agent");
+        row.push(teamId);
         for (const field in stats) {
             row.push((stats as any)[field]);
         }
@@ -57,8 +55,21 @@ const createdRowCallback = (
         return;
     }
 
-    // ZJ-TODO: link to combatant's page
-    // combatant_cell.innerHTML = `<a href="">${combatant_cell.innerHTML}</a>`;
+    const combatantId = Number(combatant_cell.innerText);
+    const combatantName = getSeasonStore().worldState.combatants[combatantId]?.name!;
+    combatant_cell.innerHTML = `<a href="/combatant/${combatantId}">${combatantName}</a>`;
+
+    const team_column_index = 1;
+    const team_cell = cells[team_column_index];
+    if (team_cell == null) {
+        return;
+    }
+
+    const teamId = Number(team_cell.innerText);
+    const teamName = getSeasonStore().worldState.teams[teamId]?.name!;
+    // ZJ-TODO: once team pages are introduced, uncomment this line
+    // team_cell.innerHTML = `<a href="/team/${teamId}">${teamName}</a>`;
+    team_cell.innerText = teamName;
 };
 
 const tableOptions: DataTableConfig = {

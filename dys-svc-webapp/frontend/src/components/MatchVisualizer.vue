@@ -5,6 +5,7 @@
   import type {WorldStateResponse} from "%/services/world/world.ts";
 
   import * as pako from "pako";
+  import { fetchApi } from '@/utils.ts'
 
   const matchVisualizerStore = getMatchVisualizerStore();
 
@@ -16,7 +17,7 @@
 
   onMounted(async () => {
     if (!matchVisualizerStore.hasWasmLoaded) {
-      const worldStateResponse: WorldStateResponse = (await (await fetch(`api/world_state`)).json());
+      const worldStateResponse: WorldStateResponse = await fetchApi("world_state");
       matchVisualizerStore.worldStateBytes = worldStateResponse.worldStateJson!;
 
       const compressedWasm = await (await fetch("/matchvisualizer_opt.wasm.gz")).bytes();

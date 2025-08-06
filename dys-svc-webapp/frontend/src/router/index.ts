@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import ScheduleView from "@/views/ScheduleView.vue";
 import StatsView from '@/views/StatsView.vue'
+import CombatantView from '@/views/CombatantView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -20,6 +21,16 @@ const router = createRouter({
           path: '/stats',
           name: 'stats',
           component: StatsView,
+      },
+      {
+          path: '/combatant/:combatantId(\\d+)',
+          name: 'combatant',
+          component: CombatantView,
+      },
+      // The below should ALWAYS be last to redirect unknown paths correctly
+      {
+          path: '/:pathMatch(.*)*',
+          redirect: HomeView,
       }
   ]
 })
