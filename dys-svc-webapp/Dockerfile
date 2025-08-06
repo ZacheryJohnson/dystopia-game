@@ -50,7 +50,6 @@ RUN cp $OUT_DIR/matchvisualizer.d.ts /opt/dystopia/$WEBAPP_INTERNAL_DIR_PATH/mat
 RUN cp $OUT_DIR/matchvisualizer.js /opt/dystopia/$WEBAPP_INTERNAL_DIR_PATH/matchvisualizer.js
 
 COPY $WORKING_DIR/dys-matchvisualizer/assets /opt/dystopia/dys-svc-webapp/frontend/public
-
 COPY $WORKING_DIR/dys-datastore/ /opt/dystopia/dys-datastore/
 COPY $WORKING_DIR/dys-datastore-valkey/ /opt/dystopia/dys-datastore-valkey/
 COPY $WORKING_DIR/dys-nats /opt/dystopia/dys-nats
@@ -58,8 +57,8 @@ COPY $WORKING_DIR/dys-protocol /opt/dystopia/dys-protocol
 
 # For reasons I don't understand/agree with,
 # ts_rs generates definitions only through cargo test
-WORKDIR /opt/dystopia/dys-svc-webapp
-RUN cargo test --release
+WORKDIR /opt/dystopia
+RUN cargo test export_bindings --release
 
 WORKDIR /opt/dystopia/dys-svc-webapp/frontend
 RUN npm install
