@@ -1,4 +1,4 @@
-CREATE TABLE game_statlines (
+CREATE TABLE game_statline (
     game_id INT UNSIGNED NOT NULL,
     combatant_id INT UNSIGNED NOT NULL,
     points INT,

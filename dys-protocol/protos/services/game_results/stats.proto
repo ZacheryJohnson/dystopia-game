@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package stats;
+
+service Stats {
+  rpc GetGameStatlines(GetGameStatlinesRequest) returns (GetGameStatlinesResponse);
+  rpc GetSeasonTotals(GetSeasonTotalsRequest) returns (GetSeasonTotalsResponse);
+}
+
+message GetGameStatlinesRequest {
+  // Must contain at least one value.
+  // Values will be returned in the same order as they were requested
+  repeated uint64 game_ids = 1;
+
+  // If set, only combatants whose IDs are in this set will be returned.
+  repeated uint64 combatant_ids = 2;
+}
+
+message GetGameStatlinesResponse {
+  message GameStatlines {
+    uint64 game_id = 1;
+    map<uint64, bytes> combatant_statlines = 2;
+  }
+
+  repeated GameStatlines statlines = 1;
+}
+
+message GetSeasonTotalsRequest {
+  uint64 season_id = 1;
+}
+
+message GetSeasonTotalsResponse {
+  map<uint64, bytes> combatant_statlines = 1;
+}
+

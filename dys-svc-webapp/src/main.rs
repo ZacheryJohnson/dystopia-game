@@ -162,6 +162,25 @@ async fn get_game_log(
     }
 }
 
+#[tracing::instrument(skip(app_state))]
+async fn season_stats(
+    State(app_state): State<AppState>,
+    Path(season_id): Path<u64>,
+) -> Result<Response, Infallible> {
+    let request = proto_nats::stats::GetSeasonTotalsRequest {
+        season_id
+    };
+
+    let mut client = proto_nats::stats::stats_svc::GetSeasonTotalsRpcClient::new(
+        app_state.nats_client.clone()
+    );
+
+    match client.send_request(request).await {
+        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
+        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
+    }
+}
+
 async fn health_check(_: Request) -> Result<impl IntoResponse, Infallible> {
     Ok(StatusCode::OK)
 }
@@ -195,6 +214,7 @@ async fn main() {
                 .route("/create_account", post(create_account))
                 .route("/get_voting_proposals", get(get_voting_proposals))
                 .route("/vote", post(submit_vote))
+                .route("/season_stats/{season_id}", get(season_stats))
                 .with_state(app_state.clone())
         )
         .nest_service(

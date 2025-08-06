@@ -4,6 +4,11 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import VueCookies from 'vue-cookies'
 
+import { DataTable } from 'datatables.net-vue3';
+import DataTablesCore from 'datatables.net-dt';
+
+DataTable.use(DataTablesCore);
+
 import App from './App.vue'
 import router from './router'
 
