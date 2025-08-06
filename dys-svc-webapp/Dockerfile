@@ -56,6 +56,11 @@ COPY $WORKING_DIR/dys-datastore-valkey/ /opt/dystopia/dys-datastore-valkey/
 COPY $WORKING_DIR/dys-nats /opt/dystopia/dys-nats
 COPY $WORKING_DIR/dys-protocol /opt/dystopia/dys-protocol
 
+# For reasons I don't understand/agree with,
+# ts_rs generates definitions only through cargo test
+WORKDIR /opt/dystopia/dys-svc-webapp
+RUN cargo test --release
+
 WORKDIR /opt/dystopia/dys-svc-webapp/frontend
 RUN npm install
 RUN npm run protoc-ubuntu
