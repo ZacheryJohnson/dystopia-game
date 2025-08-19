@@ -50,26 +50,23 @@ struct AppState {
     game_world: Arc<Mutex<World>>,
     season: Arc<Mutex<Season>>,
     current_date: Arc<Mutex<Date>>,
+    first_game_time_utc: Arc<Mutex<DateTime<Utc>>>,
     valkey: Arc<Mutex<ValkeyDatastore>>,
     mysql: Arc<Mutex<MySqlDatastore>>,
 }
 
 // ZJ-TODO: move
-fn simulation_timings(series: &Vec<Series>) -> HashMap<GameInstanceId, DateTime<Utc>> {
+fn simulation_timings(
+    first_game_time_utc: Arc<Mutex<DateTime<Utc>>>,
+    series: &Vec<Series>,
+) -> HashMap<GameInstanceId, DateTime<Utc>> {
     let mut simulation_timings = HashMap::new();
 
+    let first_game_time_utc = first_game_time_utc.lock().unwrap().to_owned();
     let match_every_n_minutes = std::env::var("MINUTES_BETWEEN_MATCHES")
         .unwrap_or(String::from("15"))
         .parse::<u64>()
         .unwrap();
-
-    let now_utc = Utc::now();
-    let second_adjustment = 60 - now_utc.second() as u64 % 60;
-    let second_adjusted_utc = now_utc + Duration::from_secs(second_adjustment);
-
-    let minute_adjustment = match_every_n_minutes - second_adjusted_utc.minute() as u64 % match_every_n_minutes;
-
-    let first_game_time_utc = second_adjusted_utc + Duration::from_secs(60 * minute_adjustment);
 
     // ZJ-TODO: refactor
     #[allow(unused_assignments)]
@@ -78,7 +75,7 @@ fn simulation_timings(series: &Vec<Series>) -> HashMap<GameInstanceId, DateTime<
     for series in series {
         for game in &series.games() {
             let game_instance = game.upgrade().unwrap();
-            let days_since_first = game_instance.lock().unwrap().date.1 - 1;
+            let days_since_first = game_instance.lock().unwrap().date.as_monotonic() - 1;
             next_game_time_utc = first_game_time_utc + Duration::from_secs(60 * match_every_n_minutes * days_since_first as u64);
 
             simulation_timings.insert(
@@ -124,12 +121,28 @@ async fn main() {
 
     world::save_world(mysql.clone(), game_world.clone(), &season).await;
 
+    // Get first match time
+    let first_game_time_utc = {
+        let match_every_n_minutes = std::env::var("MINUTES_BETWEEN_MATCHES")
+            .unwrap_or(String::from("15"))
+            .parse::<u64>()
+            .unwrap();
+
+        let now_utc = Utc::now();
+        let second_adjustment = 60 - now_utc.second() as u64 % 60;
+        let second_adjusted_utc = now_utc + Duration::from_secs(second_adjustment);
+
+        let minute_adjustment = match_every_n_minutes - second_adjusted_utc.minute() as u64 % match_every_n_minutes;
+        second_adjusted_utc + Duration::from_secs(60 * minute_adjustment)
+    };
+
     let app_state = AppState {
         game_world: game_world.clone(),
         season: Arc::new(Mutex::new(season)),
-        current_date: Arc::new(Mutex::new(Date(
+        current_date: Arc::new(Mutex::new(Date::new(
             Arguscorp, 1, 10000
         ))),
+        first_game_time_utc: Arc::new(Mutex::new(first_game_time_utc)),
         valkey: Arc::new(Mutex::new(
             ValkeyDatastore::connect(valkey_config).await.unwrap()
         )),
@@ -173,7 +186,7 @@ async fn main() {
             // Sleep before simulating more games
             let next_time = {
                 let season = app_state.season.lock().unwrap();
-                simulation_timings(season.series())
+                simulation_timings(app_state.first_game_time_utc, season.series())
                     .values()
                     .filter(|time| time.timestamp() >= Utc::now().timestamp())
                     .min()
@@ -354,7 +367,7 @@ async fn simulate_matches(app_state: AppState) -> Vec<(GameSummary, Bytes)> {
         }
 
         impl<'q> MySqlQuery for InsertGameStatlines<'q> {
-            fn query(&mut self) -> impl Execute<MySql> {
+            fn query(&mut self) -> impl Execute<'_, MySql> {
                 self.query_builder.push_values(&self.statlines, |mut builder, statline| {
                     builder
                         .push_bind(self.game_id)
@@ -398,19 +411,19 @@ async fn simulate_matches(app_state: AppState) -> Vec<(GameSummary, Bytes)> {
             away_team_score: Some(game_log.away_score() as u32),
             home_team_score: Some(game_log.home_score() as u32),
             date: Some(dys_protocol::nats::common::Date {
-                year: current_date.2,
-                month: current_date.0.to_owned() as i32 + 1, // ZJ-TODO: yuck
-                day: current_date.1,
+                year: current_date.year(),
+                month: current_date.month() as i32 + 1, // ZJ-TODO: yuck
+                day: current_date.day(),
             }),
             home_team_record: None,
             away_team_record: None,
         }, serialized_game_log.into()));
     }
 
-    *app_state.current_date.lock().unwrap() = Date(
-        current_date.0,
-        current_date.1 + 1,
-        current_date.2
+    *app_state.current_date.lock().unwrap() = Date::new(
+        current_date.month(),
+        current_date.day() + 1,
+        current_date.year()
     );
 
     game_results
@@ -510,6 +523,7 @@ async fn get_season(
     app_state: AppState,
 ) -> Result<GetSeasonResponse, NatsError> {
     let simulation_timings = simulation_timings(
+        app_state.first_game_time_utc.clone(),
         app_state.season.lock().unwrap().series()
     );
 
@@ -533,9 +547,9 @@ async fn get_season(
                                 arena_id: Some(0),
                                 // arena_id: rs_match.arena.lock().unwrap().id.to_owned(),
                                 date: Some(dys_protocol::nats::common::Date {
-                                    year: rs_match.date.2,
-                                    month: 1, // ZJ-TODO: arguscorp
-                                    day: rs_match.date.1,
+                                    year: rs_match.date.year(),
+                                    month: rs_match.date.month().id() as i32,
+                                    day: rs_match.date.day(),
                                 }),
                                 utc_scheduled_time: Some(simulation_timings.get(&rs_match.game_id).unwrap().timestamp() as u64)
                             };
@@ -558,9 +572,9 @@ async fn get_season(
     Ok(GetSeasonResponse {
         season_id: Some(1),
         current_date: Some(dys_protocol::nats::common::Date {
-            year: current_date.2,
-            month: 1, // ZJ-TODO: arguscorp
-            day: current_date.1,
+            year: current_date.year(),
+            month: current_date.month().id() as i32,
+            day: current_date.day(),
         }),
         all_series: proto_series,
     })

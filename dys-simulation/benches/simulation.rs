@@ -20,7 +20,7 @@ fn game_simulation_benchmark(c: &mut Criterion) {
             home_team: teams.next().unwrap().clone(),
             // arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())),
             arena_id: 0,
-            date: Date(Month::Arguscorp, 1, 10000),
+            date: Date::new(Month::Arguscorp, 1, 10000),
         },
     };
     let seed = &[0; 32];

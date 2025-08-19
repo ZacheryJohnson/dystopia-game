@@ -93,7 +93,7 @@ pub fn make_test_game_state(with_physics_sim: Option<PhysicsSim>) -> Arc<Mutex<G
             })),
             // arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())), // ZJ-TODO: don't use arena's default values
             arena_id: 0,
-            date: Date(Month::Arguscorp, 1, 10000),
+            date: Date::new(Month::Arguscorp, 1, 10000),
         },
     };
     let simulation_config = SimulationConfig::default();
