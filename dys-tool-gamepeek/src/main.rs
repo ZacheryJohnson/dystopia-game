@@ -190,7 +190,7 @@ fn main() -> eframe::Result {
                     home_team: world.teams[&1].to_owned(),
                     // arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())),
                     arena_id: 0,
-                    date: Date(Arguscorp, 1, 1000),
+                    date: Date::new(Arguscorp, 1, 1000),
                 },
             },
             &seed

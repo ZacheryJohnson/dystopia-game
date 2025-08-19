@@ -439,7 +439,7 @@ impl Generator {
         );
 
         let mut game_id = 0;
-        let mut date = Date(Month::Arguscorp, 1, 10000);
+        let mut date = Date::new(Month::Arguscorp, 1, 10000);
         for series_idx in 0..SERIES_COUNT {
             let swap_fixed_matchup = series_idx % 2 >= 1;
             let swap_alt_matchup = series_idx % 4 >= 2;
@@ -486,7 +486,7 @@ impl Generator {
                     schedule.entry(date.clone()).or_default().push(game_reference);
                 }
 
-                date.1 += 1;
+                *date.day_mut() += 1;
             }
 
             let fixed_series = Series::from_ordered_games(

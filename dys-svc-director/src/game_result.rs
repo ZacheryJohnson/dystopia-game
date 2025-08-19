@@ -81,9 +81,9 @@ pub async fn get_summaries(
                 away_team_score: None,
                 home_team_score: None,
                 date: Some(dys_protocol::nats::common::Date {
-                    year: current_date.2,
-                    month: current_date.0.to_owned() as i32 + 1,
-                    day: current_date.1,
+                    year: current_date.year(),
+                    month: current_date.month().id() as i32,
+                    day: current_date.day(),
                 }),
                 home_team_record: Some(format!(
                     "{}-{}",

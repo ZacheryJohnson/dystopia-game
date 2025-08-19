@@ -32,7 +32,7 @@ macro_rules! fetch_query {
 }
 
 /// Gets all rows from the database given a query.
-/// The query is run immediately, awaiting the future and returning the row.
+/// The query is run immediately, awaiting the future and returning all rows.
 #[macro_export]
 macro_rules! fetch_all_query {
     ($mysql_arc_mutex:expr, $query:expr) => {{

@@ -99,7 +99,7 @@ impl<'a> PlannerState<'a> {
         }
     }
 
-    pub fn new_after_completing(&self, action: &Action) -> Option<PlannerState> {
+    pub fn new_after_completing(&self, action: &Action) -> Option<PlannerState<'_>> {
         // If our lifetime is zero, we've reached our maximum action plan length
         if self.lifetime == 0 {
             return None;

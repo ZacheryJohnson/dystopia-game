@@ -15,6 +15,7 @@ pub trait NatsRpcClient {
 
     fn client(&self) -> async_nats::Client;
 
+    #[tracing::instrument(skip(self))]
     fn send_request(
         &mut self,
         request: Self::Request,
@@ -49,7 +50,7 @@ pub trait NatsRpcClient {
                 return Err(NatsError::PublishError);
             }
 
-            let Ok(response) = tokio::time::timeout(Duration::from_millis(10000), async {
+            let Ok(response) = tokio::time::timeout(Duration::from_millis(2000), async {
                 loop {
                     let Some(response) = reply_subscriber.next().await else {
                         continue;

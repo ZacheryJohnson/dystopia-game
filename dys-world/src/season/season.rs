@@ -92,12 +92,12 @@ mod tests {
         };
 
         let games: GamesMapT = HashMap::from([
-            (1, make_game_with_date(1, &Date(Month::Arguscorp, 1, 10000))),
-            (2, make_game_with_date(2, &Date(Month::Arguscorp, 1, 10000))),
-            (3, make_game_with_date(3, &Date(Month::Arguscorp, 2, 10000))),
-            (4, make_game_with_date(4, &Date(Month::Arguscorp, 3, 10000))),
-            (5, make_game_with_date(5, &Date(Month::Arguscorp, 4, 10000))),
-            (6, make_game_with_date(6, &Date(Month::Arguscorp, 1, 10000))),
+            (1, make_game_with_date(1, &Date::new(Month::Arguscorp, 1, 10000))),
+            (2, make_game_with_date(2, &Date::new(Month::Arguscorp, 1, 10000))),
+            (3, make_game_with_date(3, &Date::new(Month::Arguscorp, 2, 10000))),
+            (4, make_game_with_date(4, &Date::new(Month::Arguscorp, 3, 10000))),
+            (5, make_game_with_date(5, &Date::new(Month::Arguscorp, 4, 10000))),
+            (6, make_game_with_date(6, &Date::new(Month::Arguscorp, 1, 10000))),
         ]);
 
         let games_ref: Vec<_> = games
@@ -125,9 +125,9 @@ mod tests {
             ],
         );
 
-        assert_eq!(season.games_on_date(&Date(Month::Arguscorp, 1, 10000)).len(), 3);
-        assert_eq!(season.games_on_date(&Date(Month::Arguscorp, 2, 10000)).len(), 1);
-        assert_eq!(season.games_on_date(&Date(Month::Arguscorp, 3, 10000)).len(), 1);
-        assert_eq!(season.games_on_date(&Date(Month::Arguscorp, 4, 10000)).len(), 1);
+        assert_eq!(season.games_on_date(&Date::new(Month::Arguscorp, 1, 10000)).len(), 3);
+        assert_eq!(season.games_on_date(&Date::new(Month::Arguscorp, 2, 10000)).len(), 1);
+        assert_eq!(season.games_on_date(&Date::new(Month::Arguscorp, 3, 10000)).len(), 1);
+        assert_eq!(season.games_on_date(&Date::new(Month::Arguscorp, 4, 10000)).len(), 1);
     }
 }
