@@ -91,6 +91,12 @@ impl ServiceGenerator for NatsServiceGenerator {
         for method in &service.methods {
             buf.push_str(
 r#"
+impl <REQUEST_TYPE> {
+    pub fn make_client(&self, nats_client: async_nats::Client) -> <SERVICE_NAME>_svc::<RPC_NAME>RpcClient {
+        <SERVICE_NAME>_svc::<RPC_NAME>RpcClient::new(nats_client)
+    }
+}
+
 #[cfg(feature = "http")]
 impl <RESPONSE_TYPE> {
     pub fn to_http(&self) -> crate::http::<PACKAGE_NAME>::<RESPONSE_TYPE> {
@@ -99,6 +105,9 @@ impl <RESPONSE_TYPE> {
     }
 }
 "#
+                .replace("<SERVICE_NAME>", service.name.to_ascii_lowercase().as_str())
+                .replace("<RPC_NAME>", method.proto_name.as_str())
+                .replace("<REQUEST_TYPE>", method.input_type.as_str())
                 .replace("<RESPONSE_TYPE>", method.output_type.as_str())
                 .replace("<PACKAGE_NAME>", service.package.as_str())
                 .as_str()

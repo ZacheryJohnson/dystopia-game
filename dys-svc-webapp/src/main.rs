@@ -2,6 +2,7 @@ use std::convert::Infallible;
 use axum::{extract::Request, http::{header, HeaderValue, StatusCode}, middleware::{self, Next}, response::{IntoResponse, Response}, Json, Router};
 use axum::body::Bytes;
 use axum::extract::{Path, State};
+use axum::extract::rejection::JsonRejection;
 use axum::routing::{get, post};
 use dys_observability::logger::LoggerOptions;
 use tower::ServiceBuilder;
@@ -12,6 +13,19 @@ use dys_observability::middleware::handle_shutdown_signal;
 
 use dys_protocol::http as proto_http;
 use dys_protocol::nats as proto_nats;
+
+macro_rules! send_nats_request {
+    ($request:expr, $app_state:expr) => {{
+        let mut client = $request.make_client(
+            $app_state.nats_client.clone()
+        );
+
+        match client.send_request($request).await {
+            Ok(resp) => Ok(Json(resp.to_http()).into_response()),
+            Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
+        }
+    }}
+}
 
 const DEFAULT_DIST_PATH: &str = "dys-svc-webapp/frontend/dist";
 
@@ -40,14 +54,7 @@ async fn query_latest_games(State(app_state): State<AppState>) -> Result<Respons
         game_ids: vec![], // ZJ-TODO: make this field useful
     };
 
-    let mut client = proto_nats::game_results::summary_svc::GameSummaryRpcClient::new(
-        app_state.nats_client.clone(),
-    );
-
-    match client.send_request(request).await {
-        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
-        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
-    }
+    send_nats_request!(request, app_state)
 }
 
 #[tracing::instrument(skip(app_state))]
@@ -56,34 +63,23 @@ async fn query_world_state(State(app_state): State<AppState>) -> Result<Response
         revision: Some(0),
     };
 
-    let mut client = proto_nats::world::world_svc::WorldStateRpcClient::new(
-        app_state.nats_client.clone(),
-    );
-
-    match client.send_request(request).await {
-        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
-        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
-    }
+    send_nats_request!(request, app_state)
 }
 
-#[tracing::instrument(skip(app_state, request))]
+#[tracing::instrument(skip(app_state))]
 async fn create_account(
     State(app_state): State<AppState>,
-    request: Bytes
+    maybe_http_request: Result<Json<proto_http::auth::CreateAccountRequest>, JsonRejection>,
 ) -> Result<Response, Infallible> {
-    let http_request: proto_http::auth::CreateAccountRequest = serde_json::from_slice(request.as_ref()).unwrap();
-    let request = proto_nats::auth::CreateAccountRequest {
-        account_name: http_request.account_name,
+    let Ok(http_request) = maybe_http_request else {
+        panic!("Received invalid JSON request: {:?}", maybe_http_request.err());
     };
 
-    let mut client = proto_nats::auth::account_svc::CreateAccountRpcClient::new(
-        app_state.nats_client.clone()
-    );
+    let request = proto_nats::auth::CreateAccountRequest {
+        account_name: http_request.account_name.to_owned(),
+    };
 
-    match client.send_request(request).await {
-        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
-        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
-    }
+    send_nats_request!(request, app_state)
 }
 
 #[tracing::instrument(skip(app_state))]
@@ -93,14 +89,7 @@ async fn get_voting_proposals(
 ) -> Result<Response, Infallible> {
     let request = proto_nats::vote::GetProposalsRequest {};
 
-    let mut client = proto_nats::vote::vote_svc::GetProposalsRpcClient::new(
-        app_state.nats_client.clone()
-    );
-
-    match client.send_request(request).await {
-        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
-        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
-    }
+    send_nats_request!(request, app_state)
 }
 
 #[tracing::instrument(skip(app_state, request))]
@@ -116,14 +105,7 @@ async fn submit_vote(
         proposal_payload: http_request.proposal_payload,
     };
 
-    let mut client = proto_nats::vote::vote_svc::VoteOnProposalRpcClient::new(
-        app_state.nats_client.clone()
-    );
-
-    match client.send_request(request).await {
-        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
-        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
-    }
+    send_nats_request!(request, app_state)
 }
 
 #[tracing::instrument(skip(app_state))]
@@ -133,14 +115,7 @@ async fn get_season(
 ) -> Result<Response, Infallible> {
     let request = proto_nats::world::GetSeasonRequest {};
 
-    let mut client = proto_nats::world::schedule_svc::GetSeasonRpcClient::new(
-        app_state.nats_client.clone()
-    );
-
-    match client.send_request(request).await {
-        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
-        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
-    }
+    send_nats_request!(request, app_state)
 }
 
 #[tracing::instrument(skip(app_state))]
@@ -152,14 +127,7 @@ async fn get_game_log(
         game_id: Some(game_id)
     };
 
-    let mut client = proto_nats::game_results::summary_svc::GetGameLogRpcClient::new(
-        app_state.nats_client.clone()
-    );
-
-    match client.send_request(request).await {
-        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
-        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
-    }
+    send_nats_request!(request, app_state)
 }
 
 #[tracing::instrument(skip(app_state))]
@@ -171,14 +139,7 @@ async fn season_stats(
         season_id
     };
 
-    let mut client = proto_nats::stats::stats_svc::GetSeasonTotalsRpcClient::new(
-        app_state.nats_client.clone()
-    );
-
-    match client.send_request(request).await {
-        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
-        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
-    }
+    send_nats_request!(request, app_state)
 }
 
 #[tracing::instrument(skip(app_state))]
@@ -195,14 +156,7 @@ async fn recent_stats(
         combatant_ids: http_request.combatant_ids,
     };
 
-    let mut client = proto_nats::stats::stats_svc::GetGameStatlinesRpcClient::new(
-        app_state.nats_client.clone()
-    );
-
-    match client.send_request(request).await {
-        Ok(resp) => Ok(Json(resp.to_http()).into_response()),
-        Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
-    }
+    send_nats_request!(request, app_state)
 }
 
 async fn health_check(_: Request) -> Result<impl IntoResponse, Infallible> {

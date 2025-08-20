@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { getSeasonStore } from '@/stores/Season.ts'
-import { DataTable } from 'datatables.net-vue3'
-import { type Config as DataTableConfig } from 'datatables.net-dt'
+import { computed, onMounted } from 'vue';
+import { getSeasonStore } from '@/stores/Season.ts';
+import { DataTable } from 'datatables.net-vue3';
+import { type Config as DataTableConfig } from 'datatables.net-dt';
 
 const tableData = computed(() => {
     let tableData = [];
@@ -47,7 +47,7 @@ const createdRowCallback = (
     row: HTMLTableRowElement,
     data: any[] | object,
     dataIndex: number,
-    cells: HTMLTableCellElement[]
+    cells: HTMLTableCellElement[],
 ) => {
     const combatant_column_index = 0;
     const combatant_cell = cells[combatant_column_index];
@@ -78,31 +78,26 @@ const tableOptions: DataTableConfig = {
     orderMulti: true,
     order: {
         idx: 2,
-        dir: "desc",
+        dir: 'desc',
     },
     columnDefs: [
         {
-            targets: "_all",
-            orderSequence: ["desc", "asc", ""]
-        }
-    ]
+            targets: '_all',
+            orderSequence: ['desc', 'asc', ''],
+        },
+    ],
 };
 
 onMounted(async () => {
-    await getSeasonStore().fetchLatestWorldState()
-    await getSeasonStore().fetchSeason()
-    await getSeasonStore().fetchSeasonStats()
+    await getSeasonStore().fetchLatestWorldState();
+    await getSeasonStore().fetchSeason();
+    await getSeasonStore().fetchSeasonStats();
 });
 </script>
 
 <template>
     <main>
-        <DataTable
-            id="stats"
-            class="display"
-            :data="tableData"
-            :options="tableOptions"
-        >
+        <DataTable id="stats" class="display" :data="tableData" :options="tableOptions">
             <thead>
                 <tr>
                     <th>Combatant</th>

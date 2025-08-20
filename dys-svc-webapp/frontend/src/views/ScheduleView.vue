@@ -1,42 +1,42 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { DateMessage } from '%/common/date.ts'
-import { getSeasonStore } from '@/stores/Season.ts'
-import type { GameInstance } from '%/services/world/schedule.ts'
+import { onMounted } from 'vue';
+import { DateMessage } from '%/common/date.ts';
+import { getSeasonStore } from '@/stores/Season.ts';
+import type { GameInstance } from '%/services/world/schedule.ts';
 
 const getDateFromDateStr = (dateStr: string): DateMessage => {
-    const parts = dateStr.split('-')
+    const parts = dateStr.split('-');
     return DateMessage.fromJSON({
         year: parseInt(parts[0]),
         month: parseInt(parts[1]),
-        day: parseInt(parts[2])
-    })
-}
+        day: parseInt(parts[2]),
+    });
+};
 
 const dateToStr = (date: DateMessage | undefined): string | undefined => {
     if (!date) {
-        return undefined
+        return undefined;
     }
 
-    return `${date.year}-${date.month.valueOf()}-${date.day}`
-}
+    return `${date.year}-${date.month.valueOf()}-${date.day}`;
+};
 
 const isCurrentDate = (targetDate: DateMessage, currentDate: DateMessage) => {
     return (
         currentDate.year === targetDate.year &&
         currentDate.month === targetDate.month &&
         currentDate.day === targetDate.day
-    )
-}
+    );
+};
 
 const getTeamLogoPath = (teamId: number): string => {
-    const teamName = resolveTeamIdToName(teamId).toLowerCase()
-    return `/images/teams/team_wip_${teamName}.png`
-}
+    const teamName = resolveTeamIdToName(teamId).toLowerCase();
+    return `/images/teams/team_wip_${teamName}.png`;
+};
 
 const resolveTeamIdToName = (teamId: number): string => {
-    return getSeasonStore().worldState.teams[teamId]?.name || "failed to load name";
-}
+    return getSeasonStore().worldState.teams[teamId]?.name || 'failed to load name';
+};
 
 const gameIsFinished = (game: GameInstance): boolean => {
     const gamesOnDate = getSeasonStore().gamesByDate.get(dateToStr(game.date) || '');
@@ -46,8 +46,12 @@ const gameIsFinished = (game: GameInstance): boolean => {
 
     for (const scheduledGame of gamesOnDate) {
         if (scheduledGame.gameId == game.gameId) {
-            return scheduledGame.awayTeamScore != undefined && scheduledGame.awayTeamScore != 0
-                && scheduledGame.homeTeamScore != undefined && scheduledGame.homeTeamScore != 0;
+            return (
+                scheduledGame.awayTeamScore != undefined &&
+                scheduledGame.awayTeamScore != 0 &&
+                scheduledGame.homeTeamScore != undefined &&
+                scheduledGame.homeTeamScore != 0
+            );
         }
     }
 
@@ -66,13 +70,13 @@ const getGameScoreString = (gameId: number): string => {
         }
     }
 
-    return "";
-}
+    return '';
+};
 
 onMounted(async () => {
-    await getSeasonStore().fetchLatestWorldState()
-    await getSeasonStore().fetchSeason()
-})
+    await getSeasonStore().fetchLatestWorldState();
+    await getSeasonStore().fetchSeason();
+});
 </script>
 
 <template>
@@ -84,7 +88,7 @@ onMounted(async () => {
                 :class="[
                     isCurrentDate(getDateFromDateStr(dateStr), getSeasonStore().currentDate)
                         ? 'is-current-day'
-                        : ''
+                        : '',
                 ]"
             >
                 <p class="schedule-day-date">{{ getDateFromDateStr(dateStr).day }}</p>
