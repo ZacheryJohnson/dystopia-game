@@ -15,3 +15,5 @@ impl std::fmt::Display for NatsError {
         f.write_fmt(format_args!("{self:?}"))
     }
 }
+
+impl std::error::Error for NatsError {}

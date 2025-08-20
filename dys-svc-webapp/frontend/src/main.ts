@@ -1,21 +1,21 @@
-import './assets/main.css'
+import './assets/main.css';
 
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-import VueCookies from 'vue-cookies'
+import { createApp } from 'vue';
+import { createPinia } from 'pinia';
+import VueCookies from 'vue-cookies';
 
 import { DataTable } from 'datatables.net-vue3';
 import DataTablesCore from 'datatables.net-dt';
 
 DataTable.use(DataTablesCore);
 
-import App from './App.vue'
-import router from './router'
+import App from './App.vue';
+import router from './router';
 
-const app = createApp(App)
+const app = createApp(App);
 
-app.use(createPinia())
-app.use(router)
-app.use(VueCookies)
+app.use(createPinia());
+app.use(router);
+app.use(VueCookies);
 
-app.mount('#app')
+app.mount('#app');

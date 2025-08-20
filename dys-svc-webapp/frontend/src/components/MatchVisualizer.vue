@@ -1,72 +1,76 @@
 <script setup lang="ts">
-  import {onMounted, onUnmounted, onUpdated} from "vue";
-  import init, { exit, initializeWithCanvas, loadGameLog } from "@/assets/matchvisualizer.js"
-  import {getMatchVisualizerStore} from "@/stores/MatchVisualizer";
-  import type {WorldStateResponse} from "%/services/world/world.ts";
+import { onMounted, onUpdated } from 'vue';
+import init, { exit, initializeWithCanvas, loadGameLog } from '@/assets/matchvisualizer.js';
+import { getMatchVisualizerStore } from '@/stores/MatchVisualizer';
+import { type WorldStateResponse } from '%/services/world/world.ts';
 
-  import * as pako from "pako";
-  import { fetchApi } from '@/utils.ts'
+import * as pako from 'pako';
+import { fetchApi } from '@/utils.ts';
 
-  const matchVisualizerStore = getMatchVisualizerStore();
+const matchVisualizerStore = getMatchVisualizerStore();
 
-  const props = defineProps([
-     "gameLogData"
-  ]);
+const props = defineProps(['gameLogData']);
 
-  defineEmits(['close'])
+defineEmits(['close']);
 
-  onMounted(async () => {
+onMounted(async () => {
     if (!matchVisualizerStore.hasWasmLoaded) {
-      const worldStateResponse: WorldStateResponse = await fetchApi("world_state");
-      matchVisualizerStore.worldStateBytes = worldStateResponse.worldStateJson!;
+        const worldStateResponse: WorldStateResponse = await (await fetchApi('world_state')).json();
+        matchVisualizerStore.worldStateBytes = worldStateResponse.worldStateJson!;
 
-      const compressedWasm = await (await fetch("/matchvisualizer_opt.wasm.gz")).bytes();
-      const decompressedWasm = pako.ungzip(compressedWasm);
+        const compressedWasm = await (await fetch('/matchvisualizer_opt.wasm.gz')).bytes();
+        const decompressedWasm = pako.ungzip(compressedWasm);
 
-      await init(decompressedWasm)
-        .catch(err => {
-          if (!err.message.startsWith("Using exceptions for control flow,")) {
-            throw err;
-          }
+        await init(decompressedWasm).catch((err) => {
+            if (!err.message.startsWith('Using exceptions for control flow,')) {
+                throw err;
+            }
         });
-      matchVisualizerStore.hasWasmLoaded = true;
+        matchVisualizerStore.hasWasmLoaded = true;
 
-      try {
-        // This will block! Do nothing after this.
-        initializeWithCanvas("#match-visualizer");
-      }
-      catch (ex: any) {
-        if (!ex.message.startsWith("Using exceptions for control flow,")) {
-          throw ex;
+        try {
+            // This will block! Do nothing after this.
+            initializeWithCanvas('#match-visualizer');
+        } catch (ex: any) {
+            if (!ex.message.startsWith('Using exceptions for control flow,')) {
+                throw ex;
+            }
         }
-      }
     }
-  });
+});
 
-  onUpdated(async () => {
+onUpdated(async () => {
     if (props.gameLogData.length === 0) {
-      return;
+        return;
     }
 
     loadGameLog(props.gameLogData, matchVisualizerStore.worldStateBytes.valueOf());
-  });
+});
 </script>
 
 <template>
-  <div class="overlay" @click="() => { exit(); $emit('close'); }">
-    <div class="modal">
-      <canvas id="match-visualizer"></canvas>
+    <div
+        class="overlay"
+        @click="
+            () => {
+                exit();
+                $emit('close');
+            }
+        "
+    >
+        <div class="modal">
+            <canvas id="match-visualizer"></canvas>
+        </div>
     </div>
-  </div>
 </template>
 
 <style scoped>
-  .hidden {
+.hidden {
     transform: translateY(-200%) !important;
     display: none;
-  }
+}
 
-  .modal {
+.modal {
     display: flex;
     flex-direction: column;
 
@@ -83,9 +87,9 @@
     border-radius: 10px;
     background-color: darkgray;
     z-index: 10;
-  }
+}
 
-  .overlay {
+.overlay {
     display: block;
     position: fixed;
     top: 0;
@@ -93,9 +97,9 @@
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
-  }
+}
 
-  #match-visualizer {
+#match-visualizer {
     padding: 5px;
     margin: 0 auto;
     max-width: 100%;
@@ -109,5 +113,5 @@
     user-select: none;
     outline: none;
     -webkit-tap-highlight-color: rgba(255, 255, 255, 0); /* mobile webkit */
-  }
+}
 </style>
