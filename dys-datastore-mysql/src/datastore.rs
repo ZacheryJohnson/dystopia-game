@@ -112,7 +112,7 @@ mod tests {
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
     use lazy_static::{lazy_static};
-    use sqlx::{Execute, MySql, Row};
+    use sqlx::Row;
     use sqlx::mysql::MySqlConnectOptions;
     use super::{Datastore, MySqlDatastore, MySqlQuery};
 
@@ -155,7 +155,7 @@ mod tests {
             value: i64
         }
         impl MySqlQuery for TestQuery {
-            fn query(&mut self) -> impl Execute<MySql> {
+            fn query(&mut self) -> impl sqlx::Execute<'_, sqlx::MySql> {
                 sqlx::query!("SELECT ? as col", self.value)
             }
         }
@@ -177,7 +177,7 @@ mod tests {
             value: i64,
         }
         impl MySqlQuery for TestQuery {
-            fn query(&mut self) -> impl Execute<MySql> {
+            fn query(&mut self) -> impl sqlx::Execute<'_, sqlx::MySql> {
                 sqlx::query!("SELECT ? as col", self.value)
             }
         }
@@ -205,7 +205,7 @@ mod tests {
             value: i64,
         }
         impl MySqlQuery for TestQuery {
-            fn query(&mut self) -> impl Execute<MySql> {
+            fn query(&mut self) -> impl sqlx::Execute<'_, sqlx::MySql> {
                 sqlx::query!("SELECT ? as col WHERE 1 = 2", self.value)
             }
         }
@@ -228,7 +228,7 @@ mod tests {
             value_2: i64,
         }
         impl MySqlQuery for TestQuery {
-            fn query(&mut self) -> impl Execute<MySql> {
+            fn query(&mut self) -> impl sqlx::Execute<'_, sqlx::MySql> {
                 sqlx::query!("SELECT ? as col UNION SELECT ? as col", self.value_1, self.value_2)
             }
         }
@@ -269,7 +269,7 @@ mod tests {
             value_2: i64,
         }
         impl MySqlQuery for TestQuery {
-            fn query(&mut self) -> impl Execute<MySql> {
+            fn query(&mut self) -> impl sqlx::Execute<'_, sqlx::MySql> {
                 sqlx::query!("SELECT ? as col WHERE 1 = 2 UNION SELECT ? as col WHERE 1 = 2",
                     self.value_1,
                     self.value_2

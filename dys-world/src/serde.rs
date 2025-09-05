@@ -13,7 +13,7 @@ where
     S: Serializer,
 {
     let mut seq = s.serialize_seq(Some(combatants.len()))?;
-    for (_, combatant) in combatants {
+    for combatant in combatants.values() {
         seq.serialize_element(&*combatant.lock().unwrap())?;
     }
     seq.end()
@@ -41,7 +41,7 @@ where
     S: Serializer,
 {
     let mut seq = s.serialize_seq(Some(teams.len()))?;
-    for (_, team) in teams {
+    for team in teams.values() {
         seq.serialize_element(&*team.lock().unwrap())?;
     }
     seq.end()

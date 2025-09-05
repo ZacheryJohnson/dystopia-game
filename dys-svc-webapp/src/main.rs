@@ -8,7 +8,7 @@ use dys_observability::logger::LoggerOptions;
 use tower::ServiceBuilder;
 use tower_http::services::{ServeDir, ServeFile};
 use dys_nats::rpc::client::NatsRpcClient;
-use dys_nats::connection::make_client;
+use dys_nats::connection::{make_client, ConnectionConfig};
 use dys_observability::middleware::handle_shutdown_signal;
 
 use dys_protocol::http as proto_http;
@@ -76,7 +76,7 @@ async fn create_account(
     };
 
     let request = proto_nats::auth::CreateAccountRequest {
-        account_name: http_request.account_name.to_owned(),
+        account_name: http_request.account_name.clone(),
     };
 
     send_nats_request!(request, app_state)
@@ -175,7 +175,7 @@ async fn main() {
     tracing::info!("Starting server...");
     let dist_path = std::env::var("DIST_PATH").unwrap_or(DEFAULT_DIST_PATH.to_string());
 
-    let nats_client = make_client(Default::default()).await;
+    let nats_client = make_client(ConnectionConfig::default()).await;
 
     let app_state = AppState {
         nats_client,

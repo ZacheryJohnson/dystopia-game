@@ -92,7 +92,7 @@ pub fn satisfiable_impl(input: TokenStream) -> TokenStream {
     let tester_struct_ident = format_ident!("{}Test", concrete_ident);
     let satisfiable_struct_name = format_ident!("Satisfiable{}", concrete_ident);
 
-    let gen = quote! {
+    let generated = quote! {
         use dyn_clone::DynClone;
 
         pub trait #cloneable_test_trait_ident: DynClone + std::fmt::Debug + SatisfiabilityTest<ConcreteT=#concrete_ident> {}
@@ -148,5 +148,5 @@ pub fn satisfiable_impl(input: TokenStream) -> TokenStream {
         }
     };
 
-    gen.into()
+    generated.into()
 }

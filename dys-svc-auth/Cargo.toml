@@ -3,6 +3,9 @@ name = "dys-svc-auth"
 version = "0.1.0"
 edition = "2024"
 
+[lints]
+workspace = true
+
 [dependencies]
 dys-nats = { path = "../dys-nats" }
 dys-observability = { path = "../dys-observability" }

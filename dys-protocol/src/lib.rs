@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic)]
+
 #[cfg(feature = "http")]
 #[path = "../generated/http/mod.rs"]
 pub mod http;

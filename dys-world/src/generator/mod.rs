@@ -62,6 +62,7 @@ impl Generator {
         }
     }
 
+    #[allow(clippy::unused_self)]
     fn generate_limbs(&self, rng: &mut impl Rng) -> Vec<Limb> {
         let mut generate_value_around_fn = |mean| {
             let normal_distribution = Normal::new(mean, 3.0).unwrap();
@@ -444,9 +445,9 @@ impl Generator {
             let swap_fixed_matchup = series_idx % 2 >= 1;
             let swap_alt_matchup = series_idx % 4 >= 2;
 
-            let fixed_opponent = rotating_teams.pop().unwrap().to_owned();
-            let alt_opponent_1 = rotating_teams.pop().unwrap().to_owned();
-            let alt_opponent_2 = rotating_teams.pop().unwrap().to_owned();
+            let fixed_opponent = rotating_teams.pop().unwrap().clone();
+            let alt_opponent_1 = rotating_teams.pop().unwrap().clone();
+            let alt_opponent_2 = rotating_teams.pop().unwrap().clone();
 
             let mut fixed_series_games = vec![];
             let mut alt_series_games = vec![];
@@ -528,14 +529,14 @@ impl Generator {
             let proposal_id = (proposal_id + 1) as u64;
 
             let team_instance = team.lock().unwrap();
-            let team_name = team_instance.name.to_owned();
+            let team_name = team_instance.name.clone();
 
             let combatants = team_instance.combatants.clone().into_iter()
                 .take(3)
                 .collect::<Vec<Arc<Mutex<CombatantInstance>>>>();
-            let combatant_1_name = combatants[0].lock().unwrap().name.to_owned();
-            let combatant_2_name = combatants[1].lock().unwrap().name.to_owned();
-            let combatant_3_name = combatants[2].lock().unwrap().name.to_owned();
+            let combatant_1_name = combatants[0].lock().unwrap().name.clone();
+            let combatant_2_name = combatants[1].lock().unwrap().name.clone();
+            let combatant_3_name = combatants[2].lock().unwrap().name.clone();
 
             proposals.push(
                 Proposal {
@@ -546,7 +547,7 @@ impl Generator {
                         ProposalOption {
                             id: 1,
                             name: combatant_1_name,
-                            description: "".to_string(),
+                            description: String::new(),
                             effects: vec![
                                 ProposalEffect::CombatantTemporaryAttributeBonus {
                                     combatant_instance_id: combatants[0].lock().unwrap().id,
@@ -557,7 +558,7 @@ impl Generator {
                         ProposalOption {
                             id: 2,
                             name: combatant_2_name,
-                            description: "".to_string(),
+                            description: String::new(),
                             effects: vec![
                                 ProposalEffect::CombatantTemporaryAttributeBonus {
                                     combatant_instance_id: combatants[1].lock().unwrap().id,
@@ -568,7 +569,7 @@ impl Generator {
                         ProposalOption {
                             id: 3,
                             name: combatant_3_name,
-                            description: "".to_string(),
+                            description: String::new(),
                             effects: vec![
                                 ProposalEffect::CombatantTemporaryAttributeBonus {
                                     combatant_instance_id: combatants[2].lock().unwrap().id,

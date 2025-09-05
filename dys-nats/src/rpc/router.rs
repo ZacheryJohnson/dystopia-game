@@ -5,7 +5,7 @@ use async_nats::HeaderMap;
 use bytes::Bytes;
 use futures::stream::StreamExt;
 use tracing::Instrument;
-use crate::connection::make_client;
+use crate::connection::{make_client, ConnectionConfig};
 use crate::error::NatsError;
 use crate::otel::create_span_from;
 use crate::rpc::server::NatsRpcServer;
@@ -37,10 +37,11 @@ pub struct NatsRouter {
 
 impl NatsRouter {
     pub async fn new() -> NatsRouter {
-        let client = make_client(Default::default()).await;
+        let client = make_client(ConnectionConfig::default()).await;
         NatsRouter { client, services: Vec::new() }
     }
 
+    #[must_use]
     pub fn service(
         mut self,
         service: (
@@ -63,7 +64,6 @@ impl NatsRouter {
     }
 
     pub async fn run(mut self) -> ! {
-        let services = std::mem::take(&mut self.services);
         struct AppState {
             should_shutdown: bool,
             has_begun_shutdown: bool,
@@ -74,6 +74,8 @@ impl NatsRouter {
             has_begun_shutdown: false,
         }));
 
+        let services = std::mem::take(&mut self.services);
+
         let mut thread_handles = vec![];
         for mut service in services {
             tracing::info!(
@@ -81,8 +83,8 @@ impl NatsRouter {
                 service.rpc_subject
             );
 
-            let mut subscriber = self.client.subscribe(service.rpc_subject.to_owned()).await.unwrap();
-            let nats_client = self.client.to_owned();
+            let mut subscriber = self.client.subscribe(service.rpc_subject.clone()).await.unwrap();
+            let nats_client = self.client.clone();
             let shutdown_signal = shutdown_signal.clone();
             thread_handles.push(tokio::spawn(async move {
                 let shutdown_signal = shutdown_signal.clone();
@@ -104,7 +106,7 @@ impl NatsRouter {
                     // If we go some duration without new messages, look for shutdown signals
                     while let Ok(Some(message)) = tokio::time::timeout(Duration::from_millis(10), subscriber.next()).await {
                         let reply_subject = message.reply.as_ref().unwrap().to_owned();
-                        let span = create_span_from(&message).expect("failed to create span");
+                        let span = create_span_from(&message);
 
                         let (response_payload, headers) = {
                             match service
@@ -154,14 +156,14 @@ impl NatsRouter {
         let terminate = std::future::pending::<()>();
 
         tokio::select! {
-            _ = ctrl_c => {
+            () = ctrl_c => {
                 tracing::info!("Shutdown signal received, beginning shut down...");
                 *shutdown_signal.clone().lock().unwrap() = AppState {
                     should_shutdown: true,
                     has_begun_shutdown: false,
                 };
             },
-            _ = terminate => {
+            () = terminate => {
                 tracing::info!("Shutdown signal received, beginning shut down...");
                 *shutdown_signal.clone().lock().unwrap() = AppState {
                     should_shutdown: true,

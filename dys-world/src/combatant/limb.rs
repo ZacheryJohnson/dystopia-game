@@ -126,12 +126,12 @@ impl AttributeSource for Limb {
 
         let self_attributes: Vec<AttributeInstance> = self.modifiers
             .iter()
-            .map(|modifier| modifier.attributes())
+            .map(AttributeSource::attributes)
             .fold(vec![], |mut acc, mut stats| { acc.append(&mut stats); acc } );
 
         let child_attributes: Vec<AttributeInstance> = self.child_limbs
             .iter()
-            .map(|limb| limb.attributes())
+            .map(AttributeSource::attributes)
             .fold(vec![], |mut acc, mut stats| { acc.append(&mut stats); acc } );
 
         for attribute in self_attributes.iter().chain(child_attributes.iter()) {
@@ -143,7 +143,7 @@ impl AttributeSource for Limb {
 
         stat_map
             .iter()
-            .map(|(attribute_type, value)| AttributeInstance::new(attribute_type.to_owned(), *value) )
+            .map(|(attribute_type, value)| AttributeInstance::new(attribute_type.to_owned(), *value))
             .collect()
     }
 }

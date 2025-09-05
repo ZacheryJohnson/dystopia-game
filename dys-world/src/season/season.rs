@@ -43,7 +43,7 @@ impl Season {
         self
             .games
             .values()
-            .map(|game_arc| Arc::downgrade(game_arc))
+            .map(Arc::downgrade)
             .collect()
     }
 

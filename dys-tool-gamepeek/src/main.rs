@@ -68,7 +68,9 @@ impl eframe::App for GamePeekApp {
                     game_state.simulation_config.ticks_per_game()
                 };
 
-                let manually_ticked_count = self.simmed_ticks.len() as u32;
+                let Ok(manually_ticked_count) = u32::try_from(self.simmed_ticks.len()) else {
+                    panic!("shocking large amount of ticks in simulation (> u32::MAX)");
+                };
 
                 for _ in manually_ticked_count..total_tick_count {
                     self.tick();
@@ -186,8 +188,8 @@ fn main() -> eframe::Result {
             Game {
                 game_instance: GameInstance {
                     game_id: 0,
-                    away_team: world.teams[&0].to_owned(),
-                    home_team: world.teams[&1].to_owned(),
+                    away_team: world.teams[&0].clone(),
+                    home_team: world.teams[&1].clone(),
                     // arena: Arc::new(Mutex::new(Arena::new_with_testing_defaults())),
                     arena_id: 0,
                     date: Date::new(Arguscorp, 1, 1000),

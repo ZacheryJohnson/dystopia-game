@@ -4,13 +4,13 @@ use tracing::{info_span, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub struct NatsHeaderExtractor<'a>(pub &'a HeaderMap);
-impl<'a> Extractor for NatsHeaderExtractor<'a> {
-    /// Get a value for a key from the HeaderMap.  If the value is not valid ASCII, returns None.
+impl Extractor for NatsHeaderExtractor<'_> {
+    /// Get a value for a key from the `HeaderMap`.  If the value is not valid ASCII, returns None.
     fn get(&self, key: &str) -> Option<&str> {
         self.0.get(key).map(|value| value.as_str())
     }
 
-    /// Collect all the keys from the HeaderMap.
+    /// Collect all the keys from the `HeaderMap`.
     fn keys(&self) -> Vec<&str> {
         self.0
             .iter()
@@ -20,7 +20,7 @@ impl<'a> Extractor for NatsHeaderExtractor<'a> {
 }
 
 pub struct NatsHeaderInjector<'a>(pub &'a mut HeaderMap);
-impl<'a> Injector for NatsHeaderInjector<'a> {
+impl Injector for NatsHeaderInjector<'_> {
     fn set(&mut self, key: &str, value: String) {
         self.0.insert(key, value);
     }
@@ -38,7 +38,7 @@ pub fn propagate_otel_context(header_map: &mut HeaderMap) {
     });
 }
 
-pub fn create_span_from(message: &async_nats::Message) -> Option<Span> {
+pub fn create_span_from(message: &async_nats::Message) -> Span {
     let headers = match &message.headers {
         Some(headers) => headers,
         None => &HeaderMap::default(),
@@ -50,5 +50,5 @@ pub fn create_span_from(message: &async_nats::Message) -> Option<Span> {
 
     let new_span = info_span!("NATS");
     new_span.set_parent(context);
-    Some(new_span)
+    new_span
 }

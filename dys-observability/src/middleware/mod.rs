@@ -50,7 +50,7 @@ pub async fn handle_shutdown_signal() {
     let terminate = std::future::pending::<()>();
 
     tokio::select! {
-        _ = ctrl_c => { tracing::warn!("received ctrl+c...") },
-        _ = terminate => { tracing::warn!("received terminate...") },
+        () = ctrl_c => { tracing::warn!("received ctrl+c...") },
+        () = terminate => { tracing::warn!("received terminate...") },
     }
 }

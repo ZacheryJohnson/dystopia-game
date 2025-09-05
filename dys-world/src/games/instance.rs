@@ -7,8 +7,8 @@ use crate::schedule::calendar::Date;
 
 pub type GameInstanceId = u32;
 
-/// GameInstances are games that are scheduled between two teams.
-/// The games may or may not have already been simulated.
+/// A `GameInstance` is a game that is scheduled between two teams.
+/// The game may or may not have already been simulated.
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 pub struct GameInstance {

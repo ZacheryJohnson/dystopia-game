@@ -23,13 +23,13 @@ opt-level = "z"
 # -----------------------
 # Build dependencies
 # -----------------------
-build-deps = "0.1.4"
-tonic-build = "0.13"
+tonic-prost = "0.14.2"
+tonic-prost-build = "0.14.2"
 
 # -----------------------
 # Dev dependencies
 # -----------------------
-criterion = "0.6.0"
+criterion = "0.7.0"
 
 # -----------------------
 # Runtime dependencies
@@ -68,14 +68,23 @@ serde_json = { version = "1.0.120" }
 sqlx = { version = "0.8.6", features = ["mysql", "runtime-tokio", "bigdecimal"] }
 ts-rs = { version = "11.0.1", features = ["serde-json-impl", "no-serde-warnings"] }
 tokio = { version = "1.40", features = ["full"] }
-# ZJ-TODO: until a release after tonic 0.13.1, we need to pull straight from master
-# Otherwise, Tonic references an older version of prost-build
-# tonic = "0.13.1"
-tonic = { git = "https://github.com/hyperium/tonic.git", rev = "e58aec1985d8b5e4ac391a11372801df8b1701ae" }
+tonic = "0.14.2"
 tower = { version = "0.5.2", features = ["full"] }
 tower-http = { version = "0.6.6", features = ["fs", "trace"] }
 tracing = { version = "0.1.40", features = ["attributes", "log"] }
 tracing-opentelemetry = "0.31.0"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter", "json"] }
-wasm-bindgen = "0.2.100"
+wasm-bindgen = "=0.2.100"
 web-time = "1.1.0"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+
+# https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+must_use_candidate = "allow"
+
+# https://rust-lang.github.io/rust-clippy/master/index.html#missing_panics_doc
+missing_panics_doc = "allow"
+
+# https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure_for_method_calls
+redundant_closure_for_method_calls = "allow"

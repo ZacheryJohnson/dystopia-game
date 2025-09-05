@@ -40,7 +40,7 @@ impl CombatantInstance {
     }
 
     pub fn tick_effects(&mut self) {
-        for effect in self.effect_modifiers.iter_mut() {
+        for effect in &mut self.effect_modifiers {
             match effect.duration {
                 EffectDuration::NumberOfMatches(n) => {
                     effect.duration = EffectDuration::NumberOfMatches(if n > 0 {n - 1} else {0});

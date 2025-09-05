@@ -1,6 +1,6 @@
 use std::ffi::OsStr;
 use std::io::{Result, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use prost_build::{Service, ServiceGenerator};
 
 const BASE_OUTPUT_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/generated");
@@ -31,7 +31,7 @@ fn get_proto_includes() -> Vec<String> {
     includes
 }
 
-fn build_http(output_dir: PathBuf) -> Result<()> {
+fn build_http(output_dir: &Path) -> Result<()> {
     let output_dir = output_dir.join("http");
 
     // Empty any existing generated files
@@ -40,7 +40,7 @@ fn build_http(output_dir: PathBuf) -> Result<()> {
     }
     std::fs::create_dir(output_dir.clone())?;
 
-    tonic_build::configure()
+    tonic_prost_build::configure()
         .out_dir(output_dir.clone())
         .build_server(true)
         .build_client(true)
@@ -54,7 +54,7 @@ fn build_http(output_dir: PathBuf) -> Result<()> {
 
     let mut generated_mod_file = std::fs::File::create(output_dir.join("mod.rs"))?;
     generated_mod_file
-        .write_all("#![allow(clippy::all)]\n".as_bytes())
+        .write_all("#![allow(clippy::all, clippy::pedantic)]\n".as_bytes())
         .expect("failed to write Clippy ignore to generated mod.rs");
 
     for generated_proto_file in walkdir::WalkDir::new(output_dir) {
@@ -114,8 +114,7 @@ impl <RESPONSE_TYPE> {
             );
         }
 
-        buf.push_str(
-            r#"
+        buf.push_str("
 pub mod <SERVICE_NAME>_svc {
     use std::future::Future;
     use std::pin::Pin;
@@ -141,7 +140,7 @@ pub mod <SERVICE_NAME>_svc {
             }
         }
     }
-"#
+"
                 .replace("<SERVICE_NAME>", service.name.to_ascii_lowercase().as_str())
                 .as_str()
         );
@@ -248,7 +247,7 @@ pub mod <SERVICE_NAME>_svc {
     }
 }
 
-fn build_nats(output_dir: PathBuf) -> Result<()> {
+fn build_nats(output_dir: &Path) -> Result<()> {
     let output_dir = output_dir.join("nats");
 
     // Empty any existing generated files
@@ -268,7 +267,7 @@ fn build_nats(output_dir: PathBuf) -> Result<()> {
 
     let mut generated_mod_file = std::fs::File::create(output_dir.join("mod.rs"))?;
     generated_mod_file
-        .write_all("#![allow(clippy::all)]\n".as_bytes())
+        .write_all("#![allow(clippy::all, clippy::pedantic)]\n".as_bytes())
         .expect("failed to write Clippy ignore to generated mod.rs");
 
     for generated_proto_file in walkdir::WalkDir::new(output_dir) {
@@ -302,16 +301,19 @@ fn main() -> Result<()> {
     let output_dir = PathBuf::from(BASE_OUTPUT_DIR);
 
     // Empty any existing generated files
-    if std::fs::exists(output_dir.clone())? {
-        std::fs::remove_dir_all(output_dir.clone())?;
+    #[cfg(any(feature = "http", feature = "nats"))]
+    {
+        if std::fs::exists(output_dir.clone())? {
+            std::fs::remove_dir_all(output_dir.clone())?;
+        }
+        std::fs::create_dir(output_dir.clone())?;
     }
-    std::fs::create_dir(output_dir.clone())?;
 
     #[cfg(feature = "http")]
-    build_http(output_dir.clone())?;
+    build_http(&output_dir)?;
 
     #[cfg(feature = "nats")]
-    build_nats(output_dir.clone())?;
+    build_nats(&output_dir)?;
 
     Ok(())
 }
