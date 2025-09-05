@@ -22,7 +22,7 @@ impl From<AttributeInstance> for (AttributeType, AttributeValueT) {
 
 impl From<AttributeInstance> for AttributeType {
     fn from(value: AttributeInstance) -> Self {
-        value.0.to_owned()
+        value.0.clone()
     }
 }
 

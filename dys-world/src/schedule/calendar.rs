@@ -12,6 +12,13 @@ pub enum Month {
 
 impl PartialOrd for Month {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        // We will never return None when comparing, so just unwrap that value
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Month {
+    fn cmp(&self, other: &Self) -> Ordering {
         let mut found_self;
         let mut found_other;
 
@@ -20,22 +27,15 @@ impl PartialOrd for Month {
             found_other = other == month;
 
             if found_self && found_other {
-                return Some(Ordering::Equal);
+                return Ordering::Equal;
             } else if found_self {
-                return Some(Ordering::Less);
+                return Ordering::Less;
             } else if found_other {
-                return Some(Ordering::Greater);
+                return Ordering::Greater;
             }
         }
 
         panic!("unable to find month, which breaks PartialOrd + Ord")
-    }
-}
-
-impl Ord for Month {
-    fn cmp(&self, other: &Self) -> Ordering {
-        // We will never return None when partial comparing, so just unwrap that value
-        self.partial_cmp(other).unwrap()
     }
 }
 
@@ -102,9 +102,9 @@ impl Date {
             if self.month() == *month {
                 day_count += self.day();
                 break;
-            } else {
-                day_count += month.days();
             }
+
+            day_count += month.days();
         }
 
         day_count

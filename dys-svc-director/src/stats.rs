@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use sqlx::{Execute, MySql, Row};
+use sqlx::{Row};
 use dys_datastore_mysql::fetch_all_query;
 use dys_datastore_mysql::query::MySqlQuery;
 use dys_nats::error::NatsError;
@@ -15,7 +15,7 @@ struct GetSeasonTotalsQuery {
 }
 
 impl MySqlQuery for GetSeasonTotalsQuery {
-    fn query(&mut self) -> impl Execute<MySql> {
+    fn query(&mut self) -> impl sqlx::Execute<'_, sqlx::MySql> {
         sqlx::query!("
             SELECT
                 combatant_id,
@@ -40,7 +40,7 @@ struct GetRecentGamesQuery {
 }
 
 impl MySqlQuery for GetRecentGamesQuery {
-    fn query(&mut self) -> impl Execute<MySql> {
+    fn query(&mut self) -> impl sqlx::Execute<'_, sqlx::MySql> {
         sqlx::query!("
             SELECT
                 game_id,

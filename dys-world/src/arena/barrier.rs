@@ -25,6 +25,7 @@ pub struct ArenaBarrier {
 }
 
 impl ArenaBarrier {
+    #[must_use]
     pub fn new(
         origin: Vector3<f32>,
         size: Vector3<f32>,
@@ -66,7 +67,7 @@ impl ArenaFeature for ArenaBarrier {
         };
 
         let collider = ColliderBuilder::new(self.shape.clone())
-            .mass(100000.0)
+            .mass(100_000.0)
             .restitution(restitution)
             .friction(friction)
             .build();

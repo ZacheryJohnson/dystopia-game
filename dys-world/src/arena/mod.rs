@@ -1,5 +1,4 @@
 use std::fmt::{Debug, Formatter};
-use std::ops::Deref;
 use nalgebra::Quaternion;
 use rapier3d::{na::vector, prelude::*};
 
@@ -119,7 +118,7 @@ impl Arena {
         self
             .all_features
             .iter()
-            .map(|feature| feature.deref())
+            .map(|feature| &**feature)
             .collect()
     }
 

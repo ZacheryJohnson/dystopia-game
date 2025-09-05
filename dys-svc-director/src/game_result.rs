@@ -61,7 +61,7 @@ pub async fn get_summaries(
         let wins = raw_values[0].unwrap_or(0);
         let losses = raw_values[1].unwrap_or(0);
 
-        team_records.insert(key.rsplit(":").next().unwrap().to_string(), (wins, losses));
+        team_records.insert(key.rsplit(':').next().unwrap().to_string(), (wins, losses));
     }
 
     let mut next_games = Vec::new();

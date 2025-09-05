@@ -3,7 +3,7 @@ pub use redis::AsyncCommands;
 pub use redis::AsyncIter;
 pub use redis::ExpireOption;
 
-use redis::{Client, ConnectionAddr, ConnectionInfo, IntoConnectionInfo, RedisConnectionInfo, RedisResult};
+use redis::{Client, ConnectionAddr, ConnectionInfo, IntoConnectionInfo, ProtocolVersion, RedisConnectionInfo, RedisResult};
 use dys_datastore::datastore::Datastore;
 
 #[derive(Debug)]
@@ -43,7 +43,7 @@ impl IntoConnectionInfo for ValkeyConfig {
                 db: 0,
                 username: Some(self.user),
                 password: Some(self.pass),
-                protocol: Default::default(),
+                protocol: ProtocolVersion::default(),
             }
         })
     }

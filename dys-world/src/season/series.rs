@@ -51,12 +51,12 @@ impl Series {
     pub fn games(&self) -> Vec<Weak<Mutex<GameInstance>>> {
         self
             .games
-            .iter()
-            .map(|(_, game)| game.to_owned())
+            .values()
+            .map(|game| game.to_owned())
             .collect()
     }
 
     pub fn series_type(&self) -> SeriesType {
-        self.series_type.to_owned()
+        self.series_type.clone()
     }
 }

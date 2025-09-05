@@ -3,6 +3,9 @@ name = "dys-nats"
 version = "0.1.0"
 edition = "2024"
 
+[lints]
+workspace = true
+
 [dependencies]
 async-nats.workspace = true
 bytes.workspace = true

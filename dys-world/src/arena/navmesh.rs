@@ -23,32 +23,32 @@ pub struct ArenaNavmeshConfig {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ArenaNavmeshNode {
-    x_pos: OrderedFloat<f32>,
-    y_pos: OrderedFloat<f32>,
-    z_pos: OrderedFloat<f32>,
+    x: OrderedFloat<f32>,
+    y: OrderedFloat<f32>,
+    z: OrderedFloat<f32>,
 }
 
 impl ArenaNavmeshNode {
     pub fn from_point(point: Point<f32>) -> ArenaNavmeshNode {
         ArenaNavmeshNode {
-            x_pos: OrderedFloat::from(point.x),
-            y_pos: OrderedFloat::from(point.y),
-            z_pos: OrderedFloat::from(point.z),
+            x: OrderedFloat::from(point.x),
+            y: OrderedFloat::from(point.y),
+            z: OrderedFloat::from(point.z),
         }
     }
 
     pub fn as_point(&self) -> Point<f32> {
-        point![*self.x_pos, *self.y_pos, *self.z_pos]
+        point![*self.x, *self.y, *self.z]
     }
 
     pub fn as_vector(&self) -> Vector3<f32> {
-        vector![*self.x_pos, *self.y_pos, *self.z_pos]
+        vector![*self.x, *self.y, *self.z]
     }
 }
 
 impl Display for ArenaNavmeshNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(format!("({}, {}, {})", self.x_pos, self.y_pos, self.z_pos).as_str())
+        f.write_str(format!("({}, {}, {})", self.x, self.y, self.z).as_str())
     }
 }
 
@@ -178,7 +178,7 @@ impl ArenaNavmesh {
                 let maybe_neighbor_node = ArenaNavmeshNode::from_point(neighbor_point);
                 if graph.contains_node(maybe_neighbor_node) {
                     new_edges.push((node, maybe_neighbor_node, weight));
-                };
+                }
             }
         }
 
@@ -302,9 +302,9 @@ mod tests {
 
         assert!(closest_node.is_some());
 
-        test_f32_eq(*closest_node.unwrap().x_pos, 1.0_f32);
-        test_f32_eq(*closest_node.unwrap().y_pos, 0.0_f32);
-        test_f32_eq(*closest_node.unwrap().z_pos, 1.0_f32);
+        test_f32_eq(*closest_node.unwrap().x, 1.0_f32);
+        test_f32_eq(*closest_node.unwrap().y, 0.0_f32);
+        test_f32_eq(*closest_node.unwrap().z, 1.0_f32);
     }
 
     #[test]

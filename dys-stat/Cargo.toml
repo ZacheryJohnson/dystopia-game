@@ -3,6 +3,9 @@ name = "dys-stat"
 version = "0.1.0"
 edition = "2024"
 
+[lints]
+workspace = true
+
 [dependencies]
 dys-simulation = { path = "../dys-simulation" }
 dys-world = { path = "../dys-world" }

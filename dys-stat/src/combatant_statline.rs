@@ -24,7 +24,7 @@ impl CombatantStatline {
             .ticks()
             .iter()
             .filter(|tick| tick.tick_number <= through_tick.unwrap_or(GameTickNumber::MAX))
-            .flat_map(|tick| tick.simulation_events.to_owned())
+            .flat_map(|tick| tick.simulation_events.clone())
             .collect::<Vec<_>>();
 
         let points_scored = GameStatPointsScored

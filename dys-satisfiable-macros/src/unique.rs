@@ -22,18 +22,17 @@ pub fn unique_impl(input: TokenStream) -> TokenStream {
         variant_to_hasher_token_streams.insert(variant_ident.to_owned(), vec![]);
 
         for field in &variant.fields {
-            let mut has_unique_attr = false;
-            for attr in &field.attrs {
-                if let Some(segment) = attr.meta.path().segments.first() {
-                    if segment.ident == "unique" {
-                        has_unique_attr = true;
-                    }
+            let has_unique_attr = field.attrs.iter().any(|attr| {
+                if let Some(segment) = attr.meta.path().segments.first() && segment.ident == "unique" {
+                    true
+                } else {
+                    false
                 }
-            }
+            });
 
             if has_unique_attr {
                 let ident = field.ident.as_ref().unwrap();
-                variant_to_unique_idents.get_mut(variant_ident).unwrap().push(field.ident.to_owned().unwrap().into_token_stream());
+                variant_to_unique_idents.get_mut(variant_ident).unwrap().push(field.ident.clone().unwrap().into_token_stream());
                 variant_to_hasher_token_streams.get_mut(variant_ident).unwrap().push(quote! {
                     hasher.write_u64(#ident.to_owned() as u64);
                 });
@@ -54,7 +53,7 @@ pub fn unique_impl(input: TokenStream) -> TokenStream {
         });
     }
 
-    let gen = quote!{
+    let generated = quote!{
         use std::hash::Hasher;
         use ahash::AHasher;
 
@@ -68,5 +67,5 @@ pub fn unique_impl(input: TokenStream) -> TokenStream {
         }
     };
 
-    gen.into()
+    generated.into()
 }

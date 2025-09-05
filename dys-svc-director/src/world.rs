@@ -1,7 +1,6 @@
 use std::sync::{Arc, Mutex};
 use rand::prelude::StdRng;
 use rand::SeedableRng;
-use sqlx::{Execute, MySql};
 use dys_datastore_mysql::datastore::MySqlDatastore;
 use dys_datastore_mysql::execute_query;
 use dys_datastore_mysql::query::MySqlQuery;
@@ -17,7 +16,7 @@ pub struct InsertSeasonQuery {
 }
 
 impl MySqlQuery for InsertSeasonQuery {
-    fn query(&mut self) -> impl sqlx::Execute<MySql> {
+    fn query(&mut self) -> impl sqlx::Execute<'_, sqlx::MySql> {
         sqlx::query!("
             INSERT IGNORE INTO season(season_id)
             VALUES (?)
@@ -34,7 +33,7 @@ pub struct InsertCorporationQuery {
 }
 
 impl MySqlQuery for InsertCorporationQuery {
-    fn query(&mut self) -> impl sqlx::Execute<MySql> {
+    fn query(&mut self) -> impl sqlx::Execute<'_, sqlx::MySql> {
         sqlx::query!(
             "INSERT INTO corporation(corp_id, name) VALUES (?, ?)",
             self.corp_id,
@@ -52,7 +51,7 @@ struct InsertCombatantQuery {
 }
 
 impl MySqlQuery for InsertCombatantQuery {
-    fn query(&mut self) -> impl Execute<MySql> {
+    fn query(&mut self) -> impl sqlx::Execute<'_, sqlx::MySql> {
         sqlx::query!(
             "
             INSERT INTO combatant(combatant_id, corp_id, name, serialized_combatant)
@@ -73,7 +72,7 @@ pub struct InsertGameLogQuery {
 }
 
 impl MySqlQuery for InsertGameLogQuery {
-    fn query(&mut self) -> impl sqlx::Execute<MySql> {
+    fn query(&mut self) -> impl sqlx::Execute<'_, sqlx::MySql> {
         sqlx::query!("
             INSERT INTO game_results(game_id, serialized_results)
             VALUES (?, ?)",
@@ -92,7 +91,7 @@ pub struct InsertGameQuery {
 }
 
 impl MySqlQuery for InsertGameQuery {
-    fn query(&mut self) -> impl sqlx::Execute<MySql> {
+    fn query(&mut self) -> impl sqlx::Execute<'_, sqlx::MySql> {
         sqlx::query!("
             INSERT INTO game(game_id, season_id, team_1, team_2)
             VALUES (?, ?, ?, ?)",
@@ -121,7 +120,9 @@ pub async fn save_world(
 ) {
     execute_query!(mysql, InsertSeasonQuery { season_id: 1 });
 
-    for (_, team) in game_world.lock().unwrap().teams.to_owned() {
+    let teams = game_world.lock().unwrap().teams.to_owned();
+    let teams = teams.values();
+    for team in teams {
         let team = team.lock().unwrap();
 
         execute_query!(mysql, InsertCorporationQuery {

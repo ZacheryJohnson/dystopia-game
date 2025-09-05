@@ -25,7 +25,7 @@ async fn main() {
 
     let valkey_config = ValkeyConfig::new(
         std::env::var("VALKEY_USER").unwrap_or(String::from("default")),
-        std::env::var("VALKEY_PASS").unwrap_or(String::from("")),
+        std::env::var("VALKEY_PASS").unwrap_or(String::default()),
         std::env::var("VALKEY_HOST").unwrap_or(String::from("172.18.0.1")),
         std::env::var("VALKEY_PORT").unwrap_or(String::from("6379")).parse::<u16>().unwrap()
     );

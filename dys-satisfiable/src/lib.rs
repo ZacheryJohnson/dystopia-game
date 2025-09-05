@@ -3,7 +3,7 @@ use std::rc::Rc;
 pub use dyn_clone;
 pub use ahash;
 
-/// A SatisfiableField represents an abstract test that will be performed on a concrete value.
+/// A `SatisfiableField` represents an abstract test that will be performed on a concrete value.
 ///
 #[derive(Clone, Default)]
 pub enum SatisfiableField<
@@ -21,7 +21,7 @@ pub enum SatisfiableField<
     #[default]
     Ignore,
 
-    /// The concrete value must be the exact value of type ConcreteT
+    /// The concrete value must be the exact value of type `ConcreteT`
     /// ```
     /// # use dys_satisfiable::SatisfiableField;
     /// let exactly_three = SatisfiableField::Exactly(3u32);
@@ -30,7 +30,7 @@ pub enum SatisfiableField<
     /// ```
     Exactly(ConcreteT),
 
-    /// The concrete value must NOT be the exact value of type ConcreteT
+    /// The concrete value must NOT be the exact value of type `ConcreteT`
     /// ```
     /// # use dys_satisfiable::SatisfiableField;
     /// let not_exactly_three = SatisfiableField::NotExactly(3u32);
@@ -39,7 +39,7 @@ pub enum SatisfiableField<
     /// ```
     NotExactly(ConcreteT),
 
-    /// The concrete value must be in the range of values of type ConcreteT
+    /// The concrete value must be in the range of values of type `ConcreteT`
     /// ```
     /// # use dys_satisfiable::SatisfiableField;
     /// let allowed_values = SatisfiableField::In(vec![
@@ -56,7 +56,7 @@ pub enum SatisfiableField<
     /// ```
     In(Vec<ConcreteT>),
 
-    /// The concrete value must NOT be in the range of values of type ConcreteT
+    /// The concrete value must NOT be in the range of values of type `ConcreteT`
     /// ```
     /// # use dys_satisfiable::SatisfiableField;
     /// let disallowed_values = SatisfiableField::NotIn(vec![
@@ -73,16 +73,16 @@ pub enum SatisfiableField<
     /// ```
     NotIn(Vec<ConcreteT>),
 
-    /// The concrete value must be strictly greater than the value of type ConcreteT
+    /// The concrete value must be strictly greater than the value of type `ConcreteT`
     GreaterThan(ConcreteT),
 
-    /// The concrete value must be greater than or equal to the value of type ConcreteT
+    /// The concrete value must be greater than or equal to the value of type `ConcreteT`
     GreaterThanOrEqual(ConcreteT),
 
-    /// The concrete value must be strictly less than the value of type ConcreteT
+    /// The concrete value must be strictly less than the value of type `ConcreteT`
     LessThan(ConcreteT),
 
-    /// The concrete value must be less than or equal to the value of type ConcreteT
+    /// The concrete value must be less than or equal to the value of type `ConcreteT`
     LessThanOrEqual(ConcreteT),
 
     /// The concrete value must pass a provided lambda.

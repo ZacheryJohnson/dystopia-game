@@ -5,16 +5,19 @@ pub struct ConnectionConfig {
 }
 
 impl ConnectionConfig {
+    #[must_use]
     pub fn host(mut self, host: String) -> Self {
         self.host = Some(host);
         self
     }
 
+    #[must_use]
     pub fn port(mut self, port: u16) -> Self {
         self.port = Some(port);
         self
     }
 
+    #[must_use]
     pub fn token(mut self, token: String) -> Self {
         self.token = Some(token);
         self
