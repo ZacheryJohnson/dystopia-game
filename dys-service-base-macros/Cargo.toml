@@ -1,0 +1,20 @@
+[package]
+name = "dys-service-base-macros"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+proc-macro2.workspace = true
+syn.workspace = true
+quote.workspace = true
+
+
+async-nats.workspace = true
+tower.workspace = true
+utoipa.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+proc-macro = true

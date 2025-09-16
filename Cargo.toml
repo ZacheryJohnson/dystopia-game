@@ -74,8 +74,17 @@ tower-http = { version = "0.6.6", features = ["fs", "trace"] }
 tracing = { version = "0.1.40", features = ["attributes", "log"] }
 tracing-opentelemetry = "0.31.0"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter", "json"] }
+utoipa = "5.4.0"
+utoipa-axum = "0"
 wasm-bindgen = "=0.2.100"
 web-time = "1.1.0"
+
+# -----------------------
+# Runtime macro dependencies
+# -----------------------
+proc-macro2 = "1.0"
+syn = { version = "2.0", features = ["extra-traits"] }
+quote = "1.0"
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
