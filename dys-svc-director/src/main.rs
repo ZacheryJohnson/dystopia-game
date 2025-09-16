@@ -18,6 +18,7 @@ use rand::rngs::StdRng;
 use sqlx::{Execute, MySql, QueryBuilder};
 use sqlx::mysql::{MySqlConnectOptions};
 use tokio::time::Instant;
+use utoipa::OpenApi;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_mysql::datastore::MySqlDatastore;
 use dys_datastore_mysql::execute_query;
@@ -27,7 +28,6 @@ use dys_nats::error::NatsError;
 use dys_nats::rpc::router::NatsRouter;
 use dys_protocol::nats::game_results::game_summary_response::GameSummary;
 use dys_protocol::nats::game_results::summary_svc::{GameSummaryRpcServer, GetGameLogRpcServer};
-use dys_protocol::nats::stats::stats_svc::{GetGameStatlinesRpcServer, GetSeasonTotalsRpcServer};
 use dys_protocol::nats::vote::{GetProposalsRequest, GetProposalsResponse, Proposal, ProposalOption, VoteOnProposalRequest, VoteOnProposalResponse};
 use dys_protocol::nats::vote::vote_svc::{GetProposalsRpcServer, VoteOnProposalRpcServer};
 use dys_protocol::nats::world::{GetSeasonRequest, GetSeasonResponse, WorldStateRequest, WorldStateResponse};
@@ -42,8 +42,18 @@ use dys_world::season::season::Season;
 use dys_world::season::series::{Series, SeriesType};
 use dys_world::team::instance::TeamInstance;
 use crate::game_result::{get_game_log, get_summaries};
-use crate::stats::{get_recent_stats, get_season_stats};
 use crate::world::{generate_world, InsertGameLogQuery};
+
+pub use ::async_nats;
+pub use ::tower;
+
+#[derive(OpenApi)]
+#[openapi(
+    nest(
+        (path = "/stats", api = stats::StatsApi)
+    )
+)]
+pub struct DirectorApi;
 
 #[derive(Clone, Debug)]
 struct AppState {
@@ -193,7 +203,7 @@ async fn main() {
                     .map_or(DateTime::default(), |time| time.to_owned())
             };
 
-            let offset = next_time.timestamp()- chrono::Utc::now().timestamp();
+            let offset = next_time.timestamp() - Utc::now().timestamp();
             let instant = Instant::now() + Duration::from_secs(offset as u64);
             tracing::info!("Sleeping until {} before simulating more games...", next_time.to_rfc3339());
             tokio::time::sleep_until(instant).await;
@@ -210,9 +220,9 @@ async fn main() {
         .service(GetSeasonRpcServer::with_handler_and_state(get_season, app_state.clone()))
         .service(WorldStateRpcServer::with_handler_and_state(get_world_state, app_state.clone()))
         .service(GetProposalsRpcServer::with_handler_and_state(get_voting_proposals, app_state.clone()))
-        .service(VoteOnProposalRpcServer::with_handler_and_state(submit_vote, app_state.clone()))
-        .service(GetSeasonTotalsRpcServer::with_handler_and_state(get_season_stats, app_state.clone()))
-        .service(GetGameStatlinesRpcServer::with_handler_and_state(get_recent_stats, app_state.clone()));
+        .service(VoteOnProposalRpcServer::with_handler_and_state(submit_vote, app_state.clone()));
+        // .service(GetSeasonTotalsRpcServer::with_handler_and_state(get_season_stats, app_state.clone()))
+        // .service(GetGameStatlinesRpcServer::with_handler_and_state(get_recent_stats, app_state.clone()));
 
     nats.run().await;
 }

@@ -14,16 +14,22 @@ dys-observability = { path = "../dys-observability" }
 dys-protocol = { path = "../dys-protocol", features = ["nats"] }
 dys-world = { path = "../dys-world" }
 
+dys-service-base-macros = { path = "../dys-service-base-macros" }
+
 dys-datastore = { path = "../dys-datastore" }
 dys-datastore-mysql = { path = "../dys-datastore-mysql" }
 dys-datastore-valkey = { path = "../dys-datastore-valkey" }
 
+async-nats.workspace = true
 bytes.workspace = true
 chrono.workspace = true
+futures.workspace = true
 postcard.workspace = true
 rand.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true
 tokio.workspace = true
+tower.workspace = true
 tracing.workspace = true
-serde = { version = "1.0.219", features = ["derive"] }
+serde.workspace = true
+utoipa.workspace = true
