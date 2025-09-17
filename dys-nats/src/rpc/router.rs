@@ -63,13 +63,35 @@ impl NatsRouter {
         self
     }
 
+    #[must_use]
+    pub fn service_2(
+        mut self,
+        service: (
+            impl tower::Service<
+                async_nats::Message,
+                Error=NatsError,
+                Future=Pin<Box<dyn Future<Output = Result<Bytes, NatsError>> + Send>>,
+                Response=Bytes,
+            > + Send + 'static
+        ),
+        topic: String,
+    ) -> NatsRouter {
+        let nats_service = NatsServiceInstance {
+            service: Box::new(service),
+            rpc_subject: topic,
+        };
+
+        self.services.push(nats_service);
+        self
+    }
+
     pub async fn run(mut self) -> ! {
-        struct AppState {
+        struct ShutdownState {
             should_shutdown: bool,
             has_begun_shutdown: bool,
         }
 
-        let shutdown_signal = Arc::new(Mutex::new(AppState {
+        let shutdown_signal = Arc::new(Mutex::new(ShutdownState {
             should_shutdown: false,
             has_begun_shutdown: false,
         }));
@@ -89,7 +111,7 @@ impl NatsRouter {
             thread_handles.push(tokio::spawn(async move {
                 let shutdown_signal = shutdown_signal.clone();
                 loop {
-                    let AppState {
+                    let ShutdownState {
                         should_shutdown,
                         has_begun_shutdown
                     } = *shutdown_signal.clone().lock().unwrap();
@@ -97,7 +119,7 @@ impl NatsRouter {
                     if should_shutdown && !has_begun_shutdown {
                         tracing::info!("Beginning drain of {}", service.rpc_subject);
                         nats_client.drain().await.unwrap();
-                        *shutdown_signal.clone().lock().unwrap() = AppState {
+                        *shutdown_signal.clone().lock().unwrap() = ShutdownState {
                             should_shutdown: true,
                             has_begun_shutdown: true
                         };
@@ -158,14 +180,14 @@ impl NatsRouter {
         tokio::select! {
             () = ctrl_c => {
                 tracing::info!("Shutdown signal received, beginning shut down...");
-                *shutdown_signal.clone().lock().unwrap() = AppState {
+                *shutdown_signal.clone().lock().unwrap() = ShutdownState {
                     should_shutdown: true,
                     has_begun_shutdown: false,
                 };
             },
             () = terminate => {
                 tracing::info!("Shutdown signal received, beginning shut down...");
-                *shutdown_signal.clone().lock().unwrap() = AppState {
+                *shutdown_signal.clone().lock().unwrap() = ShutdownState {
                     should_shutdown: true,
                     has_begun_shutdown: false,
                 };

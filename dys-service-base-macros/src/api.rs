@@ -3,7 +3,7 @@ use quote::{format_ident, quote, ToTokens};
 use syn::parse::ParseStream;
 use syn::{parenthesized, parse_macro_input, FnArg, ItemFn, Pat, Token, Type};
 use crate::http::{http_openapi_header_impl, HttpApiAttribute};
-use crate::nats::NatsApiAttribute;
+use crate::nats::{natsapi_impl, NatsApiAttribute};
 
 #[derive(Default)]
 struct ApiAttribute {
@@ -145,25 +145,38 @@ pub fn api_impl(attribute: proc_macro::TokenStream, api: proc_macro::TokenStream
         app_state_ident
     };
 
+    if let Some(nats_attributes) = api_attribute.nats_options {
+        let nats_token_stream: proc_macro::TokenStream = natsapi_impl(
+            nats_attributes,
+            api_fn.sig.ident.to_string(),
+            api_attribute.request_type.as_ref().unwrap().clone(),
+            api_attribute.response_type.as_ref().unwrap().clone(),
+        );
+
+        token_stream.extend(nats_token_stream);
+    }
+
+    // Code below this point may only add new attributes to the function
+
     let tracing_macro_stream: proc_macro::TokenStream = quote! {
         #[tracing::instrument(skip(#app_state_var))]
     }.into();
 
     token_stream.extend(tracing_macro_stream);
 
-    if api_attribute.http_options.is_some() {
-        let openapi_macro_stream = http_openapi_header_impl(
-            api_attribute.http_options.unwrap(),
-            api_attribute.request_type.unwrap(),
+    if let Some(http_attributes) = api_attribute.http_options {
+        let openapi_macro_stream: proc_macro::TokenStream = http_openapi_header_impl(
+            http_attributes,
+            api_attribute.request_type.as_ref().unwrap().clone(),
         );
 
         token_stream.extend(openapi_macro_stream);
     }
 
-    // ZJ-TODO: nats impl
-
     let fn_tokens: proc_macro::TokenStream = api_fn.to_token_stream().into();
     token_stream.extend(fn_tokens);
+
+    // panic!("{token_stream}");
 
     token_stream
 }

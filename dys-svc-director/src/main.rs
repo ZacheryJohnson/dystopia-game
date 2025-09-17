@@ -213,6 +213,12 @@ async fn main() {
         }
     });
 
+    let recent = stats::recent::nats::GetRecentStatsNatsService::from(app_state.clone());
+    let recent_topic = recent.topic.clone();
+
+    let season = stats::season::nats::GetSeasonStatsNatsService::from(app_state.clone());
+    let season_topic = season.topic.clone();
+
     let nats = NatsRouter::new()
         .await
         .service(GameSummaryRpcServer::with_handler_and_state(get_summaries, app_state.clone()))
@@ -220,9 +226,9 @@ async fn main() {
         .service(GetSeasonRpcServer::with_handler_and_state(get_season, app_state.clone()))
         .service(WorldStateRpcServer::with_handler_and_state(get_world_state, app_state.clone()))
         .service(GetProposalsRpcServer::with_handler_and_state(get_voting_proposals, app_state.clone()))
-        .service(VoteOnProposalRpcServer::with_handler_and_state(submit_vote, app_state.clone()));
-        // .service(GetSeasonTotalsRpcServer::with_handler_and_state(get_season_stats, app_state.clone()))
-        // .service(GetGameStatlinesRpcServer::with_handler_and_state(get_recent_stats, app_state.clone()));
+        .service(VoteOnProposalRpcServer::with_handler_and_state(submit_vote, app_state.clone()))
+        .service_2(recent, recent_topic)
+        .service_2(season, season_topic);
 
     nats.run().await;
 }

@@ -1,10 +1,13 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use dys_datastore_mysql::fetch_all_query;
 use dys_datastore_mysql::query::MySqlQuery;
 use dys_nats::error::NatsError;
 use dys_protocol::nats::stats::GetSeasonTotalsResponse;
+use dys_service_base_macros::{api, ApiRequest};
 use dys_world::combatant::instance::CombatantInstanceId;
+use utoipa::IntoParams;
+use utoipa::openapi::path::{Parameter, ParameterIn};
 use crate::AppState;
 
 #[derive(utoipa::OpenApi)]
@@ -35,21 +38,31 @@ impl MySqlQuery for GetSeasonTotalsQuery {
     }
 }
 
-#[tracing::instrument(skip_all)]
-#[utoipa::path(
-    get,
-    path = "/{season_id}",
-    params(
-        ("season_id" = u32, Path),
-    )
+#[derive(Debug, Serialize, Deserialize, ApiRequest)]
+pub struct GetSeasonTotalsRequest {
+    pub season_id: u32,
+}
+
+#[api(
+    request = GetSeasonTotalsRequest,
+    response = GetSeasonTotalsResponse,
+    error = NatsError,
+    app_state = AppState,
+    http(
+        method = "Get",
+        path = "/{season_id}",
+    ),
+    nats(
+        topic = "api.stats.v1.season",
+    ),
 )]
-pub async fn get_season_stats(
-    season_id: u32, // ZJ-TODO: season ID
+async fn get_season_stats(
+    request: GetSeasonTotalsRequest,
     app_state: AppState
     // ZJ-TODO: the error type of the signature should be Result<Response, CustomError>, not NatsError
 ) -> Result<GetSeasonTotalsResponse, NatsError> {
     let stats = fetch_all_query!(app_state.mysql.clone(), GetSeasonTotalsQuery {
-        season_id
+        season_id: request.season_id
     });
 
     let mut response = GetSeasonTotalsResponse::default();

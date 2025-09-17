@@ -9,7 +9,7 @@ use dys_nats::error::NatsError;
 use dys_protocol::nats::stats::get_game_statlines_response::GameStatlines;
 use dys_protocol::nats::stats::GetGameStatlinesResponse;
 use dys_world::combatant::instance::CombatantInstanceId;
-use dys_service_base_macros::{api, natsapi, ApiRequest};
+use dys_service_base_macros::{api, ApiRequest};
 use crate::AppState;
 
 #[derive(utoipa::OpenApi)]
@@ -43,56 +43,27 @@ impl MySqlQuery for GetRecentGamesQuery {
 }
 
 #[derive(Debug, Serialize, Deserialize, ApiRequest)]
-struct GetRecentStatsRequest {
+pub struct GetRecentStatsRequest {
     combatant_id: CombatantInstanceId,
     games_count: Option<u32>,
 }
 
-/*
-    ZJ-TODO: ideal macro annotation
-    #[derive(Serialize, Deserialize)]
-    struct GetRecentStatsRequest {
-        combatant_id: CombatantInstanceId,
-        games_count: Option<u32>,
-    }
-
-    #[api(
-        request = GetRecentStatsRequest,
-        response = GetGameStatlinesResponse,
-        error = ErrorType,
-        http(
-            path = "/{combatant_id}",  // <- pulled from request.combatant_id
-            method = Get,
-        ), // automatically generates the utopia::path params() from all possible request fields
-        nats(
-            topic = "api.stats.v1.recent"
-        ),
-     )]
-     pub fn get_recent_stats(request: GetRecentStatsRequest, app_state: AppState) -> Result<GetGameStatlinesResponse, ErrorType> { ... }
- */
-
-#[natsapi(
-    topic = "api.stats.v1.recent",
-    request = GetRecentStatsRequest,
-    response = GetGameStatlinesResponse
-)]
 #[api(
     request = GetRecentStatsRequest,
     response = GetGameStatlinesResponse,
-    error = (),
+    error = NatsError,
     app_state = AppState,
     http(
-        method = "GET",
+        method = "Get",
         path = "/{combatant_id}",
     ),
     nats(
         topic = "api.stats.v1.recent",
     ),
 )]
-pub async fn get_recent_stats(
+async fn get_recent_stats(
     request: GetRecentStatsRequest,
     app_state: AppState
-    // ZJ-TODO: the error type of the signature should be Result<Response, CustomError>, not NatsError
 ) -> Result<GetGameStatlinesResponse, NatsError> {
     const DEFAULT_NUMBER_OF_GAMES: u32 = 3;
     let games = fetch_all_query!(app_state.mysql.clone(), GetRecentGamesQuery {
