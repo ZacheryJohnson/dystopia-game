@@ -5,12 +5,6 @@ mod http;
 mod nats;
 mod api;
 
-// ZJ-TODO: only `api` should be publicly exported
-#[proc_macro_attribute]
-pub fn natsapi(attribute: proc_macro::TokenStream, api: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    nats::natsapi_impl(attribute, api)
-}
-
 #[proc_macro_attribute]
 pub fn api(attribute: proc_macro::TokenStream, api: proc_macro::TokenStream) -> proc_macro::TokenStream {
     api::api_impl(attribute, api)

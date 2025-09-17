@@ -23,6 +23,7 @@ COPY $WORKING_DIR/dys-simulation/ /opt/dystopia/dys-simulation/
 COPY $WORKING_DIR/dys-stat/ /opt/dystopia/dys-stat/
 COPY $WORKING_DIR/dys-observability/ /opt/dystopia/dys-observability/
 COPY $WORKING_DIR/dys-world/ /opt/dystopia/dys-world/
+COPY $WORKING_DIR/dys-service-base-macros/ /opt/dystopia/dys-service-base-macros/
 COPY $WORKING_DIR/dys-svc-director/ /opt/dystopia/dys-svc-director/
 COPY $WORKING_DIR/dys-svc-director/migrations /opt/dystopia/migrations
 
