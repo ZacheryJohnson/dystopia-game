@@ -1,5 +1,5 @@
 use proc_macro2::Ident;
-use quote::{format_ident, quote, ToTokens};
+use quote::{quote, ToTokens};
 use syn::parse::ParseStream;
 use syn::{parenthesized, parse_macro_input, FnArg, ItemFn, Pat, Token, Type};
 use crate::http::{http_openapi_header_impl, HttpApiAttribute};
@@ -168,6 +168,7 @@ pub fn api_impl(attribute: proc_macro::TokenStream, api: proc_macro::TokenStream
         let openapi_macro_stream: proc_macro::TokenStream = http_openapi_header_impl(
             http_attributes,
             api_attribute.request_type.as_ref().unwrap().clone(),
+            api_attribute.response_type.as_ref().unwrap().clone(),
         );
 
         token_stream.extend(openapi_macro_stream);

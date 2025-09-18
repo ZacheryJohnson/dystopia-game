@@ -2,9 +2,22 @@
 name = "dys-svc-director"
 version = "0.1.0"
 edition = "2024"
+default-run = "service"
 
 [lints]
 workspace = true
+
+[lib]
+name = "director"
+path = "./src/lib.rs"
+
+[[bin]]
+name = "service"
+path = "./src/bin/service.rs"
+
+[[bin]]
+name = "gen-openapi"
+path = "./src/bin/generate_openapi.rs"
 
 [dependencies]
 dys-nats = { path = "../dys-nats" }

@@ -3,6 +3,7 @@
 .wasm_out/
 
 dys-protocol/generated/
+dys-svc-*/generated/
 dys-*/bindings/
 
 infra/.terraform/

@@ -14,7 +14,7 @@ nats = ["dep:dys-nats"]
 [build-dependencies]
 tonic-prost-build.workspace = true
 prost-build.workspace = true
-walkdir = "2.5.0"
+walkdir.workspace = true
 
 [dependencies]
 dys-nats = { path = "../dys-nats", optional = true }

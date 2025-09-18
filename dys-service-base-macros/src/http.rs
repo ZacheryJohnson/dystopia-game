@@ -1,8 +1,8 @@
 use std::fmt::Display;
 use proc_macro2::Ident;
-use quote::{format_ident, quote, ToTokens};
+use quote::{format_ident, quote};
 use syn::parse::ParseStream;
-use syn::{Data, DeriveInput, FnArg, ItemFn, Lit, Pat, Token, Type};
+use syn::{Lit, Token, Type};
 
 #[derive(Debug)]
 pub enum HttpMethod {
@@ -86,6 +86,7 @@ impl syn::parse::Parse for HttpApiAttribute {
 pub fn http_openapi_header_impl(
     http_attribute: HttpApiAttribute,
     request_type: Type,
+    response_type: Type,
 ) -> proc_macro::TokenStream {
     let method_type = format_ident!("{}", http_attribute.method.unwrap().to_string().to_ascii_lowercase());
     let path = http_attribute.path.unwrap();
@@ -96,7 +97,13 @@ pub fn http_openapi_header_impl(
     quote! {
         #[utoipa::path(
             method(#method_type),
-            path = #path
+            path = #path,
+            params(
+                #request_type,
+            ),
+            responses(
+                (status = 200, body = #response_type),
+            ),
         )]
     }.into()
 }

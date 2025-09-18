@@ -1,48 +1,35 @@
-mod game_result;
-mod world;
-mod stats;
+pub mod game_result;
+pub mod world;
+pub mod stats;
 
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use bytes::Bytes;
-use chrono::{DateTime, Timelike, Utc};
-use dys_observability::logger::LoggerOptions;
+use chrono::{DateTime, Utc};
 use dys_simulation::game::Game;
 use dys_world::schedule::calendar::Date;
 use dys_world::world::World;
 
-use rand::SeedableRng;
-use rand::rngs::StdRng;
 use sqlx::{Execute, MySql, QueryBuilder};
-use sqlx::mysql::{MySqlConnectOptions};
-use tokio::time::Instant;
 use utoipa::OpenApi;
-use dys_datastore::datastore::Datastore;
 use dys_datastore_mysql::datastore::MySqlDatastore;
 use dys_datastore_mysql::execute_query;
 use dys_datastore_mysql::query::MySqlQuery;
-use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
+use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyDatastore};
 use dys_nats::error::NatsError;
-use dys_nats::rpc::router::NatsRouter;
 use dys_protocol::nats::game_results::game_summary_response::GameSummary;
-use dys_protocol::nats::game_results::summary_svc::{GameSummaryRpcServer, GetGameLogRpcServer};
 use dys_protocol::nats::vote::{GetProposalsRequest, GetProposalsResponse, Proposal, ProposalOption, VoteOnProposalRequest, VoteOnProposalResponse};
-use dys_protocol::nats::vote::vote_svc::{GetProposalsRpcServer, VoteOnProposalRpcServer};
 use dys_protocol::nats::world::{GetSeasonRequest, GetSeasonResponse, WorldStateRequest, WorldStateResponse};
-use dys_protocol::nats::world::schedule_svc::GetSeasonRpcServer;
-use dys_protocol::nats::world::world_svc::WorldStateRpcServer;
 use dys_stat::combatant_statline::CombatantStatline;
 use dys_world::combatant::instance::EffectDuration;
 use dys_world::games::instance::GameInstanceId;
 use dys_world::proposal::ProposalEffect;
-use dys_world::schedule::calendar::Month::Arguscorp;
 use dys_world::season::season::Season;
 use dys_world::season::series::{Series, SeriesType};
 use dys_world::team::instance::TeamInstance;
-use crate::game_result::{get_game_log, get_summaries};
-use crate::world::{generate_world, InsertGameLogQuery};
+use crate::world::InsertGameLogQuery;
 
 pub use ::async_nats;
 pub use ::tower;
@@ -56,17 +43,17 @@ pub use ::tower;
 pub struct DirectorApi;
 
 #[derive(Clone, Debug)]
-struct AppState {
-    game_world: Arc<Mutex<World>>,
-    season: Arc<Mutex<Season>>,
-    current_date: Arc<Mutex<Date>>,
-    first_game_time_utc: Arc<Mutex<DateTime<Utc>>>,
-    valkey: Arc<Mutex<ValkeyDatastore>>,
-    mysql: Arc<Mutex<MySqlDatastore>>,
+pub struct AppState {
+    pub game_world: Arc<Mutex<World>>,
+    pub season: Arc<Mutex<Season>>,
+    pub current_date: Arc<Mutex<Date>>,
+    pub first_game_time_utc: Arc<Mutex<DateTime<Utc>>>,
+    pub valkey: Arc<Mutex<ValkeyDatastore>>,
+    pub mysql: Arc<Mutex<MySqlDatastore>>,
 }
 
 // ZJ-TODO: move
-fn simulation_timings(
+pub fn simulation_timings(
     first_game_time_utc: Arc<Mutex<DateTime<Utc>>>,
     series: &Vec<Series>,
 ) -> HashMap<GameInstanceId, DateTime<Utc>> {
@@ -96,141 +83,6 @@ fn simulation_timings(
     }
 
     simulation_timings
-}
-
-#[tokio::main]
-async fn main() {
-    let logger_options = LoggerOptions {
-        application_name: "director".to_string(),
-        ..Default::default()
-    };
-
-    dys_observability::logger::initialize(logger_options);
-
-    tracing::info!("Starting server...");
-
-    let (game_world, season) = generate_world().await;
-
-    let valkey_config = ValkeyConfig::new(
-        std::env::var("VALKEY_USER").unwrap_or(String::from("default")),
-        std::env::var("VALKEY_PASS").unwrap_or(String::from("")),
-        std::env::var("VALKEY_HOST").unwrap_or(String::from("172.18.0.1")),
-        std::env::var("VALKEY_PORT").unwrap_or(String::from("6379")).parse::<u16>().unwrap()
-    );
-
-    let mysql_config = MySqlConnectOptions::new()
-        .host(&std::env::var("MYSQL_HOST").unwrap_or(String::from("127.0.0.1")))
-        .username(&std::env::var("MYSQL_USER").unwrap_or(String::from("default")))
-        .password(&std::env::var("MYSQL_PASS").unwrap_or(String::from("")))
-        .port(std::env::var("MYSQL_PORT").unwrap_or(String::from("3306")).parse::<u16>().unwrap())
-        .database(&std::env::var("MYSQL_DATABASE").unwrap_or(String::from("")));
-
-    let mysql = Arc::new(Mutex::new(
-        MySqlDatastore::connect(mysql_config).await.unwrap()
-    ));
-
-    world::save_world(mysql.clone(), game_world.clone(), &season).await;
-
-    // Get first match time
-    let first_game_time_utc = {
-        let match_every_n_minutes = std::env::var("MINUTES_BETWEEN_MATCHES")
-            .unwrap_or(String::from("15"))
-            .parse::<u64>()
-            .unwrap();
-
-        let now_utc = Utc::now();
-        let second_adjustment = 60 - now_utc.second() as u64 % 60;
-        let second_adjusted_utc = now_utc + Duration::from_secs(second_adjustment);
-
-        let minute_adjustment = match_every_n_minutes - second_adjusted_utc.minute() as u64 % match_every_n_minutes;
-        second_adjusted_utc + Duration::from_secs(60 * minute_adjustment)
-    };
-
-    let app_state = AppState {
-        game_world: game_world.clone(),
-        season: Arc::new(Mutex::new(season)),
-        current_date: Arc::new(Mutex::new(Date::new(
-            Arguscorp, 1, 10000
-        ))),
-        first_game_time_utc: Arc::new(Mutex::new(first_game_time_utc)),
-        valkey: Arc::new(Mutex::new(
-            ValkeyDatastore::connect(valkey_config).await.unwrap()
-        )),
-        mysql,
-    };
-
-    let app_state_thread_copy = app_state.clone();
-    tokio::task::spawn(async move {
-        loop {
-            let app_state = app_state_thread_copy.clone();
-            let mut valkey = app_state.valkey.lock().unwrap().connection();
-            let world = app_state.game_world.lock().unwrap().to_owned();
-
-            tracing::info!("Saving world state in valkey...");
-            let _: i32 = valkey.hset(
-                "env:dev:world",
-                "data",
-                serde_json::to_string(&world).unwrap(),
-            ).await.unwrap();
-
-            let _: i32 = valkey.expire(
-                "env:dev:world",
-                60 * 60, // 1 hour
-            ).await.unwrap();
-
-            // Generate new proposals for the upcoming games
-            let generator = dys_world::generator::Generator::new();
-            let proposals = generator.generate_proposals(&mut StdRng::from_os_rng(), &world);
-
-            let mut zj_todo_id = 1;
-            for proposal in proposals {
-                let _: i32 = valkey.hset(
-                    "env:dev:proposals:latest",
-                    zj_todo_id.to_string(),
-                    serde_json::to_string(&proposal).unwrap(),
-                ).await.unwrap();
-
-                zj_todo_id += 1;
-            }
-
-            // Sleep before simulating more games
-            let next_time = {
-                let season = app_state.season.lock().unwrap();
-                simulation_timings(app_state.first_game_time_utc, season.series())
-                    .values()
-                    .filter(|time| time.timestamp() >= Utc::now().timestamp())
-                    .min()
-                    .map_or(DateTime::default(), |time| time.to_owned())
-            };
-
-            let offset = next_time.timestamp() - Utc::now().timestamp();
-            let instant = Instant::now() + Duration::from_secs(offset as u64);
-            tracing::info!("Sleeping until {} before simulating more games...", next_time.to_rfc3339());
-            tokio::time::sleep_until(instant).await;
-
-            tracing::info!("Executing simulations...");
-            run_simulation(app_state_thread_copy.clone()).await;
-        }
-    });
-
-    let recent = stats::recent::nats::GetRecentStatsNatsService::from(app_state.clone());
-    let recent_topic = recent.topic.clone();
-
-    let season = stats::season::nats::GetSeasonStatsNatsService::from(app_state.clone());
-    let season_topic = season.topic.clone();
-
-    let nats = NatsRouter::new()
-        .await
-        .service(GameSummaryRpcServer::with_handler_and_state(get_summaries, app_state.clone()))
-        .service(GetGameLogRpcServer::with_handler_and_state(get_game_log, app_state.clone()))
-        .service(GetSeasonRpcServer::with_handler_and_state(get_season, app_state.clone()))
-        .service(WorldStateRpcServer::with_handler_and_state(get_world_state, app_state.clone()))
-        .service(GetProposalsRpcServer::with_handler_and_state(get_voting_proposals, app_state.clone()))
-        .service(VoteOnProposalRpcServer::with_handler_and_state(submit_vote, app_state.clone()))
-        .service_2(recent, recent_topic)
-        .service_2(season, season_topic);
-
-    nats.run().await;
 }
 
 #[tracing::instrument(skip_all)]
@@ -446,7 +298,7 @@ async fn simulate_matches(app_state: AppState) -> Vec<(GameSummary, Bytes)> {
 }
 
 #[tracing::instrument(skip_all)]
-async fn run_simulation(world_state: AppState) {
+pub async fn run_simulation(world_state: AppState) {
     let game_summary = simulate_matches(world_state.clone()).await;
 
     let mut latest_ids = vec![];
@@ -534,7 +386,7 @@ async fn run_simulation(world_state: AppState) {
 }
 
 #[tracing::instrument(skip(app_state))]
-async fn get_season(
+pub async fn get_season(
     _: GetSeasonRequest,
     app_state: AppState,
 ) -> Result<GetSeasonResponse, NatsError> {
@@ -597,7 +449,7 @@ async fn get_season(
 }
 
 #[tracing::instrument(skip(app_state))]
-async fn get_world_state(
+pub async fn get_world_state(
     _: WorldStateRequest,
     app_state: AppState,
 ) -> Result<WorldStateResponse, NatsError> {
@@ -610,7 +462,7 @@ async fn get_world_state(
 }
 
 #[tracing::instrument(skip(app_state))]
-async fn get_voting_proposals(
+pub async fn get_voting_proposals(
     _: GetProposalsRequest,
     app_state: AppState,
 ) -> Result<GetProposalsResponse, NatsError> {
@@ -654,7 +506,7 @@ async fn get_voting_proposals(
 }
 
 #[tracing::instrument(skip_all)]
-async fn submit_vote(
+pub async fn submit_vote(
     request: VoteOnProposalRequest,
     app_state: AppState,
 ) -> Result<VoteOnProposalResponse, NatsError> {
