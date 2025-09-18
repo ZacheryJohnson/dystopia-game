@@ -3,11 +3,11 @@ use sqlx::Row;
 use dys_datastore_mysql::fetch_all_query;
 use dys_datastore_mysql::query::MySqlQuery;
 use dys_nats::error::NatsError;
-use dys_protocol::nats::stats::GetSeasonTotalsResponse;
 use dys_service_base_macros::{api, ApiRequest};
 use dys_world::combatant::instance::CombatantInstanceId;
-use utoipa::IntoParams;
+use utoipa::{IntoParams, ToSchema};
 use utoipa::openapi::path::{Parameter, ParameterIn};
+use std::collections::HashMap;
 use crate::AppState;
 
 #[derive(utoipa::OpenApi)]
@@ -41,6 +41,11 @@ impl MySqlQuery for GetSeasonTotalsQuery {
 #[derive(Debug, Serialize, Deserialize, ApiRequest)]
 pub struct GetSeasonTotalsRequest {
     pub season_id: u32,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize, ToSchema)]
+pub struct GetSeasonTotalsResponse {
+    pub combatant_statlines: HashMap<u32, Vec<u8>>,
 }
 
 #[api(

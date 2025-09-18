@@ -25,6 +25,8 @@ opt-level = "z"
 # -----------------------
 tonic-prost = "0.14.2"
 tonic-prost-build = "0.14.2"
+utoipa-config = "0.1.2"
+walkdir = "2.5.0"
 
 # -----------------------
 # Dev dependencies
@@ -76,6 +78,7 @@ tracing-opentelemetry = "0.31.0"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter", "json"] }
 utoipa = "5.4.0"
 utoipa-axum = "0"
+utoipa-swagger-ui = { version = "9.0.2", features = ["axum", "reqwest"] }
 wasm-bindgen = "=0.2.100"
 web-time = "1.1.0"
 

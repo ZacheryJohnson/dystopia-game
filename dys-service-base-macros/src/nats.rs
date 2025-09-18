@@ -60,14 +60,14 @@ pub fn natsapi_impl(
     let fn_ident = format_ident!("{}", api_name);
 
     quote! {
-        pub(crate) mod nats {
+        pub mod nats {
             use std::pin::Pin;
             use std::task::{Context, Poll};
             use bytes::Bytes;
             use futures::future::BoxFuture;
             use super::AppState;
 
-            pub(crate) struct #service_struct_name {
+            pub struct #service_struct_name {
                 pub topic: String,
                 app_state: AppState,
                 handler_fn: Box<dyn Fn(super::#request_type, AppState) -> BoxFuture<'static, Result<super::#response_type, crate::NatsError>> + Send>,

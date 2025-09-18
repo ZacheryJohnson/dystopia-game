@@ -1,15 +1,14 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
-use utoipa::IntoParams;
+use utoipa::{IntoParams, ToSchema};
 use utoipa::openapi::path::{Parameter, ParameterIn};
 use dys_datastore_mysql::fetch_all_query;
 use dys_datastore_mysql::query::MySqlQuery;
 use dys_nats::error::NatsError;
-use dys_protocol::nats::stats::get_game_statlines_response::GameStatlines;
-use dys_protocol::nats::stats::GetGameStatlinesResponse;
 use dys_world::combatant::instance::CombatantInstanceId;
 use dys_service_base_macros::{api, ApiRequest};
+use dys_world::games::instance::GameInstanceId;
 use crate::AppState;
 
 #[derive(utoipa::OpenApi)]
@@ -46,6 +45,17 @@ impl MySqlQuery for GetRecentGamesQuery {
 pub struct GetRecentStatsRequest {
     combatant_id: CombatantInstanceId,
     games_count: Option<u32>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize, ToSchema)]
+pub struct GameStatlines {
+    pub game_id: GameInstanceId,
+    pub combatant_statlines: HashMap<u32, Vec<u8>>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize, ToSchema)]
+pub struct GetGameStatlinesResponse {
+    pub statlines: Vec<GameStatlines>,
 }
 
 #[api(

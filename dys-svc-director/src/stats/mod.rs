@@ -1,5 +1,5 @@
-pub(super) mod recent;
-pub(super) mod season;
+pub mod recent;
+pub mod season;
 
 #[derive(utoipa::OpenApi)]
 #[openapi(

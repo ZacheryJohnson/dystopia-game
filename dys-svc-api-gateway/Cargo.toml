@@ -1,0 +1,25 @@
+[package]
+name = "dys-svc-api-gateway"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[build-dependencies]
+serde.workspace = true
+serde_json.workspace = true
+utoipa.workspace = true
+walkdir.workspace = true
+
+[dependencies]
+dys-observability = { path = "../dys-observability" }
+dys-svc-director = { path = "../dys-svc-director"}
+
+axum.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+utoipa.workspace = true
+utoipa-axum.workspace = true
+utoipa-swagger-ui.workspace = true
