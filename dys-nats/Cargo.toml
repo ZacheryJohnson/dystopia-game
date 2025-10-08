@@ -13,6 +13,7 @@ futures.workspace = true
 opentelemetry.workspace = true
 postcard.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 tokio.workspace = true
 tower.workspace = true
 tracing.workspace = true

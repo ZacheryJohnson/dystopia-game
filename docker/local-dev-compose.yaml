@@ -1,5 +1,5 @@
 services:
-  director:  
+  director:
     container_name: "director"
     build:
       context: ..
@@ -19,6 +19,8 @@ services:
       run-svc-migrations:
         condition: service_completed_successfully
       valkey:
+        condition: service_started
+      nats:
         condition: service_started
   webapp:
     container_name: "webapp"
@@ -55,6 +57,26 @@ services:
       run-svc-migrations:
         condition: service_completed_successfully
       valkey:
+        condition: service_started
+      nats:
+        condition: service_started
+  api-gateway:
+    container_name: "api-gateway"
+    build:
+      context: ..
+      dockerfile: ./dys-svc-api-gateway/Dockerfile
+    env_file:
+      - .local.env
+    environment:
+      - OTEL_ENDPOINT=http://otel-collector:4317
+      - RUST_BACKTRACE=1
+      - OPENAPI_SPEC_PATH=/openapi.json
+    ports:
+      - "6050:6050"
+    depends_on:
+      valkey:
+        condition: service_started
+      nats:
         condition: service_started
   openobserve:
     container_name: "openobserve"

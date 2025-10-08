@@ -93,15 +93,22 @@ pub fn natsapi_impl(
                 }
 
                 fn call(&mut self, req: async_nats::Message) -> Self::Future {
-                    let Ok(converted_request) = postcard::from_bytes(&req.payload.to_vec()) else {
-                        return Box::pin(async { Err(dys_nats::error::NatsError::MalformedRequest) });
+                    let payload = req.payload.to_vec();
+                    let converted_request = match serde_json::from_slice(&payload) {
+                        Ok(req) => req,
+                        Err(error) => {
+                            panic!("whoopsie! {:?} {:?}",
+                                error,
+                                String::from_utf8(payload).unwrap()
+                            );
+                        }
                     };
 
                     let future = (self.handler_fn)(converted_request, self.app_state.clone());
                     Box::pin(async move {
                         let response = future.await;
                         match response {
-                            Ok(resp) => Ok(postcard::to_allocvec(&resp).unwrap().into()),
+                            Ok(resp) => Ok(serde_json::to_string(&resp).unwrap().into()),
                             Err(err) => Err(err),
                         }
                     })

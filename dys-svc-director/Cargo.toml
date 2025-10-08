@@ -2,7 +2,7 @@
 name = "dys-svc-director"
 version = "0.1.0"
 edition = "2024"
-default-run = "service"
+default-run = "dys-svc-director"
 
 [lints]
 workspace = true
@@ -12,7 +12,7 @@ name = "director"
 path = "./src/lib.rs"
 
 [[bin]]
-name = "service"
+name = "dys-svc-director"
 path = "./src/bin/service.rs"
 
 [[bin]]

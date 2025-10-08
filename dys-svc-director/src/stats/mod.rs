@@ -1,5 +1,6 @@
 pub mod recent;
 pub mod season;
+mod types;
 
 #[derive(utoipa::OpenApi)]
 #[openapi(
