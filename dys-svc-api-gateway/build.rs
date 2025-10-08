@@ -1,37 +1,51 @@
 use utoipa::OpenApi;
 
-fn main() -> std::io::Result<()>  {
+fn main() -> std::io::Result<()> {
+    println!("cargo:rerun-if-changed=build.rs");
+
     gather_openapi_specs();
 
     Ok(())
 }
 
 fn gather_openapi_specs() {
-    let toml_file = std::fs::read_to_string("./Cargo.toml").unwrap();
-    let toml_contents = toml_file.split_ascii_whitespace();
-    let supported_service_names = toml_contents
-        .filter(|word| word.starts_with("dys-svc-"))
-        .collect::<Vec<_>>();
+    let walkdir = walkdir::WalkDir::new(
+        concat!(env!("CARGO_MANIFEST_DIR"), "/..")
+    ).max_depth(1);
 
+    let mut supported_service_names = vec![];
+    for maybe_entry in walkdir {
+        let Ok(entry) = maybe_entry else {
+            continue;
+        };
+
+        if !entry.file_type().is_dir() {
+            continue;
+        }
+
+        if entry.file_name().to_str().unwrap().starts_with("dys-svc-") {
+            supported_service_names.push(
+                entry.file_name().to_str().unwrap().to_string(),
+            );
+        }
+    }
 
     #[derive(utoipa::OpenApi)]
     struct OpenApi;
     let mut api = OpenApi::openapi();
 
+    println!("cargo::warning=Building OpenAPI specs...");
+    println!("cargo::warning=Supported services: {supported_service_names:?}");
+
     for service_name in supported_service_names {
-        // let mut build_process = std::process::Command::new("cargo")
-        //     .args(["run", "--release", "-p", service_name, "--bin", "gen-openapi"])
-        //     .current_dir(env!("CARGO_MANIFEST_DIR"))
-        //     .stdout(std::process::Stdio::null())
-        //     .stderr(std::process::Stdio::null())
-        //     .spawn()
-        //     .unwrap();
-        //
-        // build_process.wait().unwrap();
+        println!("cargo::warning=  -> {service_name}");
 
         let walkdir = walkdir::WalkDir::new(format!("../{service_name}/generated"));
         for entry in walkdir {
-            let entry = entry.unwrap();
+            let Ok(entry) = entry else {
+                continue;
+            };
+
             if !entry.file_type().is_file() {
                 continue;
             }

@@ -10,6 +10,7 @@ use dys_world::combatant::instance::CombatantInstanceId;
 use dys_service_base_macros::{api, ApiRequest};
 use dys_world::games::instance::GameInstanceId;
 use crate::AppState;
+use crate::stats::types::Statline;
 
 #[derive(utoipa::OpenApi)]
 #[openapi(paths(get_recent_stats))]
@@ -50,7 +51,7 @@ pub struct GetRecentStatsRequest {
 #[derive(Debug, Default, Serialize, Deserialize, ToSchema)]
 pub struct GameStatlines {
     pub game_id: GameInstanceId,
-    pub combatant_statlines: HashMap<u32, Vec<u8>>,
+    pub combatant_statlines: HashMap<CombatantInstanceId, Statline>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, ToSchema)]
@@ -68,7 +69,7 @@ pub struct GetGameStatlinesResponse {
         path = "/{combatant_id}",
     ),
     nats(
-        topic = "api.stats.v1.recent",
+        topic = "api.v1.stats.recent.by_combatant_id.get",
     ),
 )]
 async fn get_recent_stats(
@@ -89,13 +90,6 @@ async fn get_recent_stats(
         let throws_hit: u64 = row.get("throws_hit");
         let combatants_shoved: u64 = row.get("combatants_shoved");
 
-        #[derive(Serialize)]
-        struct Statline {
-            points: i64,
-            throws: u64,
-            hits: u64,
-            shoves: u64,
-        }
         let statline = Statline {
             points,
             throws: balls_thrown,
@@ -106,7 +100,7 @@ async fn get_recent_stats(
         response.statlines.push(GameStatlines {
             game_id,
             combatant_statlines: HashMap::from([
-                (request.combatant_id, serde_json::to_vec(&statline).unwrap())
+                (request.combatant_id, statline)
             ]),
         });
     }

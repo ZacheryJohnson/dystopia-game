@@ -46,6 +46,8 @@ pub fn api_request(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             _ => format_ident!("Integer"), // ZJ-TODO: not this
         };
 
+        // ZJ-TODO: known format to decipher between 32 and 64 bit numbers
+
         request_parameters.push(quote! {
             utoipa::openapi::path::ParameterBuilder::new()
                 .name(#param_name)

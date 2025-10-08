@@ -9,6 +9,7 @@ use utoipa::{IntoParams, ToSchema};
 use utoipa::openapi::path::{Parameter, ParameterIn};
 use std::collections::HashMap;
 use crate::AppState;
+use crate::stats::types::Statline;
 
 #[derive(utoipa::OpenApi)]
 #[openapi(paths(get_season_stats))]
@@ -45,7 +46,7 @@ pub struct GetSeasonTotalsRequest {
 
 #[derive(Debug, Default, Serialize, Deserialize, ToSchema)]
 pub struct GetSeasonTotalsResponse {
-    pub combatant_statlines: HashMap<u32, Vec<u8>>,
+    pub combatant_statlines: HashMap<CombatantInstanceId, Statline>,
 }
 
 #[api(
@@ -58,7 +59,7 @@ pub struct GetSeasonTotalsResponse {
         path = "/{season_id}",
     ),
     nats(
-        topic = "api.stats.v1.season",
+        topic = "api.v1.stats.season.by_season_id.get",
     ),
 )]
 async fn get_season_stats(
@@ -78,13 +79,6 @@ async fn get_season_stats(
         let throws_hit: u64 = row.get("throws_hit");
         let combatants_shoved: u64 = row.get("combatants_shoved");
 
-        #[derive(Serialize)]
-        struct Statline {
-            points: i64,
-            throws: u64,
-            hits: u64,
-            shoves: u64,
-        }
         let statline = Statline {
             points,
             throws: balls_thrown,
@@ -94,7 +88,7 @@ async fn get_season_stats(
 
         response.combatant_statlines.insert(
             combatant_id,
-            serde_json::to_vec(&statline).unwrap()
+            statline
         );
     }
 

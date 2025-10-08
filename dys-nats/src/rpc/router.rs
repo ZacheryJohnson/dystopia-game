@@ -44,14 +44,14 @@ impl NatsRouter {
     #[must_use]
     pub fn service(
         mut self,
-        service: (
+        service:
             impl NatsRpcServer + tower::Service<
                 async_nats::Message,
                 Error=NatsError,
                 Future=Pin<Box<dyn Future<Output = Result<Bytes, NatsError>> + Send>>,
                 Response=Bytes,
             > + Send + 'static
-        ),
+        ,
     ) -> NatsRouter {
         let rpc_subject = NatsRpcServer::rpc_subject(&service).to_string();
         let nats_service = NatsServiceInstance {
@@ -66,14 +66,14 @@ impl NatsRouter {
     #[must_use]
     pub fn service_2(
         mut self,
-        service: (
+        service:
             impl tower::Service<
                 async_nats::Message,
                 Error=NatsError,
                 Future=Pin<Box<dyn Future<Output = Result<Bytes, NatsError>> + Send>>,
                 Response=Bytes,
             > + Send + 'static
-        ),
+        ,
         topic: String,
     ) -> NatsRouter {
         let nats_service = NatsServiceInstance {
@@ -136,7 +136,10 @@ impl NatsRouter {
                                 .instrument(span)
                                 .await
                             {
-                                Ok(response_payload) => (response_payload, HeaderMap::new()),
+                                Ok(response_payload) => {
+                                    let mut headers = HeaderMap::new();
+                                    (response_payload, headers)
+                                },
                                 Err(err) => {
                                     let mut headers = HeaderMap::new();
                                     headers.insert("X-Dys-Error", err.to_string());
