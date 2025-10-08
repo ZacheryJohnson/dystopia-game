@@ -61,6 +61,7 @@ fn gather_openapi_specs() {
 
     api.info.title = "Dystopia API".to_string();
 
+    std::fs::create_dir_all(concat!(env!("CARGO_MANIFEST_DIR"), "/generated")).expect("failed to create output directory");
     std::fs::write(
         concat!(env!("CARGO_MANIFEST_DIR"), "/generated/openapi.json"),
         api.to_pretty_json().unwrap(),
