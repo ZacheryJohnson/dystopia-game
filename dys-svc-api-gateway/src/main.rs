@@ -36,19 +36,19 @@ mod topic_from_path_tests {
     #[test]
     fn test_no_params() {
         let method = HttpMethod::Get;
-        let path = "stats/recent/all";
+        let path = "/stats/recent/all";
 
         let actual_topic = topic_from_path(method, path);
-        assert_eq!(actual_topic, "stats.recent.all.get");
+        assert_eq!(actual_topic, "api.v1.stats.recent.all.get");
     }
 
     #[test]
     fn test_with_params() {
         let method = HttpMethod::Get;
-        let path = "stats/recent/{combatant_id}";
+        let path = "/stats/recent/{combatant_id}";
 
         let actual_topic = topic_from_path(method, path);
-        assert_eq!(actual_topic, "stats.recent.by_combatant_id.get");
+        assert_eq!(actual_topic, "api.v1.stats.recent.by_combatant_id.get");
     }
 }
 
