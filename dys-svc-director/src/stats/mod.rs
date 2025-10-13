@@ -7,6 +7,6 @@ mod types;
     nest(
         (path = "/recent", api = recent::RecentApi),
         (path = "/season", api = season::SeasonApi),
-    )
+    ),
 )]
 pub(crate) struct StatsApi;

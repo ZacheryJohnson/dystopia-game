@@ -20,7 +20,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': 'http://172.18.0.1:6080',
+      '/api': 'http://172.18.0.1:6050',
     },
     host: true,
     strictPort: true,

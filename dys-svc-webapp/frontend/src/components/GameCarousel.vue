@@ -32,15 +32,15 @@ const dateFromStr = (str: string): DateMessage => {
 };
 
 onMounted(async () => {
-    const payload: GameSummaryResponse = await (await fetchApi('summaries')).json();
-    const gameSummaries: GameSummary[] = payload.gameSummaries;
-    const nextGames: GameSummary[] = payload.nextGames;
+    const payload = await (await fetchApi('game/summary')).json();
+    const gameSummaries = payload["game_summaries"];
+    const nextGames = payload["next_games"];
 
     seasonStore.gamesByDate = new Map();
     seasonStore.gamesById = new Map();
 
     for (const game of nextGames) {
-        const dateStr = dateToStr(game.date!);
+        const dateStr = game.date!;
         if (seasonStore.gamesByDate.has(dateStr)) {
             seasonStore.gamesByDate.get(dateStr)!.push(game);
         } else {
@@ -49,14 +49,14 @@ onMounted(async () => {
     }
 
     for (const game of gameSummaries) {
-        const dateStr = dateToStr(game.date!);
+        const dateStr = game.date!;
         if (seasonStore.gamesByDate.has(dateStr)) {
             seasonStore.gamesByDate.get(dateStr)!.push(game);
         } else {
             seasonStore.gamesByDate.set(dateStr, [game]);
         }
 
-        seasonStore.gamesById.set(game.gameId!, game);
+        seasonStore.gamesById.set(game["game_id"], game);
     }
 });
 </script>
@@ -73,14 +73,14 @@ onMounted(async () => {
             </div>
             <GameCarouselElement
                 v-for="game of games"
-                :key="game.gameId"
-                :gameId="game.gameId"
-                :awayAbbr="game.awayTeamName?.substring(0, 3).toUpperCase()"
-                :homeAbbr="game.homeTeamName?.substring(0, 3).toUpperCase()"
-                :awayScore="game.awayTeamScore"
-                :homeScore="game.homeTeamScore"
-                :awayRecord="game.awayTeamRecord"
-                :homeRecord="game.homeTeamRecord"
+                :key="game['game_id']"
+                :gameId="game['game_id']"
+                :awayAbbr="game['away_team_name']?.substring(0, 3).toUpperCase()"
+                :homeAbbr="game['home_team_name']?.substring(0, 3).toUpperCase()"
+                :awayScore="game['away_team_score']"
+                :homeScore="game['home_team_score']"
+                :awayRecord="game['away_team_record']"
+                :homeRecord="game['home_team_record']"
                 :dateStr="dateStr"
             />
         </template>

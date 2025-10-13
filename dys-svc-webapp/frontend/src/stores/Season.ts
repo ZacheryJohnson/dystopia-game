@@ -7,6 +7,7 @@ import { DateMessage } from '%/common/date.ts';
 import type { GetSeasonTotalsResponse } from '%/services/game_results/stats.ts';
 import type { World } from '%/rust_types/World.ts';
 import { fetchApi } from '@/utils.ts';
+import type { CombatantInstance } from '%/rust_types/CombatantInstance.ts';
 
 const dateToStr = (date: DateMessage) => {
     return `${date.year}-${date.month.valueOf()}-${date.day}`;
@@ -30,7 +31,7 @@ export type Stats = {
 
 export const getSeasonStore = defineStore('season', () => {
     /// Sorted by date, such that the first entry is chronologically before the next
-    const gamesByDate: Ref<Map<string, GameSummary[]>> = ref(new Map());
+    const gamesByDate: Ref<Map<string, any>> = ref(new Map());
     const gamesById: Ref<Map<number, GameSummary>> = ref(new Map());
     const worldState: Ref<World> = ref({ combatants: [], teams: [] });
     const season: Ref<Map<string, GameInstance[]>> = ref(new Map());
@@ -73,8 +74,9 @@ export const getSeasonStore = defineStore('season', () => {
     };
 
     const fetchLatestWorldState = async () => {
-        const response: WorldStateResponse = await (await fetchApi('world_state')).json();
-        let world: World = JSON.parse(String.fromCharCode(...response.worldStateJson!));
+        const response = await (await fetchApi('world/state')).json();
+        const world_state = response['world_state_json'];
+        const world: World = JSON.parse(world_state);
 
         // ZJ-TODO: the world is serialized by the backend as a vector, not a map.
         //          The IDs that are used as keys do not map to combatant/team instance IDs.
@@ -93,12 +95,15 @@ export const getSeasonStore = defineStore('season', () => {
 
     const fetchSeasonStats = async () => {
         const season_id: number = 1;
-        const response: GetSeasonTotalsResponse = await (
-            await fetchApi(`season_stats/${season_id}`)
+        const response = await (
+            await fetchApi(`stats/season/${season_id}`)
         ).json();
-        for (const [combatantId, statline] of Object.entries(response.combatantStatlines)) {
-            const statlines: Stats = JSON.parse(String.fromCharCode(...statline!));
-            stats.value.set(Number(combatantId), statlines);
+
+        const statlineMap: { [key in string]?: Stats } = response['combatant_statlines'];
+
+        for (const [combatantId, statline] of Object.entries(statlineMap)) {
+            // ZJ-TODO: handle undefined statline
+            stats.value.set(Number(combatantId), statline!);
         }
     };
 

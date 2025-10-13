@@ -109,4 +109,12 @@ impl Date {
 
         day_count
     }
+
+    pub fn as_iso8601(&self) -> String {
+        format!("{}-{}-{}",
+            self.year(),
+            self.month().id(),
+            self.day()
+        )
+    }
 }

@@ -137,8 +137,7 @@ impl NatsRouter {
                                 .await
                             {
                                 Ok(response_payload) => {
-                                    let mut headers = HeaderMap::new();
-                                    (response_payload, headers)
+                                    (response_payload, HeaderMap::new())
                                 },
                                 Err(err) => {
                                     let mut headers = HeaderMap::new();

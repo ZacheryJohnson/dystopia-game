@@ -49,24 +49,6 @@ struct AppState {
 }
 
 #[tracing::instrument(skip(app_state))]
-async fn query_latest_games(State(app_state): State<AppState>) -> Result<Response, StatusCode> {
-    let request = proto_nats::game_results::GameSummaryRequest {
-        game_ids: vec![], // ZJ-TODO: make this field useful
-    };
-
-    send_nats_request!(request, app_state)
-}
-
-#[tracing::instrument(skip(app_state))]
-async fn query_world_state(State(app_state): State<AppState>) -> Result<Response, Infallible> {
-    let request = proto_nats::world::WorldStateRequest {
-        revision: Some(0),
-    };
-
-    send_nats_request!(request, app_state)
-}
-
-#[tracing::instrument(skip(app_state))]
 async fn create_account(
     State(app_state): State<AppState>,
     maybe_http_request: Result<Json<proto_http::auth::CreateAccountRequest>, JsonRejection>,
@@ -118,47 +100,6 @@ async fn get_season(
     send_nats_request!(request, app_state)
 }
 
-#[tracing::instrument(skip(app_state))]
-async fn get_game_log(
-    State(app_state): State<AppState>,
-    Path(game_id): Path<u32>,
-) -> Result<Response, Infallible> {
-    let request = proto_nats::game_results::GetGameLogRequest {
-        game_id: Some(game_id)
-    };
-
-    send_nats_request!(request, app_state)
-}
-
-#[tracing::instrument(skip(app_state))]
-async fn season_stats(
-    State(app_state): State<AppState>,
-    Path(season_id): Path<u32>,
-) -> Result<Response, Infallible> {
-    let request = proto_nats::stats::GetSeasonTotalsRequest {
-        season_id
-    };
-
-    send_nats_request!(request, app_state)
-}
-
-#[tracing::instrument(skip(app_state))]
-async fn recent_stats(
-    State(app_state): State<AppState>,
-    request: Bytes,
-) -> Result<Response, Infallible> {
-    tracing::info!("recent_stats request");
-
-    let http_request: proto_http::stats::GetGameStatlinesRequest = serde_json::from_slice(request.as_ref()).unwrap();
-
-    let request = proto_nats::stats::GetGameStatlinesRequest {
-        number_of_most_recent_games: http_request.number_of_most_recent_games,
-        combatant_ids: http_request.combatant_ids,
-    };
-
-    send_nats_request!(request, app_state)
-}
-
 async fn health_check(_: Request) -> Result<impl IntoResponse, Infallible> {
     Ok(StatusCode::OK)
 }
@@ -185,15 +126,10 @@ async fn main() {
         .nest_service(
             "/api",
             Router::new()
-                .route("/summaries", get(query_latest_games))
-                .route("/game_log/{match_id}", get(get_game_log))
-                .route("/world_state", get(query_world_state))
                 .route("/season", get(get_season))
                 .route("/create_account", post(create_account))
                 .route("/get_voting_proposals", get(get_voting_proposals))
                 .route("/vote", post(submit_vote))
-                .route("/season_stats/{season_id}", get(season_stats))
-                .route("/game_results/stats", post(recent_stats))
                 .with_state(app_state.clone())
         )
         .nest_service(

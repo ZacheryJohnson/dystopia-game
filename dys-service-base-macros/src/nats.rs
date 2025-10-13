@@ -54,6 +54,8 @@ pub fn natsapi_impl(
     response_type: Type,
 ) -> proc_macro::TokenStream {
     let struct_name = snake_case_to_pascal_case(api_name.to_string());
+    // ZJ-TODO: don't have a NATS API attribute at all; just parse it from passed args from parent
+    //          a la "api.vX.{endpoint_path}"
     let topic = nats_api_attribute.topic.unwrap();
     let service_struct_name = format_ident!("{}NatsService", struct_name);
 
