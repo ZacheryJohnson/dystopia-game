@@ -20,6 +20,7 @@ RUN cargo build --release -p dys-svc-api-gateway --verbose
 #   Runtime
 # --------------------------------------------
 FROM debian:bookworm-slim AS runtime
+EXPOSE 6050/tcp
 
 # Copy the binary
 COPY --from=builder /opt/dystopia/target/release/dys-svc-api-gateway /dys-svc-api-gateway

@@ -1,30 +1,56 @@
 use std::collections::HashMap;
+use utoipa::{IntoParams, ToSchema};
+use utoipa::openapi::path::Parameter;
+use utoipa::openapi::path::ParameterIn;
+use serde::{Deserialize, Serialize};
 use dys_datastore_valkey::datastore::{AsyncCommands, AsyncIter};
 use dys_nats::error::NatsError;
-use dys_protocol::nats::game_results::{GameSummaryRequest, GameSummaryResponse, GetGameLogRequest, GetGameLogResponse};
-use dys_protocol::nats::game_results::game_summary_response::GameSummary;
+use dys_service_base_macros::{api, ApiRequest};
 use crate::AppState;
+use crate::game::types::{GamePreview, GameSummary};
 
-#[tracing::instrument(skip_all)]
+#[derive(utoipa::OpenApi)]
+#[openapi(
+    paths(get_summaries)
+)]
+pub struct SummaryApi;
+
+#[derive(Debug, Clone, Serialize, Deserialize, ApiRequest)]
+pub struct GetGameSummaryRequest {
+
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct GetGameSummaryResponse {
+    pub game_summaries: Vec<GameSummary>,
+    pub next_games: Vec<GamePreview>,
+}
+
+#[api(
+    request = GetGameSummaryRequest,
+    response = GetGameSummaryResponse,
+    error = NatsError,
+    app_state = AppState,
+    http(
+        method = "Get",
+        path = "",
+    ),
+    nats(
+        topic = "api.v1.game.summary.get",
+    ),
+)]
 pub async fn get_summaries(
-    request: GameSummaryRequest,
+    request: GetGameSummaryRequest,
     app_state: AppState
     // ZJ-TODO: the error type of the signature should be Result<Response, CustomError>, not NatsError
-) -> Result<GameSummaryResponse, NatsError> {
+) -> Result<GetGameSummaryResponse, NatsError> {
     let mut valkey = app_state.valkey.lock().unwrap().connection();
 
-    let game_ids: Vec<u32> = {
-        if !request.game_ids.is_empty() {
-            request.game_ids
-        } else {
-            // If no game IDs are provided, just grab the latest ~10
-            valkey.lrange(
-                "env:dev:game.results:latest",
-                0,
-                9,
-            ).await.unwrap()
-        }
-    };
+    let game_ids: Vec<u32> = valkey.lrange(
+        "env:dev:game.results:latest",
+        0,
+        9,
+    ).await.unwrap();
 
     let mut game_summaries = Vec::new();
     for game_id in game_ids {
@@ -32,6 +58,8 @@ pub async fn get_summaries(
             format!("env:dev:game.results:id:{game_id}"),
             "summary",
         ).await.unwrap();
+
+        tracing::info!("{response_data}");
 
         game_summaries.push(serde_json::from_str(&response_data).unwrap());
     }
@@ -74,52 +102,28 @@ pub async fn get_summaries(
             let game_instance = game_instance.lock().unwrap();
             let home_team = game_instance.home_team.lock().unwrap();
             let away_team = game_instance.away_team.lock().unwrap();
-            next_games.push(GameSummary {
-                game_id: Some(game_instance.game_id),
-                away_team_name: Some(away_team.name.clone()),
-                home_team_name: Some(home_team.name.clone()),
-                away_team_score: None,
-                home_team_score: None,
-                date: Some(dys_protocol::nats::common::Date {
-                    year: current_date.year(),
-                    month: current_date.month().id() as i32,
-                    day: current_date.day(),
-                }),
-                home_team_record: Some(format!(
+            next_games.push(GamePreview {
+                game_id: game_instance.game_id,
+                away_team_name: away_team.name.clone(),
+                home_team_name: home_team.name.clone(),
+                date: current_date.as_iso8601(),
+                home_team_record: format!(
                     "{}-{}",
                     team_records.get(&home_team.name).unwrap_or(&(0, 0)).0,
                     team_records.get(&home_team.name).unwrap_or(&(0, 0)).1,
-                )),
-                away_team_record: Some(format!(
+                ),
+                away_team_record: format!(
                     "{}-{}",
                     team_records.get(&away_team.name).unwrap_or(&(0, 0)).0,
                     team_records.get(&away_team.name).unwrap_or(&(0, 0)).1,
-                )),
+                ),
             });
         }
     }
 
-    let response = GameSummaryResponse {
+    let response = GetGameSummaryResponse {
         game_summaries,
         next_games,
     };
-    Ok(response)
-}
-
-#[tracing::instrument(skip_all)]
-pub async fn get_game_log(
-    request: GetGameLogRequest,
-    app_state: AppState,
-) -> Result<GetGameLogResponse, NatsError> {
-    let mut valkey = app_state.valkey.lock().unwrap().connection();
-    let game_log_serialized: Vec<u8> = valkey.hget(
-        format!("env:dev:game.results:id:{}", request.game_id.as_ref().unwrap_or(&0)),
-        "game_log"
-    ).await.unwrap();
-
-    let response = GetGameLogResponse {
-        game_log_serialized: Some(game_log_serialized),
-    };
-
     Ok(response)
 }

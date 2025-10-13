@@ -1,3 +1,5 @@
+const API_GATEWAY_BASE = import.meta.env.VITE_API_GATEWAY_BASE_URI || window.location.origin;
+
 // Executes a request against the provided API path.
 // Returns the results as a parsed JSON object, which can be converted to an expected type as desired.
 export const fetchApi = async (path: string, options?: RequestInit): Promise<Response> => {
@@ -9,5 +11,5 @@ export const fetchApi = async (path: string, options?: RequestInit): Promise<Res
         }
     }
 
-    return await fetch(`${window.location.origin}/api/${path}`, options);
+    return await fetch(`${API_GATEWAY_BASE}/${path}`, options);
 };

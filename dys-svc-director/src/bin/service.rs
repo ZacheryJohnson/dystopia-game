@@ -5,18 +5,15 @@ use rand::prelude::StdRng;
 use rand::SeedableRng;
 use sqlx::mysql::MySqlConnectOptions;
 use tokio::time::Instant;
-use director::{get_season, get_voting_proposals, get_world_state, run_simulation, simulation_timings, submit_vote, AppState};
-use director::game_result::{get_game_log, get_summaries};
-use director::world::generate_world;
+use director::{get_season, get_voting_proposals, run_simulation, simulation_timings, submit_vote, AppState};
+use director::world_old::generate_world;
 use dys_datastore::datastore::Datastore;
 use dys_datastore_mysql::datastore::MySqlDatastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
 use dys_nats::rpc::router::NatsRouter;
 use dys_observability::logger::LoggerOptions;
-use dys_protocol::nats::game_results::summary_svc::{GameSummaryRpcServer, GetGameLogRpcServer};
 use dys_protocol::nats::vote::vote_svc::{GetProposalsRpcServer, VoteOnProposalRpcServer};
 use dys_protocol::nats::world::schedule_svc::GetSeasonRpcServer;
-use dys_protocol::nats::world::world_svc::WorldStateRpcServer;
 use dys_world::schedule::calendar::Date;
 use dys_world::schedule::calendar::Month::Arguscorp;
 
@@ -51,7 +48,7 @@ async fn main() {
         MySqlDatastore::connect(mysql_config).await.unwrap()
     ));
 
-    director::world::save_world(mysql.clone(), game_world.clone(), &season).await;
+    director::world_old::save_world(mysql.clone(), game_world.clone(), &season).await;
 
     // Get first match time
     let first_game_time_utc = {
@@ -141,16 +138,25 @@ async fn main() {
     let season = director::stats::season::nats::GetSeasonStatsNatsService::from(app_state.clone());
     let season_topic = season.topic.clone();
 
+    let world_state = director::world::state::nats::GetWorldStateNatsService::from(app_state.clone());
+    let world_state_topic = world_state.topic.clone();
+
+    let game_result = director::game::summary::nats::GetSummariesNatsService::from(app_state.clone());
+    let game_result_topic = game_result.topic.clone();
+
+    let log = director::game::log::nats::GetGameLogNatsService::from(app_state.clone());
+    let log_topic = log.topic.clone();
+
     let nats = NatsRouter::new()
         .await
-        .service(GameSummaryRpcServer::with_handler_and_state(get_summaries, app_state.clone()))
-        .service(GetGameLogRpcServer::with_handler_and_state(get_game_log, app_state.clone()))
         .service(GetSeasonRpcServer::with_handler_and_state(get_season, app_state.clone()))
-        .service(WorldStateRpcServer::with_handler_and_state(get_world_state, app_state.clone()))
         .service(GetProposalsRpcServer::with_handler_and_state(get_voting_proposals, app_state.clone()))
         .service(VoteOnProposalRpcServer::with_handler_and_state(submit_vote, app_state.clone()))
         .service_2(recent, recent_topic)
-        .service_2(season, season_topic);
+        .service_2(season, season_topic)
+        .service_2(world_state, world_state_topic)
+        .service_2(game_result, game_result_topic)
+        .service_2(log, log_topic);
 
     nats.run().await;
 }

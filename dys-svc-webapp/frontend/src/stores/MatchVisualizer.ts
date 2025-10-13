@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
+import { fetchApi } from '@/utils.ts';
 
 export const getMatchVisualizerStore = defineStore('matchVisualizer', () => {
     const gameLogData = ref(new Uint8Array());
@@ -9,7 +10,14 @@ export const getMatchVisualizerStore = defineStore('matchVisualizer', () => {
 
     function $reset() {
         gameLogData.value = new Uint8Array();
+        worldStateBytes.value = new Uint8Array();
     }
 
-    return { gameLogData, hasWasmLoaded, selectedGameId, worldStateBytes, $reset };
+    async function getLatestWorldStateBytes() {
+        const response = await (await fetchApi('world/state')).json();
+        const encoder = new TextEncoder();
+        worldStateBytes.value = encoder.encode(response['world_state_json']);
+    }
+
+    return { gameLogData, hasWasmLoaded, selectedGameId, worldStateBytes, getLatestWorldStateBytes, $reset };
 });

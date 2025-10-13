@@ -177,7 +177,5 @@ pub fn api_impl(attribute: proc_macro::TokenStream, api: proc_macro::TokenStream
     let fn_tokens: proc_macro::TokenStream = api_fn.to_token_stream().into();
     token_stream.extend(fn_tokens);
 
-    // panic!("{token_stream}");
-
     token_stream
 }

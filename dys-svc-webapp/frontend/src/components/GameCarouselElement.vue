@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { getMatchVisualizerStore } from '@/stores/MatchVisualizer';
 import { computed, onMounted, ref } from 'vue';
-import type { GetGameLogResponse } from '%/services/game_results/summary.ts';
 import { getSeasonStore } from '@/stores/Season.ts';
 import { fetchApi } from '@/utils.ts';
 const matchVisualizerStore = getMatchVisualizerStore();
@@ -28,19 +27,23 @@ const timeFormat = new Intl.DateTimeFormat(
     },
 );
 
+const isGameOver = () => getSeasonStore().gamesById.get(props.gameId) != null;
+const awayWin = isGameOver() && props.awayScore > props.homeScore;
+const homeWin = isGameOver() && props.homeScore > props.awayScore;
+
 async function onElementClicked() {
-    const response: GetGameLogResponse = await (await fetchApi(`game_log/${props.gameId}`)).json();
-    matchVisualizerStore.gameLogData = response.gameLogSerialized!;
+    if (!isGameOver()) {
+        return;
+    }
+
+    const response = await (await fetchApi(`game/log/${props.gameId}`)).json();
+    matchVisualizerStore.gameLogData = response['game_log_serialized'];
     matchVisualizerStore.selectedGameId = props.gameId;
 }
 
 onMounted(async () => {
     await seasonStore.fetchSeason();
 });
-
-const gameOver = true; // ZJ-TODO: calculate this
-const awayWin = gameOver && props.awayScore > props.homeScore;
-const homeWin = gameOver && props.homeScore > props.awayScore;
 
 const getScheduledTimeFn = () => {
     const games = getSeasonStore().season.get(props.dateStr);

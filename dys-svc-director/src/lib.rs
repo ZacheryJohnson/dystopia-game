@@ -1,6 +1,10 @@
-pub mod game_result;
-pub mod world;
+// ZJ-TODO: old APIs - migrate to new
+pub mod world_old;
+// ZJ-TODO: end old APIs
+
+pub mod game;
 pub mod stats;
+pub mod world;
 
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
@@ -19,9 +23,8 @@ use dys_datastore_mysql::execute_query;
 use dys_datastore_mysql::query::MySqlQuery;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyDatastore};
 use dys_nats::error::NatsError;
-use dys_protocol::nats::game_results::game_summary_response::GameSummary;
 use dys_protocol::nats::vote::{GetProposalsRequest, GetProposalsResponse, Proposal, ProposalOption, VoteOnProposalRequest, VoteOnProposalResponse};
-use dys_protocol::nats::world::{GetSeasonRequest, GetSeasonResponse, WorldStateRequest, WorldStateResponse};
+use dys_protocol::nats::world::{GetSeasonRequest, GetSeasonResponse};
 use dys_stat::combatant_statline::CombatantStatline;
 use dys_world::combatant::instance::EffectDuration;
 use dys_world::games::instance::GameInstanceId;
@@ -29,16 +32,22 @@ use dys_world::proposal::ProposalEffect;
 use dys_world::season::season::Season;
 use dys_world::season::series::{Series, SeriesType};
 use dys_world::team::instance::TeamInstance;
-use crate::world::InsertGameLogQuery;
 
 pub use ::async_nats;
 pub use ::tower;
+use crate::game::types::GameSummary;
+use crate::world_old::InsertGameLogQuery;
 
 #[derive(OpenApi)]
 #[openapi(
     nest(
-        (path = "/stats", api = stats::StatsApi)
-    )
+        (path = "/stats", api = stats::StatsApi),
+        (path = "/world", api = world::WorldApi),
+        (path = "/game", api = game::GameApi)
+    ),
+    servers(
+        (url = "/api"),
+    ),
 )]
 pub struct DirectorApi;
 
@@ -205,7 +214,6 @@ async fn simulate_matches(app_state: AppState) -> Vec<(GameSummary, Bytes)> {
         let game = Game { game_instance };
         let game_log = game.simulate();
 
-        // ZJ-TODO: write these to the database and show them on the site
         struct InsertGameStatlines<'q> {
             game_id: GameInstanceId,
             statlines: Vec<CombatantStatline>,
@@ -272,19 +280,60 @@ async fn simulate_matches(app_state: AppState) -> Vec<(GameSummary, Bytes)> {
             combatant.lock().unwrap().tick_effects();
         }
 
+        let away_team_score = game_log.away_score() as u32;
+        let home_team_score = game_log.home_score() as u32;
+        let home_win = home_team_score > away_team_score;
+
+        let mut valkey_connection = app_state.valkey.lock().unwrap().connection();
+        let _: i32 = valkey_connection.hincr(
+            // ZJ-TODO: should be team ID
+            format!("env:dev:season:record:team:{}", &away_team_name),
+            if home_win { "losses" } else { "wins" },
+            1
+        ).await.unwrap();
+
+        let _: i32 = valkey_connection.hincr(
+            // ZJ-TODO: should be team ID
+            format!("env:dev:season:record:team:{}", &home_team_name),
+            if home_win { "wins" } else { "losses" },
+            1
+        ).await.unwrap();
+
+        let mut records = HashMap::from([
+            (&away_team_name, String::new()),
+            (&home_team_name, String::new()),
+        ]);
+
+        for (team_name, record) in &mut records {
+            let current_record: Vec<String> = valkey_connection.hgetall(
+                format!("env:dev:season:record:team:{}", &team_name)
+            ).await.unwrap();
+
+            assert_eq!(record.len() % 2, 0);
+            let current_record = current_record
+                .chunks(2)
+                .map(|vals| (vals[0].to_owned(), vals[1].parse::<i32>().unwrap()))
+                .collect::<HashMap<_, _>>();
+
+            *record = format!(
+                "{}-{}",
+                current_record.get(&String::from("wins")).unwrap_or(&0),
+                current_record.get(&String::from("losses")).unwrap_or(&0),
+            );
+        }
+
+        let home_team_record = records.get(&home_team_name).unwrap().clone();
+        let away_team_record = records.get(&away_team_name).unwrap().clone();
+
         game_results.push((GameSummary {
-            game_id: Some(game_id),
-            away_team_name: Some(away_team_name),
-            home_team_name: Some(home_team_name),
-            away_team_score: Some(game_log.away_score() as u32),
-            home_team_score: Some(game_log.home_score() as u32),
-            date: Some(dys_protocol::nats::common::Date {
-                year: current_date.year(),
-                month: current_date.month() as i32 + 1, // ZJ-TODO: yuck
-                day: current_date.day(),
-            }),
-            home_team_record: None,
-            away_team_record: None,
+            game_id,
+            away_team_name,
+            home_team_name,
+            away_team_score,
+            home_team_score,
+            date: current_date.as_iso8601(),
+            home_team_record,
+            away_team_record,
         }, serialized_game_log.into()));
     }
 
@@ -304,71 +353,24 @@ pub async fn run_simulation(world_state: AppState) {
     let mut latest_ids = vec![];
     let mut valkey = world_state.valkey.lock().unwrap().connection();
 
-    for (mut summary, serialized_game_log) in game_summary {
+    for (summary, serialized_game_log) in game_summary {
         latest_ids.push(summary.game_id);
-
-        let home_win = summary.home_team_score > summary.away_team_score;
-
-        let _: i32 = valkey.hincr(
-            // ZJ-TODO: should be team ID
-            format!("env:dev:season:record:team:{}", summary.away_team_name.as_ref().unwrap_or(&String::new())),
-            if home_win { "losses" } else { "wins" },
-            1
-        ).await.unwrap();
-
-        let _: i32 = valkey.hincr(
-            // ZJ-TODO: should be team ID
-            format!("env:dev:season:record:team:{}", summary.home_team_name.as_ref().unwrap_or(&String::new())),
-            if home_win { "wins" } else { "losses" },
-            1
-        ).await.unwrap();
-
-        let away_team_record: Vec<String> = valkey.hgetall(
-            format!("env:dev:season:record:team:{}", summary.away_team_name.as_ref().unwrap_or(&String::new())),
-        ).await.unwrap();
-        assert_eq!(away_team_record.len() % 2, 0);
-        let away_team_record = away_team_record
-            .chunks(2)
-            .map(|vals| (vals[0].to_owned(), vals[1].parse::<i32>().unwrap()))
-            .collect::<HashMap<_, _>>();
-        let away_team_record = format!(
-            "{}-{}",
-            away_team_record.get(&String::from("wins")).unwrap_or(&0),
-            away_team_record.get(&String::from("losses")).unwrap_or(&0),
-        );
-
-        let home_team_record: Vec<String> = valkey.hgetall(
-            format!("env:dev:season:record:team:{}", summary.home_team_name.as_ref().unwrap_or(&String::new()))
-        ).await.unwrap();
-        assert_eq!(home_team_record.len() % 2, 0);
-        let home_team_record = home_team_record
-            .chunks(2)
-            .map(|vals| (vals[0].to_owned(), vals[1].parse::<i32>().unwrap()))
-            .collect::<HashMap<_, _>>();
-        let home_team_record = format!(
-            "{}-{}",
-            home_team_record.get(&String::from("wins")).unwrap_or(&0),
-            home_team_record.get(&String::from("losses")).unwrap_or(&0),
-        );
-
-        summary.away_team_record = Some(away_team_record);
-        summary.home_team_record = Some(home_team_record);
 
         let game_summary_json = serde_json::to_string(&summary).unwrap();
         let _: i32 = valkey.hset(
-            format!("env:dev:game.results:id:{}", summary.game_id.as_ref().unwrap_or(&0)),
+            format!("env:dev:game.results:id:{}", summary.game_id),
             "summary",
             game_summary_json,
         ).await.unwrap();
 
         let _: i32 = valkey.hset(
-            format!("env:dev:game.results:id:{}", summary.game_id.as_ref().unwrap_or(&0)),
+            format!("env:dev:game.results:id:{}", summary.game_id),
             "game_log",
             serialized_game_log.as_ref(),
         ).await.unwrap();
 
         let _: i32 = valkey.expire(
-            format!("env:dev:game.results:id:{}", summary.game_id.as_ref().unwrap_or(&0)),
+            format!("env:dev:game.results:id:{}", summary.game_id),
             60 * 60 * 2 // 2 hours
         ).await.unwrap();
     }
@@ -445,19 +447,6 @@ pub async fn get_season(
             day: current_date.day(),
         }),
         all_series: proto_series,
-    })
-}
-
-#[tracing::instrument(skip(app_state))]
-pub async fn get_world_state(
-    _: WorldStateRequest,
-    app_state: AppState,
-) -> Result<WorldStateResponse, NatsError> {
-    let mut valkey = app_state.valkey.lock().unwrap().connection();
-    let response_data: String = valkey.hget("env:dev:world", "data").await.unwrap();
-
-    Ok(WorldStateResponse {
-        world_state_json: Some(response_data.into_bytes()),
     })
 }
 

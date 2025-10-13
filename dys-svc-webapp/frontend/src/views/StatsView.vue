@@ -90,7 +90,6 @@ const tableOptions: DataTableConfig = {
 
 onMounted(async () => {
     await getSeasonStore().fetchLatestWorldState();
-    await getSeasonStore().fetchSeason();
     await getSeasonStore().fetchSeasonStats();
 });
 </script>

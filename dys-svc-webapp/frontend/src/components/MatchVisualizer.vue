@@ -2,22 +2,15 @@
 import { onMounted, onUpdated } from 'vue';
 import init, { exit, initializeWithCanvas, loadGameLog } from '@/assets/matchvisualizer.js';
 import { getMatchVisualizerStore } from '@/stores/MatchVisualizer';
-import { type WorldStateResponse } from '%/services/world/world.ts';
 
 import * as pako from 'pako';
-import { fetchApi } from '@/utils.ts';
-
-const matchVisualizerStore = getMatchVisualizerStore();
 
 const props = defineProps(['gameLogData']);
 
 defineEmits(['close']);
 
 onMounted(async () => {
-    if (!matchVisualizerStore.hasWasmLoaded) {
-        const worldStateResponse: WorldStateResponse = await (await fetchApi('world_state')).json();
-        matchVisualizerStore.worldStateBytes = worldStateResponse.worldStateJson!;
-
+    if (!getMatchVisualizerStore().hasWasmLoaded) {
         const compressedWasm = await (await fetch('/matchvisualizer_opt.wasm.gz')).bytes();
         const decompressedWasm = pako.ungzip(compressedWasm);
 
@@ -26,7 +19,7 @@ onMounted(async () => {
                 throw err;
             }
         });
-        matchVisualizerStore.hasWasmLoaded = true;
+        getMatchVisualizerStore().hasWasmLoaded = true;
 
         try {
             // This will block! Do nothing after this.
@@ -44,7 +37,8 @@ onUpdated(async () => {
         return;
     }
 
-    loadGameLog(props.gameLogData, matchVisualizerStore.worldStateBytes.valueOf());
+    await getMatchVisualizerStore().getLatestWorldStateBytes();
+    loadGameLog(props.gameLogData, getMatchVisualizerStore().worldStateBytes.valueOf());
 });
 </script>
 

@@ -9,6 +9,7 @@ ARG OUT_DIR="wasm_out"
 ARG BIN_NAME="matchvisualizer"
 ARG WEBAPP_PUBLIC_DIR_PATH="dys-svc-webapp/frontend/public"
 ARG WEBAPP_INTERNAL_DIR_PATH="dys-svc-webapp/frontend/src/assets"
+ARG VITE_API_GATEWAY_BASE_URI
 
 # Bevy has special requirements on Linux
 RUN apt-get update
@@ -82,6 +83,8 @@ WORKDIR /
 #          we don't need every container with the static files, but instead one shared source of truth
 ENV DIST_PATH=/dist
 COPY --from=builder /opt/dystopia/dys-svc-webapp/frontend/dist /dist/
+
+ENV VITE_API_GATEWAY_BASE_URI=$VITE_API_GATEWAY_BASE_URI
 
 WORKDIR /frontend/
 CMD [ "/dys-svc-webapp" ]

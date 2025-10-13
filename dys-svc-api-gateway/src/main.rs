@@ -5,10 +5,11 @@ use async_nats::HeaderMap;
 use axum::extract::Request;
 use axum::http::Response;
 use axum::response::IntoResponse;
+use axum::Router;
 use futures::StreamExt;
 use serde_json::json;
 use tower::service_fn;
-use utoipa::openapi::{HttpMethod, Object, RefOr, Schema, Type};
+use utoipa::openapi::{HttpMethod, RefOr, Schema, Type};
 use utoipa::openapi::path::Operation;
 use utoipa::openapi::schema::SchemaType;
 use utoipa_swagger_ui::SwaggerUi;
@@ -72,138 +73,123 @@ async fn main() {
     struct ApiDefinition {
         path: String,
         method: HttpMethod,
-        _operation: Operation,
     }
 
     let mut schema_types = HashMap::new();
 
-    for (path, item) in &api.paths.paths {
-        if let Some(get) = item.get.as_ref() {
-            let api_definition = ApiDefinition {
-                path: path.clone(),
-                method: HttpMethod::Get,
-                _operation: get.to_owned(),
-            };
+    let mut register_api_fn = |mut router: Router, path: String, method: HttpMethod, operation: &Operation| -> Router {
+        let api_definition = ApiDefinition {
+            path: path.clone(),
+            method: method.clone(),
+        };
 
-            for param in get.parameters.as_ref().unwrap() {
-                println!("    param: {}", param.name);
-
-                match param.schema.as_ref().unwrap() {
-                    RefOr::Ref(t) => {
-                        println!("\t{}", t.ref_location);
-                    }
-                    RefOr::T(t) => {
-                        match t {
-                            Schema::Object(obj) => {
-                                println!("\trequired: {:?}", param.required);
-                                println!("\tin: {:?}", param.parameter_in);
-
-                                // ZJ-TODO: verify required params exist
-                                schema_types.insert(
-                                    param.name.clone(),
-                                    obj.schema_type.clone()
-                                );
-                            }
-                            _ => panic!("unhandled type! {t:?}")
+        for param in operation.parameters.as_ref().unwrap() {
+            match param.schema.as_ref().unwrap() {
+                RefOr::Ref(t) => {
+                    unimplemented!("schema references are currently unimplemented")
+                }
+                RefOr::T(t) => {
+                    match t {
+                        Schema::Object(obj) => {
+                            // ZJ-TODO: verify required params exist
+                            schema_types.insert(
+                                param.name.clone(),
+                                obj.schema_type.clone()
+                            );
                         }
+                        _ => panic!("unhandled type! {t:?}")
                     }
                 }
             }
+        }
 
+        let nats_client = nats_client.clone();
+        let schema_types = schema_types.clone();
+
+        // We could instead nest here, but ideally /api/... is handled by nginx/middleware
+        let api_path = format!("{}{path}", std::env::var("API_PREFIX").unwrap_or_default());
+        router = router.route_service(&api_path.clone(), service_fn(move |request: Request| {
+            let api_definition = api_definition.clone();
             let nats_client = nats_client.clone();
-            let path_clone = path.clone();
             let schema_types = schema_types.clone();
 
-            router = router.route_service(&path, service_fn(move |request: Request| {
-                let api_definition = api_definition.clone();
-                let nats_client = nats_client.clone();
-                let schema_types = schema_types.clone();
+            let mut json_object_map = serde_json::Map::new();
 
-                let mut json_object_map = serde_json::Map::new();
+            let query_arg = request.uri().query().unwrap_or_default();
+            if !query_arg.is_empty() {
+                let name_and_value = query_arg.split("=").collect::<Vec<_>>();
+                let name = name_and_value[0];
+                let value_str = name_and_value[1];
 
-                let actual_path = request.uri().path().to_string();
-                let query_arg_start_idx = actual_path.find("?").unwrap_or(actual_path.len());
-                let query_arg_end_idx = actual_path.find("&").unwrap_or(actual_path.len());
-                let query_arg = &actual_path[query_arg_start_idx..query_arg_end_idx];
-                if !query_arg.is_empty() {
-                    let name_and_value = query_arg.split("=").collect::<Vec<_>>();
-                    let name = name_and_value[0];
-                    let value_str = name_and_value[1];
+                let value = match schema_types.get(name).unwrap() {
+                    SchemaType::Type(ty) => match ty {
+                        Type::String => serde_json::Value::String(value_str.to_string()),
+                        Type::Integer => serde_json::Value::Number(serde_json::Number::from(value_str.parse::<i64>().unwrap())),
+                        Type::Number => serde_json::Value::Number(serde_json::Number::from_f64(value_str.parse::<f64>().unwrap()).unwrap()),
+                        Type::Boolean => serde_json::Value::Bool(value_str.parse::<bool>().unwrap()),
+                        _ => panic!("unhandled type! {ty:?}")
+                    }
+                    _ => panic!("unhandled schema type"),
+                };
 
-                    let value = match schema_types.get(name).unwrap() {
+                json_object_map.insert(
+                    name.to_string(),
+                    value,
+                );
+            }
+
+            let actual_path = request.uri().path().to_string();
+            let expected_path = api_path.clone();
+
+            for (actual, expected) in actual_path.split("/").zip(expected_path.split("/")) {
+                if actual == expected {
+                    continue;
+                }
+
+                let expected = expected
+                    .replace("{", "")
+                    .replace("}", "")
+                    .to_string();
+
+                json_object_map.insert(
+                    expected.clone(),
+                    match schema_types.get(&expected).unwrap() {
                         SchemaType::Type(ty) => match ty {
-                            Type::String => serde_json::Value::String(value_str.to_string()),
-                            Type::Integer => serde_json::Value::Number(serde_json::Number::from(value_str.parse::<i64>().unwrap())),
-                            Type::Number => serde_json::Value::Number(serde_json::Number::from_f64(value_str.parse::<f64>().unwrap()).unwrap()),
-                            Type::Boolean => serde_json::Value::Bool(value_str.parse::<bool>().unwrap()),
+                            Type::String => serde_json::Value::String(actual.to_string()),
+                            Type::Integer => serde_json::Value::Number(serde_json::Number::from(actual.parse::<i64>().unwrap())),
+                            Type::Number => serde_json::Value::Number(serde_json::Number::from_f64(actual.parse::<f64>().unwrap()).unwrap()),
+                            Type::Boolean => serde_json::Value::Bool(actual.parse::<bool>().unwrap()),
                             _ => panic!("unhandled type! {ty:?}")
                         }
                         _ => panic!("unhandled schema type"),
-                    };
+                    }
+                );
+            }
 
-                    json_object_map.insert(
-                        name.to_string(),
-                        value,
-                    );
+            let json_request = json!(json_object_map);
 
-                    // ZJ-TODO: loop over any additional & query args
+            async move {
+                let reply_topic = nats_client.new_inbox();
+                let Ok(subscriber) = nats_client.subscribe(reply_topic.clone()).await else {
+                    return Ok("failed to subscribe to reply topic".into_response());
+                };
+
+                let request_bytes = json_request.to_string().into_bytes();
+
+                // ZJ-TODO: headers
+                let topic = topic_from_path(api_definition.method.clone(), api_definition.path.clone());
+                if let Err(publish_error) = nats_client.publish_with_reply_and_headers(
+                    topic,
+                    reply_topic,
+                    HeaderMap::new(),
+                    request_bytes.into(),
+                ).await {
+                    panic!("failed to publish to nats client: {}", publish_error);
                 }
 
-                let path_no_query_args = actual_path[..query_arg_start_idx].to_string();
-                let expected_path = path_clone.clone();
+                let mut fused_subscriber = subscriber.fuse();
 
-                for (actual, expected) in path_no_query_args.split("/").zip(expected_path.split("/")) {
-                    if actual == expected {
-                        continue;
-                    }
-
-                    let expected = expected
-                        .replace("{", "")
-                        .replace("}", "")
-                        .to_string();
-
-                    json_object_map.insert(
-                        expected.clone(),
-                        match schema_types.get(&expected).unwrap() {
-                            SchemaType::Type(ty) => match ty {
-                                Type::String => serde_json::Value::String(actual.to_string()),
-                                Type::Integer => serde_json::Value::Number(serde_json::Number::from(actual.parse::<i64>().unwrap())),
-                                Type::Number => serde_json::Value::Number(serde_json::Number::from_f64(actual.parse::<f64>().unwrap()).unwrap()),
-                                Type::Boolean => serde_json::Value::Bool(actual.parse::<bool>().unwrap()),
-                                _ => panic!("unhandled type! {ty:?}")
-                            }
-                            _ => panic!("unhandled schema type"),
-                        }
-                    );
-                }
-
-                let json_request = json!(json_object_map);
-
-                println!("{:?}", request);
-                println!("{}", json_request.to_string());
-
-                async move {
-                    let reply_topic = nats_client.new_inbox();
-                    let Ok(subscriber) = nats_client.subscribe(reply_topic.clone()).await else {
-                        return Ok("failed to subscribe to reply topic".into_response());
-                    };
-
-                    let request_bytes = json_request.to_string().into_bytes();
-
-                    // ZJ-TODO: headers
-                    let topic = topic_from_path(api_definition.method.clone(), api_definition.path.clone());
-                    if let Err(publish_error) = nats_client.publish_with_reply_and_headers(
-                        topic,
-                        reply_topic,
-                        HeaderMap::new(),
-                        request_bytes.into(),
-                    ).await {
-                        panic!("failed to publish to nats client: {}", publish_error);
-                    }
-
-                    let mut fused_subscriber = subscriber.fuse();
-
-                    let response = tokio::select! {
+                let response = tokio::select! {
                         _ = tokio::time::sleep(Duration::from_millis(5000)) => {
                             Response::builder()
                                 .status(400)
@@ -211,20 +197,39 @@ async fn main() {
                                 .unwrap()
                         },
                         message = fused_subscriber.select_next_some() => {
-                            println!("{}", String::from_utf8(message.payload.to_vec()).unwrap());
+                            // ZJ-TODO: currently assuming that all payloads are successes
+                            //          should check headers for errors
                             Response::builder()
                                 .status(200)
                                 .header("Content-Type", "application/json")
+                                .header("Access-Control-Allow-Origin", "*")
                                 .body(axum::body::Body::from(message.payload))
                                 .unwrap()
                         },
                     };
 
-                    println!("response received! {response:?}");
+                Ok(response)
+            }
+        }));
 
-                    Ok(response)
-                }
-            }));
+        router
+    };
+
+    for (path, item) in &api.paths.paths {
+        if let Some(operation) = item.get.as_ref() {
+            router = register_api_fn(router, path.clone(), HttpMethod::Get, operation);
+        }
+        if let Some(operation) = item.put.as_ref() {
+            router = register_api_fn(router, path.clone(), HttpMethod::Put, operation);
+        }
+        if let Some(operation) = item.post.as_ref() {
+            router = register_api_fn(router, path.clone(), HttpMethod::Post, operation);
+        }
+        if let Some(operation) = item.delete.as_ref() {
+            router = register_api_fn(router, path.clone(), HttpMethod::Delete, operation);
+        }
+        if let Some(operation) = item.patch.as_ref() {
+            router = register_api_fn(router, path.clone(), HttpMethod::Patch, operation);
         }
     }
 
