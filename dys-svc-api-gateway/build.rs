@@ -34,12 +34,7 @@ fn gather_openapi_specs() {
     struct OpenApi;
     let mut api = OpenApi::openapi();
 
-    println!("cargo::warning=Building OpenAPI specs...");
-    println!("cargo::warning=Supported services: {supported_service_names:?}");
-
     for service_name in supported_service_names {
-        println!("cargo::warning=  -> {service_name}");
-
         let walkdir = walkdir::WalkDir::new(format!("../{service_name}/generated"));
         for entry in walkdir {
             let Ok(entry) = entry else {

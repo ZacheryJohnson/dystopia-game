@@ -10,6 +10,7 @@ pub fn api(attribute: proc_macro::TokenStream, api: proc_macro::TokenStream) -> 
     api::api_impl(attribute, api)
 }
 
+/// Also automatically derives necessary fields for requests.
 #[proc_macro_derive(ApiRequest)]
 pub fn api_request(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast: syn::DeriveInput = syn::parse(input).unwrap();

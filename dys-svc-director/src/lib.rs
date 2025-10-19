@@ -3,13 +3,13 @@ pub mod world_old;
 // ZJ-TODO: end old APIs
 
 pub mod game;
+pub mod schedule;
 pub mod stats;
 pub mod world;
 
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use bytes::Bytes;
 use chrono::{DateTime, Utc};
 use dys_simulation::game::Game;
@@ -24,13 +24,11 @@ use dys_datastore_mysql::query::MySqlQuery;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyDatastore};
 use dys_nats::error::NatsError;
 use dys_protocol::nats::vote::{GetProposalsRequest, GetProposalsResponse, Proposal, ProposalOption, VoteOnProposalRequest, VoteOnProposalResponse};
-use dys_protocol::nats::world::{GetSeasonRequest, GetSeasonResponse};
 use dys_stat::combatant_statline::CombatantStatline;
 use dys_world::combatant::instance::EffectDuration;
 use dys_world::games::instance::GameInstanceId;
 use dys_world::proposal::ProposalEffect;
 use dys_world::season::season::Season;
-use dys_world::season::series::{Series, SeriesType};
 use dys_world::team::instance::TeamInstance;
 
 pub use ::async_nats;
@@ -41,9 +39,10 @@ use crate::world_old::InsertGameLogQuery;
 #[derive(OpenApi)]
 #[openapi(
     nest(
+        (path = "/game", api = game::GameApi),
+        (path = "/schedule", api = schedule::ScheduleApi),
         (path = "/stats", api = stats::StatsApi),
         (path = "/world", api = world::WorldApi),
-        (path = "/game", api = game::GameApi)
     ),
     servers(
         (url = "/api"),
@@ -59,39 +58,6 @@ pub struct AppState {
     pub first_game_time_utc: Arc<Mutex<DateTime<Utc>>>,
     pub valkey: Arc<Mutex<ValkeyDatastore>>,
     pub mysql: Arc<Mutex<MySqlDatastore>>,
-}
-
-// ZJ-TODO: move
-pub fn simulation_timings(
-    first_game_time_utc: Arc<Mutex<DateTime<Utc>>>,
-    series: &Vec<Series>,
-) -> HashMap<GameInstanceId, DateTime<Utc>> {
-    let mut simulation_timings = HashMap::new();
-
-    let first_game_time_utc = first_game_time_utc.lock().unwrap().to_owned();
-    let match_every_n_minutes = std::env::var("MINUTES_BETWEEN_MATCHES")
-        .unwrap_or(String::from("15"))
-        .parse::<u64>()
-        .unwrap();
-
-    // ZJ-TODO: refactor
-    #[allow(unused_assignments)]
-    let mut next_game_time_utc = first_game_time_utc;
-
-    for series in series {
-        for game in &series.games() {
-            let game_instance = game.upgrade().unwrap();
-            let days_since_first = game_instance.lock().unwrap().date.as_monotonic() - 1;
-            next_game_time_utc = first_game_time_utc + Duration::from_secs(60 * match_every_n_minutes * days_since_first as u64);
-
-            simulation_timings.insert(
-                game_instance.lock().unwrap().game_id,
-                next_game_time_utc
-            );
-        }
-    }
-
-    simulation_timings
 }
 
 #[tracing::instrument(skip_all)]
@@ -385,69 +351,6 @@ pub async fn run_simulation(world_state: AppState) {
         0,
         10,
     ).await.unwrap();
-}
-
-#[tracing::instrument(skip(app_state))]
-pub async fn get_season(
-    _: GetSeasonRequest,
-    app_state: AppState,
-) -> Result<GetSeasonResponse, NatsError> {
-    let simulation_timings = simulation_timings(
-        app_state.first_game_time_utc.clone(),
-        app_state.season.lock().unwrap().series()
-    );
-
-    let proto_series = {
-        let season = app_state.season.lock().unwrap();
-        season
-            .series()
-            .iter()
-            .map(|rs_series| {
-                dys_protocol::nats::world::Series {
-                    games: rs_series
-                        .games()
-                        .iter()
-                        .map(|rs_match| {
-                            let rs_match = rs_match.upgrade().unwrap();
-                            let rs_match = rs_match.lock().unwrap();
-                            let x = dys_protocol::nats::world::GameInstance {
-                                game_id: Some(rs_match.game_id.to_owned()),
-                                home_team_id: Some(rs_match.home_team.lock().unwrap().id.to_owned()),
-                                away_team_id: Some(rs_match.away_team.lock().unwrap().id.to_owned()),
-                                arena_id: Some(0),
-                                // arena_id: rs_match.arena.lock().unwrap().id.to_owned(),
-                                date: Some(dys_protocol::nats::common::Date {
-                                    year: rs_match.date.year(),
-                                    month: rs_match.date.month().id() as i32,
-                                    day: rs_match.date.day(),
-                                }),
-                                utc_scheduled_time: Some(simulation_timings.get(&rs_match.game_id).unwrap().timestamp() as u64)
-                            };
-                            x
-                        })
-                        .collect::<Vec<_>>(),
-                    series_type: Some(if matches!(rs_series.series_type(), SeriesType::Normal) {
-                        dys_protocol::nats::world::series::SeriesType::Normal
-                    } else {
-                        dys_protocol::nats::world::series::SeriesType::FirstTo
-                    } as i32),
-                    series_type_payload: None
-                }
-            })
-            .collect::<Vec<_>>()
-    };
-
-    let current_date = app_state.current_date.lock().unwrap().to_owned();
-
-    Ok(GetSeasonResponse {
-        season_id: Some(1),
-        current_date: Some(dys_protocol::nats::common::Date {
-            year: current_date.year(),
-            month: current_date.month().id() as i32,
-            day: current_date.day(),
-        }),
-        all_series: proto_series,
-    })
 }
 
 #[tracing::instrument(skip(app_state))]

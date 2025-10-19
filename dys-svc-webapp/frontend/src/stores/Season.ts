@@ -1,16 +1,14 @@
 import { type Ref, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { GameSummaryResponse_GameSummary as GameSummary } from '%/services/game_results/summary.ts';
-import { WorldStateResponse } from '%/services/world/world.ts';
 import type { GetSeasonResponse, GameInstance } from '%/services/world/schedule.ts';
 import { DateMessage } from '%/common/date.ts';
-import type { GetSeasonTotalsResponse } from '%/services/game_results/stats.ts';
 import type { World } from '%/rust_types/World.ts';
 import { fetchApi } from '@/utils.ts';
-import type { CombatantInstance } from '%/rust_types/CombatantInstance.ts';
 
-const dateToStr = (date: DateMessage) => {
-    return `${date.year}-${date.month.valueOf()}-${date.day}`;
+const dateToStr = (date: Array<any>) => {
+    // ZJ-TODO: yuck
+    return `${date[2]}-${date[0]}-${date[1]}`;
 };
 
 const getDateFromDateStr = (dateStr: string): DateMessage => {
@@ -33,6 +31,7 @@ export const getSeasonStore = defineStore('season', () => {
     /// Sorted by date, such that the first entry is chronologically before the next
     const gamesByDate: Ref<Map<string, any>> = ref(new Map());
     const gamesById: Ref<Map<number, GameSummary>> = ref(new Map());
+    const gameIdToScheduledTime: Ref<Map<number, Date>> = ref(new Map());
     const worldState: Ref<World> = ref({ combatants: [], teams: [] });
     const season: Ref<Map<string, GameInstance[]>> = ref(new Map());
     const stats: Ref<Map<number, Stats>> = ref(new Map());
@@ -41,18 +40,30 @@ export const getSeasonStore = defineStore('season', () => {
     const fetchMatchSummaries = async () => {};
 
     const fetchSeason = async () => {
-        const seasonResponse: GetSeasonResponse = await (await fetchApi('season')).json();
+        const seasonResponse = await (await fetchApi('schedule')).json();
 
-        currentDate.value = seasonResponse.currentDate!;
-        const games = seasonResponse.allSeries.map((series, _1, _2) => series.games).flat();
+        for (const gameId in seasonResponse['game_id_to_scheduled_time_utc']) {
+            const timeUtc = seasonResponse['game_id_to_scheduled_time_utc'][gameId];
+            gameIdToScheduledTime.value.set(parseInt(gameId), new Date(timeUtc));
+        }
+
+        currentDate.value = seasonResponse['current_date'];
+        const series: [[GameInstance]] = seasonResponse['series']
+            // @ts-ignore
+            .map((series, _1, _2) => series.games)
+            .flat();
 
         season.value.clear();
-        for (const game of games) {
-            const dateStr = dateToStr(game.date!);
-            if (season.value.has(dateStr)) {
-                season.value.get(dateStr)!.push(game);
-            } else {
-                season.value.set(dateStr, [game]);
+        for (const games of series) {
+            for (const game of Object.values(games)) {
+                // ZJ-TODO: below
+                // @ts-ignore
+                const dateStr = dateToStr(game['date']);
+                if (season.value.has(dateStr)) {
+                    season.value.get(dateStr)!.push(game);
+                } else {
+                    season.value.set(dateStr, [game]);
+                }
             }
         }
 
@@ -110,6 +121,7 @@ export const getSeasonStore = defineStore('season', () => {
     return {
         gamesByDate,
         gamesById,
+        gameIdToScheduledTime,
         worldState,
         season,
         stats,

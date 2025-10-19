@@ -41,7 +41,7 @@ async-nats = "0.42.0"
 axum = "0.8.4"
 bevy = { version = "0.16.1", features = ["bevy_asset", "bevy_color", "bevy_core_pipeline", "bevy_render", "bevy_sprite", "bevy_state", "bevy_text", "web", "default_font"] }
 bytes = { version = "1.10.1", features = ["serde"] }
-chrono = { version = "0.4.40" }
+chrono = { version = "0.4.40", features = ["serde"] }
 crossbeam = "0.8.4"
 dyn-clone = "1.0"
 eframe = "0.31"
@@ -76,7 +76,7 @@ tower-http = { version = "0.6.6", features = ["fs", "trace"] }
 tracing = { version = "0.1.40", features = ["attributes", "log"] }
 tracing-opentelemetry = "0.31.0"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter", "json"] }
-utoipa = { version = "5.4.0", features = ["debug"] }
+utoipa = { version = "5.4.0", features = ["chrono", "debug"] }
 utoipa-axum = "0"
 utoipa-swagger-ui = { version = "9.0.2", features = ["axum", "reqwest"] }
 wasm-bindgen = "=0.2.100"

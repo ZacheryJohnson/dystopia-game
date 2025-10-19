@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 use std::sync::{Mutex, Weak};
 use serde::{Deserialize, Serialize};
-
-use crate::games::instance::GameInstance;
+use crate::games::instance::{GameInstance, GameInstanceId};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi-bindings", derive(utoipa::ToSchema))]
 pub enum SeriesType {
     /// All games of the series will be played as normal.
     Normal,
@@ -16,14 +16,19 @@ pub enum SeriesType {
 /// Monotonically increasing value, where games are played incrementally by game index
 pub type SeriesGameIndex = u8;
 
+#[cfg(feature = "openapi-bindings")]
+pub type GamesTypeAlias = BTreeMap<SeriesGameIndex, GameInstanceId>;
+
 /// Series are collections of games that are played in order against the same opponent.
 /// This is commonly used in playoff formats,
 /// but in sports like baseball where many games are played over a season,
 /// it makes more logistical sense to play those games in one location to reduce travel costs.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi-bindings", derive(utoipa::ToSchema))]
 pub struct Series {
     /// Weak references to games that exist in this series.
     /// The games are authoritatively owned elsewhere, so we must validate they exist before use.
+    #[cfg_attr(feature = "openapi-bindings", schema(value_type = GamesTypeAlias))]
     games: BTreeMap<SeriesGameIndex, Weak<Mutex<GameInstance>>>,
     series_type: SeriesType,
 }

@@ -2028,6 +2028,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-link",
 ]
@@ -2931,6 +2932,7 @@ dependencies = [
  "serde_json",
  "tracing",
  "ts-rs",
+ "utoipa",
 ]
 
 [[package]]
