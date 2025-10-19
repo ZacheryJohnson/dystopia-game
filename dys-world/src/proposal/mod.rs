@@ -5,6 +5,7 @@ use crate::combatant::instance::CombatantInstanceId;
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
+#[cfg_attr(feature = "openapi-bindings", derive(utoipa::ToSchema, Clone))]
 pub struct Proposal {
     pub id: u64,
     pub name: String,
@@ -14,6 +15,7 @@ pub struct Proposal {
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
+#[cfg_attr(feature = "openapi-bindings", derive(utoipa::ToSchema, Clone))]
 pub struct ProposalOption {
     pub id: u64,
     pub name: String,
@@ -23,6 +25,7 @@ pub struct ProposalOption {
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[ts(export, rename_all_fields = "camelCase")]
+#[cfg_attr(feature = "openapi-bindings", derive(utoipa::ToSchema, Clone))]
 pub enum ProposalEffect {
     CombatantTemporaryAttributeBonus {
         combatant_instance_id: CombatantInstanceId,

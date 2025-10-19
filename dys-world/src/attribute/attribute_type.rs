@@ -5,6 +5,7 @@ use ts_rs::TS;
 /// Attributes can be provided through limbs or through mental quirks
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize, TS)]
 #[ts(export)]
+#[cfg_attr(feature = "openapi-bindings", derive(utoipa::ToSchema))]
 pub enum AttributeType {
     /// Overpower opponents.
     Strength,

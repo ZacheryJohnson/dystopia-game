@@ -6,6 +6,7 @@ pub type AttributeValueT = f32;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, TS)]
 #[ts(export)]
+#[cfg_attr(feature = "openapi-bindings", derive(utoipa::ToSchema))]
 pub struct AttributeInstance(AttributeType, AttributeValueT);
 
 impl AttributeInstance {

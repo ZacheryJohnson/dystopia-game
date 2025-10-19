@@ -5,7 +5,21 @@ import { fetchApi } from '@/utils.ts';
 
 const props = defineProps(['proposal']);
 
-const proposal: Ref<Proposal | null> = ref(null);
+type TempProposalOptionT = {
+    id: number,
+    description: string,
+    name: string,
+    effects: any[], // ignored for now, ideally we don't show this in UI
+};
+
+type TempProposalT = {
+    id: number,
+    name: string,
+    description: string,
+    options: TempProposalOptionT[],
+};
+
+const proposal: Ref<TempProposalT | null> = ref(null);
 const votedOnOption: Ref<number | null> = ref(null);
 const hasVoted = computed(() => votedOnOption.value !== null);
 
@@ -32,17 +46,17 @@ onMounted(async () => {
 <template>
     <div>
         <p>
-            <strong>{{ proposal?.proposalName }}</strong>
+            <strong>{{ proposal?.name }}</strong>
         </p>
-        <p>{{ proposal?.proposalDesc }}</p>
+        <p>{{ proposal?.description }}</p>
         <button
-            v-for="option in proposal?.proposalOptions"
-            @click="sendVote(proposal!.proposalId!, option!.optionId!)"
-            :key="option.optionId"
+            v-for="option in proposal?.options"
+            @click="sendVote(proposal!.id!, option!.id!)"
+            :key="option.id"
             :disabled="hasVoted"
-            :class="[votedOnOption === option.optionId ? 'chosen' : '']"
+            :class="[votedOnOption === option.id ? 'chosen' : '']"
         >
-            {{ option.optionName }}
+            {{ option.name }}
         </button>
     </div>
 </template>
