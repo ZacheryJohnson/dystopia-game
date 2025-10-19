@@ -6,6 +6,7 @@ pub mod game;
 pub mod schedule;
 pub mod stats;
 pub mod world;
+pub mod vote;
 
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
@@ -23,7 +24,7 @@ use dys_datastore_mysql::execute_query;
 use dys_datastore_mysql::query::MySqlQuery;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyDatastore};
 use dys_nats::error::NatsError;
-use dys_protocol::nats::vote::{GetProposalsRequest, GetProposalsResponse, Proposal, ProposalOption, VoteOnProposalRequest, VoteOnProposalResponse};
+use dys_protocol::nats::vote::{VoteOnProposalRequest, VoteOnProposalResponse};
 use dys_stat::combatant_statline::CombatantStatline;
 use dys_world::combatant::instance::EffectDuration;
 use dys_world::games::instance::GameInstanceId;
@@ -42,6 +43,7 @@ use crate::world_old::InsertGameLogQuery;
         (path = "/game", api = game::GameApi),
         (path = "/schedule", api = schedule::ScheduleApi),
         (path = "/stats", api = stats::StatsApi),
+        (path = "/vote", api = vote::VoteApi),
         (path = "/world", api = world::WorldApi),
     ),
     servers(
@@ -351,50 +353,6 @@ pub async fn run_simulation(world_state: AppState) {
         0,
         10,
     ).await.unwrap();
-}
-
-#[tracing::instrument(skip(app_state))]
-pub async fn get_voting_proposals(
-    _: GetProposalsRequest,
-    app_state: AppState,
-) -> Result<GetProposalsResponse, NatsError> {
-    let mut valkey = app_state.valkey.lock().unwrap().connection();
-
-    let proposal_jsons: Vec<String> = valkey.hvals(
-        "env:dev:proposals:latest"
-    ).await.unwrap();
-
-    let proposals = proposal_jsons
-        .iter()
-        .map(|proposal_str| serde_json::from_str(proposal_str).unwrap())
-        .collect::<Vec<dys_world::proposal::Proposal>>();
-
-    // ZJ-TODO: don't marshal just send
-
-    let mut marshalled_proposals = vec![];
-    for proposal in proposals {
-        let mut marshalled_options = vec![];
-        for option in &proposal.options {
-            marshalled_options.push(ProposalOption {
-                option_id: Some(option.id),
-                option_name: Some(option.name.clone()),
-                option_desc: Some(option.description.clone()),
-            });
-        }
-
-        marshalled_proposals.push(Proposal {
-            proposal_id: Some(proposal.id),
-            proposal_name: Some(proposal.name.clone()),
-            proposal_desc: Some(proposal.description.clone()),
-            proposal_options: marshalled_options,
-        });
-    }
-
-    let response = GetProposalsResponse {
-        proposals: marshalled_proposals
-    };
-
-    Ok(response)
 }
 
 #[tracing::instrument(skip_all)]

@@ -5,7 +5,7 @@ use rand::prelude::StdRng;
 use rand::SeedableRng;
 use sqlx::mysql::MySqlConnectOptions;
 use tokio::time::Instant;
-use director::{get_voting_proposals, run_simulation, submit_vote, AppState};
+use director::{run_simulation, submit_vote, AppState};
 use director::schedule::simulation_timings;
 use director::world_old::generate_world;
 use dys_datastore::datastore::Datastore;
@@ -150,16 +150,19 @@ async fn main() {
     let schedule = director::schedule::nats::GetSeasonNatsService::from(app_state.clone());
     let schedule_topic = schedule.topic.clone();
 
+    let vote = director::vote::proposal::nats::GetVotingProposalsNatsService::from(app_state.clone());
+    let vote_topic = vote.topic.clone();
+
     let nats = NatsRouter::new()
         .await
-        .service(GetProposalsRpcServer::with_handler_and_state(get_voting_proposals, app_state.clone()))
         .service(VoteOnProposalRpcServer::with_handler_and_state(submit_vote, app_state.clone()))
         .service_2(recent, recent_topic)
         .service_2(season, season_topic)
         .service_2(world_state, world_state_topic)
         .service_2(game_result, game_result_topic)
         .service_2(log, log_topic)
-        .service_2(schedule, schedule_topic);
+        .service_2(schedule, schedule_topic)
+        .service_2(vote, vote_topic);
 
     nats.run().await;
 }
