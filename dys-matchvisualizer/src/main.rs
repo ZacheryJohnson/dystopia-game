@@ -153,12 +153,15 @@ pub fn load_game_log(
 
 #[wasm_bindgen]
 pub fn exit() {
+    let mut exit_vis_state = VisualizationState::default();
+    exit_vis_state.should_exit = true;
+
     UPDATED_VIS_STATE
         .get()
         .unwrap()
         .lock()
         .unwrap()
-        .replace(VisualizationState::default());
+        .replace(exit_vis_state);
 }
 
 fn setup(

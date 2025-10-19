@@ -79,7 +79,8 @@ tracing-subscriber = { version = "0.3", features = ["registry", "env-filter", "j
 utoipa = { version = "5.4.0", features = ["chrono", "debug"] }
 utoipa-axum = "0"
 utoipa-swagger-ui = { version = "9.0.2", features = ["axum", "reqwest"] }
-wasm-bindgen = "=0.2.100"
+wasm-bindgen = "=0.2.104"
+web-sys = { version = "0.3.81", features = ["console"] }
 web-time = "1.1.0"
 
 # -----------------------
