@@ -17,7 +17,7 @@ RUN apt-get install -y g++ pkg-config libx11-dev libasound2-dev libudev-dev prot
 
 # Add WASM dependencies
 RUN rustup target add wasm32-unknown-unknown
-RUN cargo install -f wasm-bindgen-cli --version 0.2.100
+RUN cargo install -f wasm-bindgen-cli --version 0.2.104
 RUN cargo install -f wasm-opt
 
 WORKDIR /opt/dystopia
