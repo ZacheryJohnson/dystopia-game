@@ -85,7 +85,7 @@ async fn main() {
 
         for param in operation.parameters.as_ref().unwrap() {
             match param.schema.as_ref().unwrap() {
-                RefOr::Ref(t) => {
+                RefOr::Ref(_) => {
                     unimplemented!("schema references are currently unimplemented")
                 }
                 RefOr::T(t) => {

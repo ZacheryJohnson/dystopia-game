@@ -13,12 +13,9 @@ const getDateFromDateStr = (dateStr: string): DateMessage => {
     });
 };
 
-const dateToStr = (date: DateMessage | undefined): string | undefined => {
-    if (!date) {
-        return undefined;
-    }
-
-    return `${date.year}-${date.month.valueOf()}-${date.day}`;
+const dateToStr = (date: Array<any>) => {
+    // ZJ-TODO: yuck
+    return `${date[2]}-${date[0]}-${date[1]}`;
 };
 
 const isCurrentDate = (targetDate: DateMessage, currentDate: DateMessage) => {
@@ -39,6 +36,8 @@ const resolveTeamIdToName = (teamId: number): string => {
 };
 
 const gameIsFinished = (game: GameInstance): boolean => {
+    console.log(game);
+    // @ts-ignore
     const gamesOnDate = getSeasonStore().gamesByDate.get(dateToStr(game.date) || '');
     if (!gamesOnDate) {
         return false;
@@ -94,15 +93,22 @@ onMounted(async () => {
                 <p class="schedule-day-date">{{ getDateFromDateStr(dateStr).day }}</p>
                 <p v-for="game in scheduledGames">
                     <template v-if="gameIsFinished(game)">
-                        <img :src="getTeamLogoPath(game.awayTeamId!)" alt="Away Team Logo" />
-                        <span>{{ resolveTeamIdToName(game.awayTeamId!) }}</span>
-                        <span>{{ getGameScoreString(game.gameId!) }}</span>
-                        <span>{{ resolveTeamIdToName(game.homeTeamId!) }}</span>
-                        <img :src="getTeamLogoPath(game.homeTeamId!)" alt="Home Team Logo" />
+                        <!-- @vue-ignore -->
+                        <img :src="getTeamLogoPath(game['away_team_id'])" alt="Away Team Logo" />
+                        <span>{{//@ts-ignore
+                                resolveTeamIdToName(game['away_team_id']) }}</span>
+                        <span>{{//@ts-ignore
+                                getGameScoreString(game['game_id']) }}</span>
+                        <span>{{//@ts-ignore
+                                resolveTeamIdToName(game['home_team_id']) }}</span>
+                        <!-- @vue-ignore -->
+                        <img :src="getTeamLogoPath(game['home_team_id'])" alt="Home Team Logo" />
                     </template>
                     <template v-else>
-                        {{ resolveTeamIdToName(game!.awayTeamId!) }} @
-                        {{ resolveTeamIdToName(game!.homeTeamId!) }}
+                        <!-- @vue-ignore -->
+                        {{ resolveTeamIdToName(game['away_team_id']) }} @
+                        <!-- @vue-ignore -->
+                        {{ resolveTeamIdToName(game['home_team_id']) }}
                     </template>
                 </p>
             </div>

@@ -4,6 +4,7 @@ use ts_rs::TS;
 
 /// Months of the year, naturally sponsored by megacorporations
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize, TS)]
+#[cfg_attr(feature = "openapi-bindings", derive(utoipa::ToSchema))]
 #[ts(export)]
 pub enum Month {
     Arguscorp,
@@ -60,6 +61,7 @@ impl Month {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize, TS)]
+#[cfg_attr(feature = "openapi-bindings", derive(utoipa::ToSchema))]
 #[ts(export)]
 pub struct Date(
     Month,
@@ -96,6 +98,7 @@ impl Date {
         &mut self.2
     }
 
+    /// Days since the first [Date].
     pub fn as_monotonic(&self) -> u32 {
         let mut day_count = 0;
         for month in Month::in_order() {

@@ -9,6 +9,7 @@ export const getMatchVisualizerStore = defineStore('matchVisualizer', () => {
     const hasWasmLoaded = ref(false);
 
     function $reset() {
+        selectedGameId.value = 0;
         gameLogData.value = new Uint8Array();
         worldStateBytes.value = new Uint8Array();
     }

@@ -25,7 +25,7 @@ dys-simulation = { path = "../dys-simulation" }
 dys-stat = { path = "../dys-stat" }
 dys-observability = { path = "../dys-observability" }
 dys-protocol = { path = "../dys-protocol", features = ["nats"] }
-dys-world = { path = "../dys-world" }
+dys-world = { path = "../dys-world", features = ["openapi-bindings"] }
 
 dys-service-base-macros = { path = "../dys-service-base-macros" }
 

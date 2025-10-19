@@ -46,20 +46,12 @@ onMounted(async () => {
 });
 
 const getScheduledTimeFn = () => {
-    const games = getSeasonStore().season.get(props.dateStr);
-    if (!games) {
+    const time = getSeasonStore().gameIdToScheduledTime.get(props.gameId);
+    if (!time) {
         return '';
     }
 
-    for (const game of games) {
-        if (game.gameId === props.gameId) {
-            const utcSeconds = game.utcScheduledTime || 0;
-            const time = new Date(utcSeconds * 1000);
-            return utcSeconds ? timeFormat.format(time) : '';
-        }
-    }
-
-    return '';
+    return timeFormat.format(time);
 };
 
 const getTeamNameFn = (abbr: string) => {

@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 use axum::{extract::Request, http::{header, HeaderValue, StatusCode}, middleware::{self, Next}, response::{IntoResponse, Response}, Json, Router};
 use axum::body::Bytes;
-use axum::extract::{Path, State};
+use axum::extract::State;
 use axum::extract::rejection::JsonRejection;
 use axum::routing::{get, post};
 use dys_observability::logger::LoggerOptions;
@@ -90,16 +90,6 @@ async fn submit_vote(
     send_nats_request!(request, app_state)
 }
 
-#[tracing::instrument(skip(app_state))]
-async fn get_season(
-    State(app_state): State<AppState>,
-    _: Bytes,
-) -> Result<Response, Infallible> {
-    let request = proto_nats::world::GetSeasonRequest {};
-
-    send_nats_request!(request, app_state)
-}
-
 async fn health_check(_: Request) -> Result<impl IntoResponse, Infallible> {
     Ok(StatusCode::OK)
 }
@@ -126,7 +116,6 @@ async fn main() {
         .nest_service(
             "/api",
             Router::new()
-                .route("/season", get(get_season))
                 .route("/create_account", post(create_account))
                 .route("/get_voting_proposals", get(get_voting_proposals))
                 .route("/vote", post(submit_vote))

@@ -22,6 +22,11 @@ rapier3d.workspace = true
 serde.workspace = true
 ts-rs.workspace = true
 tracing.workspace = true
+utoipa = { workspace = true, optional = true }
+
+[features]
+default = []
+openapi-bindings = ["dep:utoipa"]
 
 [lib]
 bench = false

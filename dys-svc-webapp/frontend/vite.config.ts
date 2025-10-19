@@ -22,12 +22,9 @@ export default defineConfig({
     proxy: {
       '/api': 'http://172.18.0.1:6050',
     },
-    host: true,
     strictPort: true,
     hmr: {
       host: "localhost",
-      clientPort: 5173,
-      port: 5174,
       protocol: "ws",
     },
     watch: {
