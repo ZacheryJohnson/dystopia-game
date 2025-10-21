@@ -28,9 +28,12 @@ const sendVote = async (proposalId: number, optionId: number) => {
     request.proposalId = proposalId;
     request.optionId = optionId;
 
-    const response = await fetchApi('vote', {
+    const response = await fetchApi('vote/submit', {
         method: 'POST',
-        body: JSON.stringify(VoteOnProposalRequest.toJSON(request)),
+        body: JSON.stringify({
+            "proposal_id": proposalId,
+            "proposal_option_id": optionId,
+        }),
     });
 
     if (response.status === 200) {

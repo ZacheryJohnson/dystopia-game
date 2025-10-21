@@ -7,7 +7,7 @@ use axum::http::Response;
 use axum::response::IntoResponse;
 use axum::Router;
 use futures::StreamExt;
-use serde_json::json;
+use serde_json::{json, Map, Value};
 use tower::service_fn;
 use utoipa::openapi::{HttpMethod, RefOr, Schema, Type};
 use utoipa::openapi::path::Operation;
@@ -26,6 +26,7 @@ fn topic_from_path(method: HttpMethod, path: impl Into<String> + Display) -> Str
 
     let method = format!("{method:?}").to_lowercase();
 
+    // ZJ-TODO: assuming v1
     format!("api.v1{new_path}.{method}")
 }
 
@@ -83,21 +84,23 @@ async fn main() {
             method: method.clone(),
         };
 
-        for param in operation.parameters.as_ref().unwrap() {
-            match param.schema.as_ref().unwrap() {
-                RefOr::Ref(_) => {
-                    unimplemented!("schema references are currently unimplemented")
-                }
-                RefOr::T(t) => {
-                    match t {
-                        Schema::Object(obj) => {
-                            // ZJ-TODO: verify required params exist
-                            schema_types.insert(
-                                param.name.clone(),
-                                obj.schema_type.clone()
-                            );
+        if let Some(params) = operation.parameters.as_ref() {
+            for param in params {
+                match param.schema.as_ref().unwrap() {
+                    RefOr::Ref(_) => {
+                        unimplemented!("schema references are currently unimplemented")
+                    }
+                    RefOr::T(t) => {
+                        match t {
+                            Schema::Object(obj) => {
+                                // ZJ-TODO: verify required params exist
+                                schema_types.insert(
+                                    param.name.clone(),
+                                    obj.schema_type.clone()
+                                );
+                            }
+                            _ => panic!("unhandled type! {t:?}")
                         }
-                        _ => panic!("unhandled type! {t:?}")
                     }
                 }
             }
@@ -123,10 +126,10 @@ async fn main() {
 
                 let value = match schema_types.get(name).unwrap() {
                     SchemaType::Type(ty) => match ty {
-                        Type::String => serde_json::Value::String(value_str.to_string()),
-                        Type::Integer => serde_json::Value::Number(serde_json::Number::from(value_str.parse::<i64>().unwrap())),
-                        Type::Number => serde_json::Value::Number(serde_json::Number::from_f64(value_str.parse::<f64>().unwrap()).unwrap()),
-                        Type::Boolean => serde_json::Value::Bool(value_str.parse::<bool>().unwrap()),
+                        Type::String => Value::String(value_str.to_string()),
+                        Type::Integer => Value::Number(serde_json::Number::from(value_str.parse::<i64>().unwrap())),
+                        Type::Number => Value::Number(serde_json::Number::from_f64(value_str.parse::<f64>().unwrap()).unwrap()),
+                        Type::Boolean => Value::Bool(value_str.parse::<bool>().unwrap()),
                         _ => panic!("unhandled type! {ty:?}")
                     }
                     _ => panic!("unhandled schema type"),
@@ -155,10 +158,10 @@ async fn main() {
                     expected.clone(),
                     match schema_types.get(&expected).unwrap() {
                         SchemaType::Type(ty) => match ty {
-                            Type::String => serde_json::Value::String(actual.to_string()),
-                            Type::Integer => serde_json::Value::Number(serde_json::Number::from(actual.parse::<i64>().unwrap())),
-                            Type::Number => serde_json::Value::Number(serde_json::Number::from_f64(actual.parse::<f64>().unwrap()).unwrap()),
-                            Type::Boolean => serde_json::Value::Bool(actual.parse::<bool>().unwrap()),
+                            Type::String => Value::String(actual.to_string()),
+                            Type::Integer => Value::Number(serde_json::Number::from(actual.parse::<i64>().unwrap())),
+                            Type::Number => Value::Number(serde_json::Number::from_f64(actual.parse::<f64>().unwrap()).unwrap()),
+                            Type::Boolean => Value::Bool(actual.parse::<bool>().unwrap()),
                             _ => panic!("unhandled type! {ty:?}")
                         }
                         _ => panic!("unhandled schema type"),
@@ -166,9 +169,22 @@ async fn main() {
                 );
             }
 
-            let json_request = json!(json_object_map);
-
             async move {
+                const MAXIMUM_PAYLOAD_SIZE_BYTES: usize = 4096;
+                let (_, body) = request.into_parts();
+                let body_bytes = axum::body::to_bytes(
+                    body,
+                    MAXIMUM_PAYLOAD_SIZE_BYTES,
+                ).await.unwrap();
+
+                let body_json: Map<String, Value> = serde_json::from_slice(body_bytes.as_ref()).unwrap_or_default();
+                for (k, v) in body_json {
+                    json_object_map.insert(k, v);
+                }
+
+                let json_request = json!(json_object_map);
+                println!("{}", json_request.as_str().unwrap_or_default());
+
                 let reply_topic = nats_client.new_inbox();
                 let Ok(subscriber) = nats_client.subscribe(reply_topic.clone()).await else {
                     return Ok("failed to subscribe to reply topic".into_response());
@@ -192,7 +208,7 @@ async fn main() {
                 let response = tokio::select! {
                         _ = tokio::time::sleep(Duration::from_millis(5000)) => {
                             Response::builder()
-                                .status(400)
+                                .status(500)
                                 .body(axum::body::Body::from(Bytes::from("timed out performing request")))
                                 .unwrap()
                         },
@@ -203,6 +219,8 @@ async fn main() {
                                 .status(200)
                                 .header("Content-Type", "application/json")
                                 .header("Access-Control-Allow-Origin", "*")
+                                .header("Access-Control-Allow-Headers", "*")
+                                .header("Access-Control-Allow-Methods", "*")
                                 .body(axum::body::Body::from(message.payload))
                                 .unwrap()
                         },
