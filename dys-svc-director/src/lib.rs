@@ -24,7 +24,6 @@ use dys_datastore_mysql::execute_query;
 use dys_datastore_mysql::query::MySqlQuery;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyDatastore};
 use dys_nats::error::NatsError;
-use dys_protocol::nats::vote::{VoteOnProposalRequest, VoteOnProposalResponse};
 use dys_stat::combatant_statline::CombatantStatline;
 use dys_world::combatant::instance::EffectDuration;
 use dys_world::games::instance::GameInstanceId;
@@ -353,20 +352,4 @@ pub async fn run_simulation(world_state: AppState) {
         0,
         10,
     ).await.unwrap();
-}
-
-#[tracing::instrument(skip_all)]
-pub async fn submit_vote(
-    request: VoteOnProposalRequest,
-    app_state: AppState,
-) -> Result<VoteOnProposalResponse, NatsError> {
-    let mut valkey = app_state.valkey.lock().unwrap().connection();
-
-    let _: i32 = valkey.hincr(
-        format!("env:dev:votes:proposal:{}", request.proposal_id.unwrap_or_default()),
-        format!("option:{}", request.option_id.unwrap_or_default()),
-        1,
-    ).await.unwrap();
-
-    Ok(VoteOnProposalResponse {})
 }

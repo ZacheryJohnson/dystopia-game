@@ -5,7 +5,7 @@ use rand::prelude::StdRng;
 use rand::SeedableRng;
 use sqlx::mysql::MySqlConnectOptions;
 use tokio::time::Instant;
-use director::{run_simulation, submit_vote, AppState};
+use director::{run_simulation, AppState};
 use director::schedule::simulation_timings;
 use director::world_old::generate_world;
 use dys_datastore::datastore::Datastore;
@@ -13,7 +13,6 @@ use dys_datastore_mysql::datastore::MySqlDatastore;
 use dys_datastore_valkey::datastore::{AsyncCommands, ValkeyConfig, ValkeyDatastore};
 use dys_nats::rpc::router::NatsRouter;
 use dys_observability::logger::LoggerOptions;
-use dys_protocol::nats::vote::vote_svc::{GetProposalsRpcServer, VoteOnProposalRpcServer};
 use dys_world::schedule::calendar::Date;
 use dys_world::schedule::calendar::Month::Arguscorp;
 
@@ -153,16 +152,19 @@ async fn main() {
     let vote = director::vote::proposal::nats::GetVotingProposalsNatsService::from(app_state.clone());
     let vote_topic = vote.topic.clone();
 
+    let submit = director::vote::submit::nats::SubmitVoteNatsService::from(app_state.clone());
+    let submit_topic = submit.topic.clone();
+
     let nats = NatsRouter::new()
         .await
-        .service(VoteOnProposalRpcServer::with_handler_and_state(submit_vote, app_state.clone()))
         .service_2(recent, recent_topic)
         .service_2(season, season_topic)
         .service_2(world_state, world_state_topic)
         .service_2(game_result, game_result_topic)
         .service_2(log, log_topic)
         .service_2(schedule, schedule_topic)
-        .service_2(vote, vote_topic);
+        .service_2(vote, vote_topic)
+        .service_2(submit, submit_topic);
 
     nats.run().await;
 }

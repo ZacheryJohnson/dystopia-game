@@ -13,7 +13,9 @@ use crate::AppState;
         title = "Proposals",
         description = "World state as of the current simulation",
     ),
-    paths(get_voting_proposals),
+    paths(
+        get_voting_proposals,
+    ),
 )]
 pub struct ProposalApi;
 

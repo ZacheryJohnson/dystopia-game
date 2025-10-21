@@ -1,9 +1,8 @@
 use std::convert::Infallible;
 use axum::{extract::Request, http::{header, HeaderValue, StatusCode}, middleware::{self, Next}, response::{IntoResponse, Response}, Json, Router};
-use axum::body::Bytes;
 use axum::extract::State;
 use axum::extract::rejection::JsonRejection;
-use axum::routing::{get, post};
+use axum::routing::post;
 use dys_observability::logger::LoggerOptions;
 use tower::ServiceBuilder;
 use tower_http::services::{ServeDir, ServeFile};
@@ -64,32 +63,6 @@ async fn create_account(
     send_nats_request!(request, app_state)
 }
 
-#[tracing::instrument(skip(app_state))]
-async fn get_voting_proposals(
-    State(app_state): State<AppState>,
-    _: Bytes,
-) -> Result<Response, Infallible> {
-    let request = proto_nats::vote::GetProposalsRequest {};
-
-    send_nats_request!(request, app_state)
-}
-
-#[tracing::instrument(skip(app_state, request))]
-async fn submit_vote(
-    State(app_state): State<AppState>,
-    request: Bytes,
-) -> Result<Response, Infallible> {
-    tracing::info!("{}", String::from_utf8(request.to_vec()).unwrap());
-    let http_request: proto_http::vote::VoteOnProposalRequest = serde_json::from_slice(request.as_ref()).unwrap();
-    let request = proto_nats::vote::VoteOnProposalRequest {
-        proposal_id: http_request.proposal_id,
-        option_id: http_request.option_id,
-        proposal_payload: http_request.proposal_payload,
-    };
-
-    send_nats_request!(request, app_state)
-}
-
 async fn health_check(_: Request) -> Result<impl IntoResponse, Infallible> {
     Ok(StatusCode::OK)
 }
@@ -117,8 +90,6 @@ async fn main() {
             "/api",
             Router::new()
                 .route("/create_account", post(create_account))
-                .route("/get_voting_proposals", get(get_voting_proposals))
-                .route("/vote", post(submit_vote))
                 .with_state(app_state.clone())
         )
         .nest_service(

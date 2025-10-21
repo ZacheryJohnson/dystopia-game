@@ -88,22 +88,39 @@ pub fn http_openapi_header_impl(
     request_type: Type,
     response_type: Type,
 ) -> proc_macro::TokenStream {
-    let method_type = format_ident!("{}", http_attribute.method.unwrap().to_string().to_ascii_lowercase());
+    let method_type = format_ident!("{}", http_attribute.method.as_ref().unwrap().to_string().to_ascii_lowercase());
     let path = http_attribute.path.unwrap();
 
     // ZJ-TODO: security
     // ZJ-TODO: responses
 
-    quote! {
-        #[utoipa::path(
-            method(#method_type),
-            path = #path,
-            params(
-                #request_type,
-            ),
-            responses(
-                (status = 200, body = #response_type),
-            ),
-        )]
-    }.into()
+    // ZJ-TODO: blindly assuming non-GET methods won't have params, which is wrong
+    match &http_attribute.method.unwrap() {
+        HttpMethod::Get => {
+            quote! {
+                #[utoipa::path(
+                    method(#method_type),
+                    path = #path,
+                    params(
+                        #request_type,
+                    ),
+                    responses(
+                        (status = 200, body = #response_type),
+                    ),
+                )]
+            }.into()
+        }
+        _ => {
+            quote! {
+                #[utoipa::path(
+                    method(#method_type),
+                    path = #path,
+                    request_body = #request_type,
+                    responses(
+                        (status = 200, body = #response_type),
+                    ),
+                )]
+            }.into()
+        }
+    }
 }

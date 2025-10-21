@@ -11,5 +11,7 @@ export const fetchApi = async (path: string, options?: RequestInit): Promise<Res
         }
     }
 
+    console.log(path, options);
+
     return await fetch(`${API_GATEWAY_BASE}/${path}`, options);
 };
