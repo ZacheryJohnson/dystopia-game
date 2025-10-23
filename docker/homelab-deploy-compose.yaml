@@ -21,38 +21,6 @@ services:
         condition: service_completed_successfully
       valkey:
         condition: service_started
-  webapp:
-    container_name: "webapp"
-    build:
-      context: ..
-      dockerfile: ./dys-svc-webapp/Dockerfile
-    environment:
-      - SVC_DIRECTOR_API_BASE_URI=http://director:6081
-      - SVC_AUTH_API_BASE_URI=http://auth:6082
-      - OTEL_ENDPOINT=http://otel-collector:4317
-      - RUST_BACKTRACE=1
-    ports:
-      - "6080:6080"
-    depends_on:
-      run-svc-migrations:
-        condition: service_completed_successfully
-      valkey:
-        condition: service_started
-  auth:
-    container_name: "auth"
-    build:
-      context: ..
-      dockerfile: ./dys-svc-auth/Dockerfile
-    environment:
-      - OTEL_ENDPOINT=http://otel-collector:4317
-      - RUST_BACKTRACE=1
-    ports:
-      - "6082:6082"
-    depends_on:
-      run-svc-migrations:
-        condition: service_completed_successfully
-      valkey:
-        condition: service_started
   get-openobserve-secret:
     image: alpine
     command:

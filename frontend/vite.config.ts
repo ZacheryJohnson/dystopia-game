@@ -4,6 +4,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import vueDevTools from 'vite-plugin-vue-devtools'
+import { cloudflare } from '@cloudflare/vite-plugin';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -11,12 +12,14 @@ export default defineConfig({
     vue(),
     vueJsx(),
     vueDevTools(),
+    cloudflare(),
   ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       '%': fileURLToPath(new URL('./generated', import.meta.url))
-    }
+    },
+    preserveSymlinks: true,
   },
   server: {
     proxy: {
@@ -28,7 +31,8 @@ export default defineConfig({
       protocol: "ws",
     },
     watch: {
-      usePolling: true
+      usePolling: true,
+      followSymlinks: true,
     },
-  }
+  },
 })

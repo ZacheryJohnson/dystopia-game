@@ -1,6 +1,8 @@
 .idea/
 .vscode/
 .wasm_out/
+.wrangler
+.dev.vars*
 
 dys-protocol/generated/
 dys-svc-*/generated/
@@ -23,36 +25,36 @@ target/
 
 # Frontend Custom
 # We copy wasm artifacts at build time - don't check these in
-dys-svc-webapp/frontend/public/matchvisualizer*
-dys-svc-webapp/frontend/src/assets/matchvisualizer*
+frontend/public/matchvisualizer*
+frontend/src/assets/matchvisualizer*
 
 # Frontend Vue defaults
 # Logs
-dys-svc-webapp/frontend/logs
-dys-svc-webapp/frontend/*.log
-dys-svc-webapp/frontend/npm-debug.log*
-dys-svc-webapp/frontend/yarn-debug.log*
-dys-svc-webapp/frontend/yarn-error.log*
-dys-svc-webapp/frontend/pnpm-debug.log*
-dys-svc-webapp/frontend/lerna-debug.log*
+frontend/logs
+frontend/*.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/lerna-debug.log*
 
-dys-svc-webapp/frontend/node_modules
-dys-svc-webapp/frontend/.DS_Store
-dys-svc-webapp/frontend/dist
-dys-svc-webapp/frontend/dist-ssr
-dys-svc-webapp/frontend/coverage
-dys-svc-webapp/frontend/*.local
+frontend/node_modules
+frontend/.DS_Store
+frontend/dist
+frontend/dist-ssr
+frontend/coverage
+frontend/*.local
 
-dys-svc-webapp/frontend/.vscode/*
-dys-svc-webapp/frontend/!.vscode/extensions.json
-dys-svc-webapp/frontend/.idea
-dys-svc-webapp/frontend/*.suo
-dys-svc-webapp/frontend/*.ntvs*
-dys-svc-webapp/frontend/*.njsproj
-dys-svc-webapp/frontend/*.sln
-dys-svc-webapp/frontend/*.sw?
+frontend/.vscode/*
+frontend/!.vscode/extensions.json
+frontend/.idea
+frontend/*.suo
+frontend/*.ntvs*
+frontend/*.njsproj
+frontend/*.sln
+frontend/*.sw?
 
-dys-svc-webapp/frontend/*.tsbuildinfo
-dys-svc-webapp/frontend/vite.config.ts.timestamp*
+frontend/*.tsbuildinfo
+frontend/vite.config.ts.timestamp*
 
-dys-svc-webapp/frontend/generated
+frontend/generated

@@ -11,10 +11,9 @@ defineEmits(['close']);
 
 onMounted(async () => {
     if (!getMatchVisualizerStore().hasWasmLoaded) {
-        const compressedWasm = await (await fetch('/matchvisualizer_opt.wasm.gz')).bytes();
-        const decompressedWasm = pako.ungzip(compressedWasm);
+        const wasm = await (await fetch('/matchvisualizer_opt.wasm.gz')).bytes();
 
-        await init(decompressedWasm).catch((err) => {
+        await init(wasm).catch((err) => {
             if (!err.message.startsWith('Using exceptions for control flow,')) {
                 throw err;
             }
