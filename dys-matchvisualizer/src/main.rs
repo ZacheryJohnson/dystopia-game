@@ -81,10 +81,9 @@ pub fn initialize_with_canvas(
                     ..default()
                 })
                 .set(AssetPlugin {
-                    // In WASM releases, we won't have an "assets" dir
-                    // Just assume the files exist all within the current path
+                    // In WASM releases, we have a custom "assets" dir
                     #[cfg(target_family = "wasm")]
-                    file_path: String::new(),
+                    file_path: String::from("game_assets"),
 
                     // Bevy also validates the existence of .meta files,
                     // which we won't have when serving files.

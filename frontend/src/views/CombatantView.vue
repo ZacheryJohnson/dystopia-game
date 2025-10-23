@@ -30,15 +30,8 @@ onMounted(async () => {
     await getSeasonStore().fetchSeason();
     await getSeasonStore().fetchSeasonStats();
 
-    let latestStatsRequest = GetGameStatlinesRequest.create();
-    latestStatsRequest.combatantIds = [combatantId.value];
-    latestStatsRequest.numberOfMostRecentGames = 3;
-
     const latestStatsResponse: GetGameStatlinesResponse = await (
-        await fetchApi(`game_results/stats`, {
-            method: 'POST',
-            body: JSON.stringify(latestStatsRequest),
-        })
+        await fetchApi(`stats/recent/${combatantId.value}`)
     ).json();
 
     let statlines: GameStatline[] = [];

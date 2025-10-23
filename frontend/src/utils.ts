@@ -6,12 +6,10 @@ export const fetchApi = async (path: string, options?: RequestInit): Promise<Res
     if (options) {
         if (!options.headers) {
             options.headers = new Headers({
-                'Content-Type': 'application/json',
+                // 'Content-Type': 'application/json',
             });
         }
     }
-
-    console.log(path, options);
 
     return await fetch(`${API_GATEWAY_BASE}/${path}`, options);
 };

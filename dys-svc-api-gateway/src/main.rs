@@ -183,7 +183,6 @@ async fn main() {
                 }
 
                 let json_request = json!(json_object_map);
-                println!("{}", json_request.as_str().unwrap_or_default());
 
                 let reply_topic = nats_client.new_inbox();
                 let Ok(subscriber) = nats_client.subscribe(reply_topic.clone()).await else {
@@ -206,15 +205,24 @@ async fn main() {
                 let mut fused_subscriber = subscriber.fuse();
 
                 let response = tokio::select! {
-                        _ = tokio::time::sleep(Duration::from_millis(5000)) => {
+                    _ = tokio::time::sleep(Duration::from_millis(5000)) => {
+                        Response::builder()
+                            .status(504)
+                            .body(axum::body::Body::from(Bytes::from("timed out performing request")))
+                            .unwrap()
+                    },
+                    message = fused_subscriber.select_next_some() => {
+                        if let Some(headers) = message.headers && let Some(err) = headers.get("X-Dys-Error") {
+                            let status = if err.as_str() == "MalformedRequest" { 400 } else { 500 };
                             Response::builder()
-                                .status(500)
-                                .body(axum::body::Body::from(Bytes::from("timed out performing request")))
+                                .status(status)
+                                .header("Content-Type", "application/json")
+                                .header("Access-Control-Allow-Origin", "*")
+                                .header("Access-Control-Allow-Headers", "*")
+                                .header("Access-Control-Allow-Methods", "*")
+                                .body(axum::body::Body::empty())
                                 .unwrap()
-                        },
-                        message = fused_subscriber.select_next_some() => {
-                            // ZJ-TODO: currently assuming that all payloads are successes
-                            //          should check headers for errors
+                        } else {
                             Response::builder()
                                 .status(200)
                                 .header("Content-Type", "application/json")
@@ -223,8 +231,9 @@ async fn main() {
                                 .header("Access-Control-Allow-Methods", "*")
                                 .body(axum::body::Body::from(message.payload))
                                 .unwrap()
-                        },
-                    };
+                        }
+                    },
+                };
 
                 Ok(response)
             }
