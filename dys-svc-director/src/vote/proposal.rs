@@ -1,5 +1,4 @@
-use utoipa::openapi::path::{Parameter, ParameterIn};
-use utoipa::{IntoParams, ToSchema};
+use utoipa::ToSchema;
 use serde::{Deserialize, Serialize};
 use dys_datastore_valkey::datastore::AsyncCommands;
 use dys_nats::error::NatsError;
@@ -29,8 +28,6 @@ pub struct GetProposalsResponse {
 
 #[api(
     request = GetProposalsRequest,
-    response = GetProposalsResponse,
-    error = NatsError,
     app_state = AppState,
     http(
         method = "Get",

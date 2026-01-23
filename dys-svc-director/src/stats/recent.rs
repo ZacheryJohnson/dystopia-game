@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
-use utoipa::{IntoParams, ToSchema};
-use utoipa::openapi::path::{Parameter, ParameterIn};
+use utoipa::ToSchema;
 use dys_datastore_mysql::fetch_all_query;
 use dys_datastore_mysql::query::MySqlQuery;
 use dys_nats::error::NatsError;
@@ -66,8 +65,6 @@ pub struct GetGameStatlinesResponse {
 
 #[api(
     request = GetRecentStatsRequest,
-    response = GetGameStatlinesResponse,
-    error = NatsError,
     app_state = AppState,
     http(
         method = "Get",

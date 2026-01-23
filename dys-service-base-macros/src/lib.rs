@@ -66,8 +66,10 @@ pub fn api_request(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let struct_name = format_ident!("{}", ast.ident);
 
     quote! {
-        impl IntoParams for #struct_name {
-            fn into_params(_: impl Fn() -> Option<ParameterIn>) -> Vec<Parameter> {
+        impl utoipa::IntoParams for #struct_name {
+            fn into_params(
+                _: impl Fn() -> Option<utoipa::openapi::path::ParameterIn>
+            ) -> Vec<utoipa::openapi::path::Parameter> {
                 vec![
                     #(#request_parameters),*
                 ]

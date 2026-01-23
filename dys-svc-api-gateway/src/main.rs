@@ -1,23 +1,27 @@
-use std::collections::HashMap;
-use std::fmt::Display;
-use std::time::Duration;
 use async_nats::HeaderMap;
 use axum::extract::Request;
 use axum::http::Response;
 use axum::response::IntoResponse;
 use axum::Router;
-use futures::StreamExt;
-use serde_json::{json, Map, Value};
-use tower::service_fn;
-use utoipa::openapi::{HttpMethod, RefOr, Schema, Type};
-use utoipa::openapi::path::Operation;
-use utoipa::openapi::schema::SchemaType;
-use utoipa_swagger_ui::SwaggerUi;
 use bytes::Bytes;
 use dys_nats::connection::{make_client, ConnectionConfig};
 use dys_observability::middleware::handle_shutdown_signal;
+use futures::StreamExt;
+use serde_json::{json, Map, Value};
+use std::collections::HashMap;
+use std::fmt::Display;
+use std::time::Duration;
+use tower::service_fn;
+use utoipa::openapi::path::Operation;
+use utoipa::openapi::schema::SchemaType;
+use utoipa::openapi::{HttpMethod, OpenApi, RefOr, Schema, Type};
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_swagger_ui::SwaggerUi;
 
-fn topic_from_path(method: HttpMethod, path: impl Into<String> + Display) -> String {
+fn topic_from_path(
+    method: HttpMethod,
+    path: impl Into<String> + Display,
+) -> String {
     let new_path = path
         .into()
         .replace("/", ".")
@@ -32,8 +36,8 @@ fn topic_from_path(method: HttpMethod, path: impl Into<String> + Display) -> Str
 
 #[cfg(test)]
 mod topic_from_path_tests {
-    use utoipa::openapi::HttpMethod;
     use super::topic_from_path;
+    use utoipa::openapi::HttpMethod;
 
     #[test]
     fn test_no_params() {
@@ -58,15 +62,15 @@ mod topic_from_path_tests {
 async fn main() {
     let maybe_open_api_path = std::env::var("OPENAPI_SPEC_PATH");
 
-    let api_spec_path = maybe_open_api_path.unwrap_or(
-        String::from(concat!(env!("CARGO_MANIFEST_DIR"), "/generated/openapi.json"))
-    );
+    let api_spec_path = maybe_open_api_path.unwrap_or(String::from(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/generated/openapi.json"
+    )));
 
     let api_spec_str = std::fs::read_to_string(api_spec_path).unwrap();
-    let api_spec: utoipa::openapi::OpenApi = serde_json::from_str(&api_spec_str).unwrap();
+    let api_spec: OpenApi = serde_json::from_str(&api_spec_str).unwrap();
 
-    let (mut router, api) = utoipa_axum::router::OpenApiRouter::with_openapi(api_spec)
-        .split_for_parts();
+    let (mut router, api) = OpenApiRouter::with_openapi(api_spec).split_for_parts();
 
     let nats_client = make_client(ConnectionConfig::default()).await;
 
@@ -78,7 +82,11 @@ async fn main() {
 
     let mut schema_types = HashMap::new();
 
-    let mut register_api_fn = |mut router: Router, path: String, method: HttpMethod, operation: &Operation| -> Router {
+    let mut register_api_fn = |mut router: Router,
+                               path: String,
+                               method: HttpMethod,
+                               operation: &Operation|
+     -> Router {
         let api_definition = ApiDefinition {
             path: path.clone(),
             method: method.clone(),
@@ -88,7 +96,9 @@ async fn main() {
             for param in params {
                 match param.schema.as_ref().unwrap() {
                     RefOr::Ref(_) => {
-                        unimplemented!("schema references are currently unimplemented")
+                        unimplemented!(
+                            "schema references are currently unimplemented"
+                        )
                     }
                     RefOr::T(t) => {
                         match t {
@@ -96,10 +106,10 @@ async fn main() {
                                 // ZJ-TODO: verify required params exist
                                 schema_types.insert(
                                     param.name.clone(),
-                                    obj.schema_type.clone()
+                                    obj.schema_type.clone(),
                                 );
                             }
-                            _ => panic!("unhandled type! {t:?}")
+                            _ => panic!("unhandled type! {t:?}"),
                         }
                     }
                 }
@@ -109,8 +119,13 @@ async fn main() {
         let nats_client = nats_client.clone();
         let schema_types = schema_types.clone();
 
-        // We could instead nest here, but ideally /api/... is handled by nginx/middleware
-        let api_path = format!("{}{path}", std::env::var("API_PREFIX").unwrap_or_default());
+        // We could instead nest here,
+        // but ideally /api/... is handled by nginx/middleware
+        let api_path = format!(
+            "{}{path}",
+            std::env::var("API_PREFIX").unwrap_or_default()
+        );
+
         router = router.route_service(&api_path.clone(), service_fn(move |request: Request| {
             let api_definition = api_definition.clone();
             let nats_client = nats_client.clone();
@@ -244,26 +259,50 @@ async fn main() {
 
     for (path, item) in &api.paths.paths {
         if let Some(operation) = item.get.as_ref() {
-            router = register_api_fn(router, path.clone(), HttpMethod::Get, operation);
+            router = register_api_fn(
+                router,
+                path.clone(),
+                HttpMethod::Get,
+                operation,
+            );
         }
         if let Some(operation) = item.put.as_ref() {
-            router = register_api_fn(router, path.clone(), HttpMethod::Put, operation);
+            router = register_api_fn(
+                router,
+                path.clone(),
+                HttpMethod::Put,
+                operation,
+            );
         }
         if let Some(operation) = item.post.as_ref() {
-            router = register_api_fn(router, path.clone(), HttpMethod::Post, operation);
+            router = register_api_fn(
+                router,
+                path.clone(),
+                HttpMethod::Post,
+                operation,
+            );
         }
         if let Some(operation) = item.delete.as_ref() {
-            router = register_api_fn(router, path.clone(), HttpMethod::Delete, operation);
+            router = register_api_fn(
+                router,
+                path.clone(),
+                HttpMethod::Delete,
+                operation,
+            );
         }
         if let Some(operation) = item.patch.as_ref() {
-            router = register_api_fn(router, path.clone(), HttpMethod::Patch, operation);
+            router = register_api_fn(
+                router,
+                path.clone(),
+                HttpMethod::Patch,
+                operation,
+            );
         }
     }
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:6050").await.unwrap();
     router = router.merge(
-        SwaggerUi::new("/swagger")
-            .url("/api/openapi.json", api.clone())
+        SwaggerUi::new("/swagger").url("/api/openapi.json", api.clone()),
     );
 
     axum::serve(listener, router)

@@ -1,0 +1,7 @@
+style_edition = "2021"
+
+max_width = 80
+
+blank_line_upper_bound = 1
+
+control_brace_style = "ClosingNextLine"
