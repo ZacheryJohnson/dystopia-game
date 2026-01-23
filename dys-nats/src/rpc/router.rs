@@ -8,7 +8,6 @@ use tracing::Instrument;
 use crate::connection::{make_client, ConnectionConfig};
 use crate::error::NatsError;
 use crate::otel::create_span_from;
-use crate::rpc::server::NatsRpcServer;
 
 type FutureT = Pin<Box<dyn Future<Output = Result<Bytes, NatsError>> + Send>>;
 struct NatsServiceInstance {
@@ -43,28 +42,6 @@ impl NatsRouter {
 
     #[must_use]
     pub fn service(
-        mut self,
-        service:
-            impl NatsRpcServer + tower::Service<
-                async_nats::Message,
-                Error=NatsError,
-                Future=Pin<Box<dyn Future<Output = Result<Bytes, NatsError>> + Send>>,
-                Response=Bytes,
-            > + Send + 'static
-        ,
-    ) -> NatsRouter {
-        let rpc_subject = NatsRpcServer::rpc_subject(&service).to_string();
-        let nats_service = NatsServiceInstance {
-            service: Box::new(service),
-            rpc_subject,
-        };
-
-        self.services.push(nats_service);
-        self
-    }
-
-    #[must_use]
-    pub fn service_2(
         mut self,
         service:
             impl tower::Service<

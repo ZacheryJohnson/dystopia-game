@@ -157,14 +157,14 @@ async fn main() {
 
     let nats = NatsRouter::new()
         .await
-        .service_2(recent, recent_topic)
-        .service_2(season, season_topic)
-        .service_2(world_state, world_state_topic)
-        .service_2(game_result, game_result_topic)
-        .service_2(log, log_topic)
-        .service_2(schedule, schedule_topic)
-        .service_2(vote, vote_topic)
-        .service_2(submit, submit_topic);
+        .service(recent, recent_topic)
+        .service(season, season_topic)
+        .service(world_state, world_state_topic)
+        .service(game_result, game_result_topic)
+        .service(log, log_topic)
+        .service(schedule, schedule_topic)
+        .service(vote, vote_topic)
+        .service(submit, submit_topic);
 
     nats.run().await;
 }

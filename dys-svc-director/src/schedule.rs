@@ -3,8 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use utoipa::openapi::path::{Parameter, ParameterIn};
-use utoipa::{IntoParams, ToSchema};
+use utoipa::ToSchema;
 use dys_nats::error::NatsError;
 use dys_service_base_macros::{api, ApiRequest};
 use dys_world::games::instance::GameInstanceId;
@@ -63,8 +62,6 @@ pub fn simulation_timings(
 
 #[api(
     request = GetSeasonRequest,
-    response = GetSeasonResponse,
-    error = NatsError,
     app_state = AppState,
     http(
         method = "Get",

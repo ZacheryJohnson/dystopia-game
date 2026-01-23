@@ -30,8 +30,6 @@ pub struct SubmitVoteResponse {
 
 #[api(
     request = SubmitVoteRequest,
-    response = SubmitVoteResponse,
-    error = NatsError,
     app_state = AppState,
     http(
         method = "Post",

@@ -8,8 +8,10 @@ pub mod stats;
 pub mod world;
 pub mod vote;
 
+use std::cell::LazyCell;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
+use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use bytes::Bytes;
 use chrono::{DateTime, Utc};
@@ -49,7 +51,29 @@ use crate::world_old::InsertGameLogQuery;
         (url = "/api"),
     ),
 )]
-pub struct DirectorApi;
+pub struct DirectorApi {
+    endpoints: LazyCell<Vec<Box<dyn tower::Service<
+        async_nats::Message,
+        Error=NatsError,
+        Future=Pin<Box<dyn Future<Output = Result<Bytes, NatsError>> + Send>>,
+        Response=Bytes,
+    > + Send + 'static>>>,
+    app_state: AppState,
+}
+
+impl DirectorApi {
+    pub fn register_endpoint(
+        &mut self,
+        endpoint: Box<dyn tower::Service<
+            async_nats::Message,
+            Error=NatsError,
+            Future=Pin<Box<dyn Future<Output = Result<Bytes, NatsError>> + Send>>,
+            Response=Bytes,
+        > + Send + 'static>,
+    ) {
+        self.endpoints.push(endpoint);
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct AppState {

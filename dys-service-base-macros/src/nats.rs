@@ -63,20 +63,16 @@ pub fn natsapi_impl(
 
     quote! {
         pub mod nats {
-            use std::pin::Pin;
             use std::task::{Context, Poll};
-            use bytes::Bytes;
-            use futures::future::BoxFuture;
-            use super::AppState;
 
             pub struct #service_struct_name {
                 pub topic: String,
-                app_state: AppState,
-                handler_fn: Box<dyn Fn(super::#request_type, AppState) -> BoxFuture<'static, Result<super::#response_type, crate::NatsError>> + Send>,
+                app_state: crate::AppState,
+                handler_fn: Box<dyn Fn(super::#request_type, crate::AppState) -> futures::future::BoxFuture<'static, Result<super::#response_type, crate::NatsError>> + Send>,
             }
 
             impl #service_struct_name {
-                pub fn from(app_state: AppState) -> #service_struct_name {
+                pub fn from(app_state: crate::AppState) -> #service_struct_name {
                     #service_struct_name {
                         topic: #topic.to_string(),
                         app_state,
@@ -86,9 +82,9 @@ pub fn natsapi_impl(
             }
 
             impl tower::Service<async_nats::Message> for #service_struct_name {
-                type Response = Bytes;
+                type Response = bytes::Bytes;
                 type Error = crate::NatsError; // ZJ-TODO
-                type Future = Pin<Box<dyn Future<Output = Result<Bytes, Self::Error>> + Send>>;
+                type Future = std::pin::Pin<Box<dyn Future<Output = Result<bytes::Bytes, Self::Error>> + Send>>;
 
                 fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
                     Poll::Ready(Ok(()))

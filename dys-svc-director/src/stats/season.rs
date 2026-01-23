@@ -5,8 +5,7 @@ use dys_datastore_mysql::query::MySqlQuery;
 use dys_nats::error::NatsError;
 use dys_service_base_macros::{api, ApiRequest};
 use dys_world::combatant::instance::CombatantInstanceId;
-use utoipa::{IntoParams, ToSchema};
-use utoipa::openapi::path::{Parameter, ParameterIn};
+use utoipa::ToSchema;
 use std::collections::HashMap;
 use crate::AppState;
 use crate::stats::types::Statline;
@@ -57,8 +56,6 @@ pub struct GetSeasonTotalsResponse {
 
 #[api(
     request = GetSeasonTotalsRequest,
-    response = GetSeasonTotalsResponse,
-    error = NatsError,
     app_state = AppState,
     http(
         method = "Get",

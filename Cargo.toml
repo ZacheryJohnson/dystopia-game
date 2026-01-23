@@ -37,6 +37,7 @@ criterion = "0.7.0"
 # Runtime dependencies
 # -----------------------
 ahash = { version = "0.8", default-features = false, features = ["no-rng", "std"] }
+anyhow = "1.0.100"
 async-nats = "0.42.0"
 axum = "0.8.4"
 bevy = { version = "0.16.1", features = ["bevy_asset", "bevy_color", "bevy_core_pipeline", "bevy_render", "bevy_sprite", "bevy_state", "bevy_text", "web", "default_font"] }
@@ -68,6 +69,7 @@ redis = { version = "0.32.3", features = ["tokio-rustls-comp", "safe_iterators"]
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = { version = "1.0.120" }
 sqlx = { version = "0.8.6", features = ["mysql", "runtime-tokio", "bigdecimal"] }
+thiserror = "2.0.17"
 ts-rs = { version = "11.0.1", features = ["serde-json-impl", "no-serde-warnings"] }
 tokio = { version = "1.40", features = ["full"] }
 tonic = "0.14.2"

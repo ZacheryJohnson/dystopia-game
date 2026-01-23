@@ -1,7 +1,5 @@
 use std::collections::HashMap;
-use utoipa::{IntoParams, ToSchema};
-use utoipa::openapi::path::Parameter;
-use utoipa::openapi::path::ParameterIn;
+use utoipa::ToSchema;
 use serde::{Deserialize, Serialize};
 use dys_datastore_valkey::datastore::{AsyncCommands, AsyncIter};
 use dys_nats::error::NatsError;
@@ -28,8 +26,6 @@ pub struct GetGameSummaryResponse {
 
 #[api(
     request = GetGameSummaryRequest,
-    response = GetGameSummaryResponse,
-    error = NatsError,
     app_state = AppState,
     http(
         method = "Get",

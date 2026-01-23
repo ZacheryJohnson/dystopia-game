@@ -2,9 +2,6 @@
 //          requesting the entire world as a JSON isn't great,
 //          especially if we're keeping multiple revisions
 
-use utoipa::IntoParams;
-use utoipa::openapi::path::Parameter;
-use utoipa::openapi::path::ParameterIn;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use dys_datastore_valkey::datastore::AsyncCommands;
@@ -34,8 +31,6 @@ pub struct GetWorldStateResponse {
 
 #[api(
     request = GetWorldStateRequest,
-    response = GetWorldStateResponse,
-    error = NatsError,
     app_state = AppState,
     http(
         method = "Get",
