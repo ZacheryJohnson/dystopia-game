@@ -58,7 +58,7 @@ pub struct DirectorApi {
         Future=Pin<Box<dyn Future<Output = Result<Bytes, NatsError>> + Send>>,
         Response=Bytes,
     > + Send + 'static>>>,
-    app_state: AppState,
+    _app_state: AppState,
 }
 
 impl DirectorApi {

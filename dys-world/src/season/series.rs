@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 use std::sync::{Mutex, Weak};
 use serde::{Deserialize, Serialize};
-use crate::games::instance::{GameInstance, GameInstanceId};
+use crate::games::instance::GameInstance;
+
+#[cfg(feature = "openapi-bindings")]
+use crate::games::instance::GameInstanceId;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi-bindings", derive(utoipa::ToSchema))]

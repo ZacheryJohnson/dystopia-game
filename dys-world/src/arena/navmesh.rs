@@ -211,6 +211,7 @@ impl ArenaNavmesh {
         Some(ArenaNavmeshPath::new(node_path))
     }
 
+    #[tracing::instrument(level = "trace", skip_all)]
     fn get_path_between_nodes(
         &self,
         from: ArenaNavmeshNode,
