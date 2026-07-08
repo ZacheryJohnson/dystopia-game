@@ -14,7 +14,6 @@ dys-world = { path = "../dys-world" }
 
 postcard.workspace = true
 serde_json.workspace = true
-tokio.workspace = true
 tracing.workspace = true
 rand.workspace = true
 rand_pcg.workspace = true

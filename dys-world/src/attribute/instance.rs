@@ -1,12 +1,9 @@
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 use crate::attribute::attribute_type::AttributeType;
 
 pub type AttributeValueT = f32;
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, TS)]
-#[ts(export)]
-#[cfg_attr(feature = "openapi-bindings", derive(utoipa::ToSchema))]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct AttributeInstance(AttributeType, AttributeValueT);
 
 impl AttributeInstance {

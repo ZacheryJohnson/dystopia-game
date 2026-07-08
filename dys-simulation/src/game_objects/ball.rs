@@ -1,5 +1,5 @@
-use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
-use rapier3d::na::Isometry3;
+use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ColliderBuilder, ColliderHandle, ColliderSet}, pipeline::ActiveEvents};
+use rapier3d::prelude::{Pose3, Vec3};
 use dys_world::combatant::instance::CombatantInstanceId;
 use crate::game_tick::GameTickNumber;
 
@@ -18,7 +18,7 @@ pub enum BallState {
         holder_id: CombatantInstanceId
     },
     ThrownAtTarget {
-        direction: Vector3<f32>,
+        direction: Vec3,
         thrower_id: CombatantInstanceId,
         target_id: CombatantInstanceId,
     },
@@ -38,7 +38,7 @@ pub struct BallObject {
 }
 
 impl BallObject {
-    pub fn new(id: BallId, creation_tick: GameTickNumber, position: Vector3<f32>, rigid_body_set: &mut RigidBodySet, collider_set: &mut ColliderSet) -> BallObject {
+    pub fn new(id: BallId, creation_tick: GameTickNumber, position: Vec3, rigid_body_set: &mut RigidBodySet, collider_set: &mut ColliderSet) -> BallObject {
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation(position)
             .lock_rotations()
@@ -49,7 +49,7 @@ impl BallObject {
             .active_events(ActiveEvents::COLLISION_EVENTS)
             .restitution(BALL_RESTITUTION)
             .density(BALL_MASS)
-            .position(Isometry3::translation(0.0, BALL_RADIUS, 0.0))
+            .position(Pose3::translation(0.0, BALL_RADIUS, 0.0))
             .build();
 
         let rigid_body_handle = rigid_body_set.insert(rigid_body);

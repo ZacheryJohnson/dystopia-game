@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex};
 use serde::Serialize;
-use ts_rs::TS;
 use crate::{
     combatant::instance::CombatantInstance,
     serde::serialize_combatants_to_ids,
@@ -8,8 +7,7 @@ use crate::{
 
 pub type TeamInstanceId = u32;
 
-#[derive(Debug, Serialize, TS)]
-#[ts(export)]
+#[derive(Debug, Serialize)]
 pub struct TeamInstance {
     pub id: TeamInstanceId,
     pub name: String,

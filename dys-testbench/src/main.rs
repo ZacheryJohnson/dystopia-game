@@ -1,4 +1,4 @@
-use std::{sync::{Arc, Mutex}, time::Duration};
+use std::sync::{Arc, Mutex};
 use dys_observability::logger::LoggerOptions;
 use dys_simulation::{game::Game, game_log::GameLog};
 use dys_world::{
@@ -11,8 +11,7 @@ use rand::SeedableRng;
 use rand_pcg::Pcg64;
 use dys_world::games::instance::GameInstance;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let args = std::env::args().collect::<Vec<_>>();
     let log_level = if args.contains(&"--debug".to_string()) {
         Level::DEBUG
@@ -72,6 +71,4 @@ async fn main() {
     }
 
     tracing::info!("H {} - {} A", game_log.home_score(), game_log.away_score());
-
-    tokio::time::sleep(Duration::from_secs(1)).await;
 }

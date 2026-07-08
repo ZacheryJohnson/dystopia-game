@@ -1,11 +1,8 @@
 use std::cmp::Ordering;
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 
 /// Months of the year, naturally sponsored by megacorporations
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize, TS)]
-#[cfg_attr(feature = "openapi-bindings", derive(utoipa::ToSchema))]
-#[ts(export)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum Month {
     Arguscorp,
     // ZJ-TODO: add more
@@ -60,9 +57,7 @@ impl Month {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize, TS)]
-#[cfg_attr(feature = "openapi-bindings", derive(utoipa::ToSchema))]
-#[ts(export)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct Date(
     Month,
     u32 /* Day */,

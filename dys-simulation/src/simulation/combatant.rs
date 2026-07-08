@@ -54,7 +54,7 @@ pub(crate) fn simulate_combatants(
 
             for (sensor_id, sensor) in sensors {
                 let (should_interrupt, new_beliefs) = sensor.sense(
-                    &combatant_isometry,
+                    combatant_isometry,
                     game_state.clone()
                 );
 
@@ -88,7 +88,7 @@ pub(crate) fn simulate_combatants(
             events.push(PendingSimulationEvent(
                 SimulationEvent::CombatantPositionUpdate {
                     combatant_id: *combatant_id,
-                    position: *combatant_translation,
+                    position: combatant_translation,
                 }
             ));
         }

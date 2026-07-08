@@ -74,18 +74,63 @@ pub enum SatisfiableField<
     NotIn(Vec<ConcreteT>),
 
     /// The concrete value must be strictly greater than the value of type `ConcreteT`
+    /// ```
+    /// # use dys_satisfiable::SatisfiableField;
+    /// let greater_than_three = SatisfiableField::GreaterThan(3u32);
+    ///
+    /// assert_eq!(false, greater_than_three.satisfied_by(&2u32));
+    /// assert_eq!(false, greater_than_three.satisfied_by(&3u32));
+    /// assert_eq!(true, greater_than_three.satisfied_by(&4u32));
+    /// ```
     GreaterThan(ConcreteT),
 
     /// The concrete value must be greater than or equal to the value of type `ConcreteT`
+    /// ```
+    /// # use dys_satisfiable::SatisfiableField;
+    /// let greater_than_or_equal_three = SatisfiableField::GreaterThanOrEqual(3u32);
+    ///
+    /// assert_eq!(false, greater_than_or_equal_three.satisfied_by(&2u32));
+    /// assert_eq!(true, greater_than_or_equal_three.satisfied_by(&3u32));
+    /// assert_eq!(true, greater_than_or_equal_three.satisfied_by(&4u32));
+    /// ```
     GreaterThanOrEqual(ConcreteT),
 
     /// The concrete value must be strictly less than the value of type `ConcreteT`
+    /// ```
+    /// # use dys_satisfiable::SatisfiableField;
+    /// let less_than_three = SatisfiableField::LessThan(3u32);
+    ///
+    /// assert_eq!(true, less_than_three.satisfied_by(&2u32));
+    /// assert_eq!(false, less_than_three.satisfied_by(&3u32));
+    /// assert_eq!(false, less_than_three.satisfied_by(&4u32));
+    /// ```
     LessThan(ConcreteT),
 
     /// The concrete value must be less than or equal to the value of type `ConcreteT`
+    /// ```
+    /// # use dys_satisfiable::SatisfiableField;
+    /// let less_than_or_equal_three = SatisfiableField::LessThanOrEqual(3u32);
+    ///
+    /// assert_eq!(true, less_than_or_equal_three.satisfied_by(&2u32));
+    /// assert_eq!(true, less_than_or_equal_three.satisfied_by(&3u32));
+    /// assert_eq!(false, less_than_or_equal_three.satisfied_by(&4u32));
+    /// ```
     LessThanOrEqual(ConcreteT),
 
     /// The concrete value must pass a provided lambda.
+    /// See [SatisfiableField::lambda_from] for a convenience method of constructing a Lambda.
+    /// ```
+    /// # use dys_satisfiable::SatisfiableField;
+    /// let is_power_of_two = SatisfiableField::lambda_from(move |val: u32| val.is_power_of_two());
+    ///
+    /// assert_eq!(false, is_power_of_two.satisfied_by(&0u32));
+    /// assert_eq!(true, is_power_of_two.satisfied_by(&1u32));
+    /// assert_eq!(true, is_power_of_two.satisfied_by(&2u32));
+    /// assert_eq!(false, is_power_of_two.satisfied_by(&3u32));
+    /// assert_eq!(true, is_power_of_two.satisfied_by(&4u32));
+    /// assert_eq!(false, is_power_of_two.satisfied_by(&5u32));
+    /// assert_eq!(true, is_power_of_two.satisfied_by(&8u32));
+    /// ```
     Lambda(Rc<dyn Fn(ConcreteT) -> bool>)
 }
 
@@ -120,10 +165,10 @@ impl<
             SatisfiableField::NotExactly(self_val) => self_val != value,
             SatisfiableField::In(self_iter) => self_iter.contains(value),
             SatisfiableField::NotIn(self_iter) => !self_iter.contains(value),
-            SatisfiableField::GreaterThan(self_val) => self_val > value,
-            SatisfiableField::GreaterThanOrEqual(self_val) => self_val >= value,
-            SatisfiableField::LessThan(self_val) => self_val < value,
-            SatisfiableField::LessThanOrEqual(self_val) => self_val <= value,
+            SatisfiableField::GreaterThan(self_val) => self_val < value,
+            SatisfiableField::GreaterThanOrEqual(self_val) => self_val <= value,
+            SatisfiableField::LessThan(self_val) => self_val > value,
+            SatisfiableField::LessThanOrEqual(self_val) => self_val >= value,
             SatisfiableField::Lambda(lambda_fn) => lambda_fn(value.to_owned())
         }
     }

@@ -1,14 +1,13 @@
 use std::fmt::Display;
 use std::sync::{Arc, Mutex};
 
-use nalgebra::{Point3, Vector3};
 use ordered_float::{self, OrderedFloat};
 
 use petgraph::algo;
 use petgraph::visit::EdgeRef;
 use petgraph::graphmap::UnGraphMap;
+use rapier3d::glamx::vec3;
 use rapier3d::prelude::*;
-use rapier3d::na::vector;
 
 use super::feature::NavmeshPathingType;
 use super::Arena;
@@ -29,7 +28,7 @@ pub struct ArenaNavmeshNode {
 }
 
 impl ArenaNavmeshNode {
-    pub fn from_point(point: Point<f32>) -> ArenaNavmeshNode {
+    pub fn from_point(point: Vec3) -> ArenaNavmeshNode {
         ArenaNavmeshNode {
             x: OrderedFloat::from(point.x),
             y: OrderedFloat::from(point.y),
@@ -37,12 +36,8 @@ impl ArenaNavmeshNode {
         }
     }
 
-    pub fn as_point(&self) -> Point<f32> {
-        point![*self.x, *self.y, *self.z]
-    }
-
-    pub fn as_vector(&self) -> Vector3<f32> {
-        vector![*self.x, *self.y, *self.z]
+    pub fn as_vector(&self) -> Vec3 {
+        vec3(*self.x, *self.y, *self.z)
     }
 }
 
@@ -97,7 +92,7 @@ impl ArenaNavmesh {
             .iter()
             .filter(|filter| filter.pathing_type() == NavmeshPathingType::Block)
             .map(|feature| {
-                (feature.shape().expect("failed to get unpathable feature shape"), Isometry::new(feature.origin().to_owned(), vector![0., 0., 0.]))
+                (feature.shape().expect("failed to get unpathable feature shape"), Pose3::new(feature.origin().to_owned(), vec3(0., 0., 0.)))
             })
             .collect::<Vec<_>>();
 
@@ -110,13 +105,13 @@ impl ArenaNavmesh {
                 continue;
             };
 
-            let shape_isometry = Isometry::new(origin.to_owned(), vector![0., 0., 0.]);
+            let shape_isometry = Pose3::new(origin.to_owned(), vec3(0., 0., 0.));
             let aabb = shape.compute_aabb(&shape_isometry);
             let vertices = aabb.vertices();
 
-            let x_comparator_fn = |first: &&Point3<f32>, second: &&Point3<f32>| first.x.partial_cmp(&second.x).unwrap_or(std::cmp::Ordering::Equal);
-            let y_comparator_fn = |first: &&Point3<f32>, second: &&Point3<f32>| first.y.partial_cmp(&second.y).unwrap_or(std::cmp::Ordering::Equal);
-            let z_comparator_fn = |first: &&Point3<f32>, second: &&Point3<f32>| first.z.partial_cmp(&second.z).unwrap_or(std::cmp::Ordering::Equal);
+            let x_comparator_fn = |first: &&Vec3, second: &&Vec3| first.x.partial_cmp(&second.x).unwrap_or(std::cmp::Ordering::Equal);
+            let y_comparator_fn = |first: &&Vec3, second: &&Vec3| first.y.partial_cmp(&second.y).unwrap_or(std::cmp::Ordering::Equal);
+            let z_comparator_fn = |first: &&Vec3, second: &&Vec3| first.z.partial_cmp(&second.z).unwrap_or(std::cmp::Ordering::Equal);
 
             let min_x = vertices.iter().min_by(x_comparator_fn).expect("failed to get min_x").x;
             let max_x = vertices.iter().max_by(x_comparator_fn).expect("failed to get max_x").x;
@@ -131,12 +126,12 @@ impl ArenaNavmesh {
                 while curr_x <= max_x {
                     let mut curr_y = max_y;
                     while curr_y >= min_y {
-                        let curr_point = point![curr_x, curr_y, curr_z];
-                        if shape.contains_point(&shape_isometry, &curr_point) {
+                        let curr_point = vec3(curr_x, curr_y, curr_z);
+                        if shape.contains_point(&shape_isometry, curr_point.into()) {
                             // If any of our unpathable geometry is in the way, skip the potential node instead
                             let mut is_unpathable = false;
                             for (unpathable_shape, unpathable_isometry) in &unpathable_arena_shapes {
-                                if unpathable_shape.contains_point(unpathable_isometry, &curr_point) {
+                                if unpathable_shape.contains_point(unpathable_isometry, curr_point) {
                                     is_unpathable = true;
                                     break;
                                 }
@@ -153,25 +148,25 @@ impl ArenaNavmesh {
                         curr_y -= config.unit_resolution;
                     }
                     curr_x += config.unit_resolution;
-                }                 
+                }
                 curr_z += config.unit_resolution;
             }
-        }        
+        }
 
         // Add edges between nodes
         let mut new_edges = vec![];
         for node in graph.nodes() {
             const CARDINAL_NEIGHBOR_WEIGHT: f32 = 1.0;
             const DIAGONAL_NEIGHBOR_WEIGHT: f32 = 1.7;
-            let neighbor_points: Vec<(Point<f32>, f32)> = vec![
-                (node.as_point() + vector![-config.unit_resolution, 0.0, 0.0], CARDINAL_NEIGHBOR_WEIGHT),
-                (node.as_point() + vector![config.unit_resolution, 0.0, 0.0], CARDINAL_NEIGHBOR_WEIGHT),
-                (node.as_point() + vector![0.0, 0.0, -config.unit_resolution], CARDINAL_NEIGHBOR_WEIGHT),
-                (node.as_point() + vector![0.0, 0.0, config.unit_resolution], CARDINAL_NEIGHBOR_WEIGHT),
-                (node.as_point() + vector![-config.unit_resolution, 0.0, -config.unit_resolution], DIAGONAL_NEIGHBOR_WEIGHT),
-                (node.as_point() + vector![-config.unit_resolution, 0.0, config.unit_resolution], DIAGONAL_NEIGHBOR_WEIGHT),
-                (node.as_point() + vector![config.unit_resolution, 0.0, -config.unit_resolution], DIAGONAL_NEIGHBOR_WEIGHT),
-                (node.as_point() + vector![config.unit_resolution, 0.0, config.unit_resolution], DIAGONAL_NEIGHBOR_WEIGHT),
+            let neighbor_points: Vec<(Vec3, f32)> = vec![
+                (node.as_vector() + vec3(-config.unit_resolution, 0.0, 0.0), CARDINAL_NEIGHBOR_WEIGHT),
+                (node.as_vector() + vec3(config.unit_resolution, 0.0, 0.0), CARDINAL_NEIGHBOR_WEIGHT),
+                (node.as_vector() + vec3(0.0, 0.0, -config.unit_resolution), CARDINAL_NEIGHBOR_WEIGHT),
+                (node.as_vector() + vec3(0.0, 0.0, config.unit_resolution), CARDINAL_NEIGHBOR_WEIGHT),
+                (node.as_vector() + vec3(-config.unit_resolution, 0.0, -config.unit_resolution), DIAGONAL_NEIGHBOR_WEIGHT),
+                (node.as_vector() + vec3(-config.unit_resolution, 0.0, config.unit_resolution), DIAGONAL_NEIGHBOR_WEIGHT),
+                (node.as_vector() + vec3(config.unit_resolution, 0.0, -config.unit_resolution), DIAGONAL_NEIGHBOR_WEIGHT),
+                (node.as_vector() + vec3(config.unit_resolution, 0.0, config.unit_resolution), DIAGONAL_NEIGHBOR_WEIGHT),
             ];
 
             for (neighbor_point, weight) in neighbor_points {
@@ -198,10 +193,10 @@ impl ArenaNavmesh {
 
     /// Attempts to create a path from one point to another point. Returns an empty vector if a path cannot be made.
     #[tracing::instrument(level = "trace", skip_all)]
-    pub fn create_path(&self, from: Point<f32>, to: Point<f32>) -> Option<ArenaNavmeshPath> {
+    pub fn create_path(&self, mut from: Vec3, mut to: Vec3) -> Option<ArenaNavmeshPath> {
         // ZJ-TODO: HACK: grounding the coordinates to 0.0 is sad and bad
-        let from = point![from.x, 0.0, from.z];
-        let to = point![to.x, 0.0, to.z];
+        from.y = 0.0;
+        to.y = 0.0;
 
         let start_node = ArenaNavmesh::get_closest_node(&self.graph, from, self.config.unit_resolution)?;
         let end_node = ArenaNavmesh::get_closest_node(&self.graph, to, self.config.unit_resolution)?;
@@ -221,11 +216,11 @@ impl ArenaNavmesh {
         // we'll add a random vector to A*'s normal heuristic algorithm of euclidean distance.
 
         let astar_result = algo::astar(
-            &self.graph, 
-            from, 
-            |node| node.as_point() == to.as_point(), 
+            &self.graph,
+            from,
+            |node| node.as_vector() == to.as_vector(),
             |edge| *edge.weight(),
-            |node| (to.as_point() - node.as_point()).magnitude(),
+            |node| (to.as_vector() - node.as_vector()).length(),
         );
 
         let Some((_total_cost, path)) = astar_result else {
@@ -237,13 +232,13 @@ impl ArenaNavmesh {
 
     /// This function is **expensive**. Should not be used when constructing the navmesh graph, and only for client requests (like [create_path](ArenaNavmesh::create_path)).
     #[tracing::instrument(level = "trace", skip_all)]
-    fn get_closest_node(graph: &UnGraphMap<ArenaNavmeshNode, f32>, point: Point<f32>, unit_resolution: f32) -> Option<ArenaNavmeshNode> {
+    fn get_closest_node(graph: &UnGraphMap<ArenaNavmeshNode, f32>, point: Vec3, unit_resolution: f32) -> Option<ArenaNavmeshNode> {
         let scalar = 1.0 / unit_resolution;
-        let adjusted_point = point![
-            ((point.x * scalar).round() / scalar),
-            ((point.y * scalar).round() / scalar),
-            ((point.z * scalar).round() / scalar),
-        ];
+        let adjusted_point = vec3(
+            (point.x * scalar).round() / scalar,
+            (point.y * scalar).round() / scalar,
+            (point.z * scalar).round() / scalar,
+        );
         let potential_node = ArenaNavmeshNode::from_point(adjusted_point);
 
         if graph.contains_node(potential_node) {
@@ -274,7 +269,7 @@ mod tests {
             all_features: vec![
                 // Floor
                 Box::new(
-                    ArenaBarrier::new(vector![0.0, -5.0, 0.0], vector![TEST_SQUARE_ARENA_SIZE, 10.0, TEST_SQUARE_ARENA_SIZE], Quaternion::identity(), BarrierPathing::Enabled)
+                    ArenaBarrier::new(vec3(0.0, -5.0, 0.0), vec3(TEST_SQUARE_ARENA_SIZE, 10.0, TEST_SQUARE_ARENA_SIZE), Quaternion::identity(), BarrierPathing::Enabled)
                 ),
             ]
         }
@@ -299,7 +294,10 @@ mod tests {
         let unit_resolution = test_config.unit_resolution;
 
         let navmesh = ArenaNavmesh::new_from(test_arena, test_config);
-        let closest_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.1, 0.0, 1.3], unit_resolution);
+        let closest_node = ArenaNavmesh::get_closest_node(
+            &navmesh.graph,
+            vec3(1.1, 0.0, 1.3),
+            unit_resolution);
 
         assert!(closest_node.is_some());
 
@@ -314,10 +312,10 @@ mod tests {
         let unit_resolution = test_config.unit_resolution;
 
         let navmesh = ArenaNavmesh::new_from(test_arena, test_config);
-        assert!(ArenaNavmesh::get_closest_node(&navmesh.graph, point![-TEST_SQUARE_ARENA_SIZE - unit_resolution, 0.0, 0.0], unit_resolution).is_none());
-        assert!(ArenaNavmesh::get_closest_node(&navmesh.graph, point![TEST_SQUARE_ARENA_SIZE + unit_resolution, 0.0, 0.0], unit_resolution).is_none());
-        assert!(ArenaNavmesh::get_closest_node(&navmesh.graph, point![0.0, 0.0, -TEST_SQUARE_ARENA_SIZE - unit_resolution], unit_resolution).is_none());
-        assert!(ArenaNavmesh::get_closest_node(&navmesh.graph, point![0.0, 0.0, TEST_SQUARE_ARENA_SIZE + unit_resolution], unit_resolution).is_none());
+        assert!(ArenaNavmesh::get_closest_node(&navmesh.graph, vec3(-TEST_SQUARE_ARENA_SIZE - unit_resolution, 0.0, 0.0), unit_resolution).is_none());
+        assert!(ArenaNavmesh::get_closest_node(&navmesh.graph, vec3(TEST_SQUARE_ARENA_SIZE + unit_resolution, 0.0, 0.0), unit_resolution).is_none());
+        assert!(ArenaNavmesh::get_closest_node(&navmesh.graph, vec3(0.0, 0.0, -TEST_SQUARE_ARENA_SIZE -unit_resolution), unit_resolution).is_none());
+        assert!(ArenaNavmesh::get_closest_node(&navmesh.graph, vec3(0.0, 0.0, TEST_SQUARE_ARENA_SIZE + unit_resolution), unit_resolution).is_none());
     }
 
     #[test]
@@ -327,8 +325,8 @@ mod tests {
 
         let navmesh = ArenaNavmesh::new_from(test_arena, test_config);
 
-        let start_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.0, 0.0, 1.0], unit_resolution).expect("failed to get start node");
-        let end_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.0, 0.0, 5.0], unit_resolution).expect("failed to get end node");
+        let start_node = ArenaNavmesh::get_closest_node(&navmesh.graph, vec3(1.0, 0.0, 1.0), unit_resolution).expect("failed to get start node");
+        let end_node = ArenaNavmesh::get_closest_node(&navmesh.graph, vec3(1.0, 0.0, 5.0), unit_resolution).expect("failed to get end node");
 
         let path = navmesh.get_path_between_nodes(start_node, end_node);
 
@@ -344,8 +342,8 @@ mod tests {
 
         let navmesh = ArenaNavmesh::new_from(test_arena, test_config);
 
-        let start_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.0, 0.0, 1.0], unit_resolution).expect("failed to get start node");
-        let end_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![2.0, 0.0, 2.0], unit_resolution).expect("failed to get end node");
+        let start_node = ArenaNavmesh::get_closest_node(&navmesh.graph, vec3(1.0, 0.0, 1.0), unit_resolution).expect("failed to get start node");
+        let end_node = ArenaNavmesh::get_closest_node(&navmesh.graph, vec3(2.0, 0.0, 2.0), unit_resolution).expect("failed to get end node");
 
         let path = navmesh.get_path_between_nodes(start_node, end_node);
 
@@ -365,8 +363,8 @@ mod tests {
 
         let navmesh = ArenaNavmesh::new_from(test_arena, test_config);
 
-        let start_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.0, 0.0, 1.0], unit_resolution).expect("failed to get start node");
-        let end_node = ArenaNavmesh::get_closest_node(&navmesh.graph, point![1.0, 0.0, 5.0], unit_resolution).expect("failed to get end node");
+        let start_node = ArenaNavmesh::get_closest_node(&navmesh.graph, vec3(1.0, 0.0, 1.0), unit_resolution).expect("failed to get start node");
+        let end_node = ArenaNavmesh::get_closest_node(&navmesh.graph, vec3(1.0, 0.0, 5.0), unit_resolution).expect("failed to get end node");
 
         let path = navmesh.get_path_between_nodes(start_node, end_node);
 

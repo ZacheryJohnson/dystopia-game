@@ -1,8 +1,10 @@
 use std::sync::{Arc, Mutex};
 use rapier3d::geometry::{ColliderHandle, Cuboid};
+use rapier3d::glamx::vec3;
 use rapier3d::prelude::*;
 use rapier3d::na::{vector, Isometry3, Vector3};
 use rapier3d::pipeline::QueryFilter;
+use rapier3d::utils::PoseOps;
 use dys_world::combatant::instance::CombatantInstanceId;
 use crate::ai::belief::{Belief, ExpiringBelief};
 use crate::ai::sensor::Sensor;
@@ -15,7 +17,7 @@ use crate::game_state::GameState;
 pub struct FieldOfViewSensor {
     enabled: bool,
     shape: Cuboid,
-    isometry_offset: Isometry3<f32>,
+    isometry_offset: Pose3,
     owner_combatant_id: CombatantInstanceId,
     owner_collider_handle: ColliderHandle,
 }
@@ -29,8 +31,8 @@ impl FieldOfViewSensor {
         let half_dist = sight_distance / 2.0;
         // ZJ-TODO: ideally this would be a cone, not a cuboid, but I can't get the cone to work
         //          once the game is actually fun and playable, possibly revisit
-        let shape = Cuboid::new(vector![half_dist, 5.0, half_dist]);
-        let isometry_offset = Isometry3::translation(0.0, 0.0, half_dist);
+        let shape = Cuboid::new(vec3(half_dist, 5.0, half_dist));
+        let isometry_offset = Pose3::translation(0.0, 0.0, half_dist);
 
         FieldOfViewSensor {
             enabled: true,
@@ -53,7 +55,7 @@ impl Sensor for FieldOfViewSensor {
 
     fn sense(
         &self,
-        combatant_isometry: &Isometry3<f32>,
+        combatant_isometry: Pose3,
         game_state: Arc<Mutex<GameState>>,
     ) -> (bool, Vec<ExpiringBelief>) {
         let mut beliefs = vec![];
@@ -65,152 +67,126 @@ impl Sensor for FieldOfViewSensor {
         let combatants = game_state.combatants.clone();
         let current_tick = game_state.current_tick.to_owned();
 
-        let (
-            query_pipeline,
-            rigid_body_set,
-            collider_set
-        ) = game_state.physics_sim.query_pipeline_and_sets();
+        let query_filter = QueryFilter::default().exclude_collider(self.owner_collider_handle);
 
-        let shape_query_filter = QueryFilter::default()
-            .exclude_collider(self.owner_collider_handle);
+        let query_pipeline = game_state
+            .physics_sim
+            .query_pipeline(query_filter);
 
         let mut new_isometry = self.isometry_offset.to_owned();
-        new_isometry.append_rotation_mut(&combatant_isometry.rotation);
-        new_isometry.append_translation_mut(&combatant_isometry.translation);
+        new_isometry.append_rotation(combatant_isometry.rotation.to_scaled_axis());
+        new_isometry.append_translation(combatant_isometry.translation);
 
-        let mut rays_to_cast: Vec<Vector3<f32>> = Vec::new();
-        query_pipeline.intersections_with_shape(
-            rigid_body_set,
-            collider_set,
-            &new_isometry,
-            &self.shape,
-            shape_query_filter,
-            |collider_handle| {
-                let game_object = active_colliders.get(&collider_handle).unwrap();
-                match game_object {
-                    GameObjectType::Combatant(_) | GameObjectType::Ball(_) => {
-                        let collision_pos = collider_set
-                            .get(collider_handle)
-                            .unwrap()
-                            .translation();
+        let collisions = query_pipeline.intersect_shape(new_isometry, &self.shape);
+        for (collider_handle, collider) in collisions {
+            let game_object = active_colliders.get(&collider_handle).unwrap();
+            match game_object {
+                GameObjectType::Combatant(_) | GameObjectType::Ball(_) => {
+                    let collision_pos = collider.translation();
+                    let difference_vector = collision_pos - combatant_isometry.translation;
+                    let ray = Ray::new(combatant_isometry.translation, difference_vector);
+                    let collisions = query_pipeline.intersect_ray(
+                        ray,
+                        difference_vector.length(),
+                        false);
 
-                        let difference_vector = collision_pos - combatant_isometry.translation.vector;
+                    let mut ray_collisions = vec![];
+                    for (collider_handle, _, ray_intersection) in collisions {
+                        let collision_point = ray.point_at(ray_intersection.time_of_impact);
+                        let difference_vector = collision_point - combatant_isometry.translation;
+                        let distance = difference_vector.length();
 
-                        rays_to_cast.push(difference_vector);
-                    },
-                    _ => {},
-                }
+                        ray_collisions.push((collider_handle, distance));
+                    }
 
-                true
-            }
-        );
+                    ray_collisions.sort_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap());
 
-        for ray_to_cast in &rays_to_cast {
-            let mut ray_collisions: Vec<(ColliderHandle, f32)> = vec![];
-            let ray = Ray::new(combatant_isometry.translation.vector.into(), ray_to_cast.to_owned());
-            query_pipeline.intersections_with_ray(
-                rigid_body_set,
-                collider_set,
-                &ray,
-                ray_to_cast.magnitude(),
-                false,
-                shape_query_filter,
-                |collider_handle, ray_intersection| {
-                    let collision_point = ray.point_at(ray_intersection.time_of_impact).coords;
-                    let difference_vector = collision_point - combatant_isometry.translation.vector;
-                    let distance = difference_vector.magnitude();
+                    // ZJ-TODO: HACK: we currently see things "through" walls.
+                    //          This is not a strictly bad thing, as otherwise combatants would have
+                    //          no idea about balls behind walls.
+                    //          The below prevents that, BUT has the side effect of combatants forgetting
+                    //          about balls behind walls, as they have goldfish like memory.
+                    let mut has_direct_line_of_sight = true;
+                    for (collider_handle, _) in ray_collisions {
+                        let game_object = active_colliders.get(&collider_handle).unwrap();
+                        match game_object {
+                            GameObjectType::Barrier => {
+                                has_direct_line_of_sight = false;
+                            },
+                            GameObjectType::Ball(ball_id) => {
+                                let ball_object = balls.get(ball_id).unwrap();
+                                let ball_rb = rigid_body_set.get(ball_object.rigid_body_handle().unwrap()).unwrap();
+                                let ball_pos = ball_rb.translation();
 
-                    ray_collisions.push((collider_handle, distance));
+                                beliefs.push(ExpiringBelief::new(Belief::BallPosition {
+                                    ball_id: *ball_id,
+                                    position: ball_pos.to_owned(),
+                                    trajectory: ball_rb.linvel().data.0.into(),
+                                }, Some(current_tick + 12)));
 
-                    true
-                }
-            );
+                                if let Some(combatant_id) = ball_object.held_by {
+                                    beliefs.push(ExpiringBelief::new(Belief::HeldBall {
+                                        ball_id: *ball_id,
+                                        combatant_id,
+                                    }, Some(current_tick + 4)));
+                                }
 
-            ray_collisions.sort_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap());
+                                if matches!(ball_object.state, BallState::ThrownAtTarget {..}) {
+                                    beliefs.push(ExpiringBelief::new(
+                                        Belief::BallIsFlying { ball_id: *ball_id },
+                                        Some(current_tick + 4),
+                                    ));
+                                }
+                            },
+                            GameObjectType::Combatant(combatant_id) => {
+                                let combatant_object = combatants.get(combatant_id).unwrap();
+                                let combatant_pos = rigid_body_set
+                                    .get(combatant_object.rigid_body_handle().unwrap())
+                                    .unwrap()
+                                    .translation();
 
-            // ZJ-TODO: HACK: we currently see things "through" walls.
-            //          This is not a strictly bad thing, as otherwise combatants would have
-            //          no idea about balls behind walls.
-            //          The below prevents that, BUT has the side effect of combatants forgetting
-            //          about balls behind walls, as they have goldfish like memory.
-            let mut has_direct_line_of_sight = true;
-            for (collider_handle, _) in ray_collisions {
-                let game_object = active_colliders.get(&collider_handle).unwrap();
-                match game_object {
-                    GameObjectType::Barrier => {
-                        has_direct_line_of_sight = false;
-                    },
-                    GameObjectType::Ball(ball_id) => {
-                        let ball_object = balls.get(ball_id).unwrap();
-                        let ball_rb = rigid_body_set.get(ball_object.rigid_body_handle().unwrap()).unwrap();
-                        let ball_pos = ball_rb.translation();
+                                beliefs.push(ExpiringBelief::new(Belief::CombatantPosition {
+                                    combatant_id: *combatant_id,
+                                    position: combatant_pos.to_owned(),
+                                }, Some(current_tick + 12)));
 
-                        beliefs.push(ExpiringBelief::new(Belief::BallPosition {
-                            ball_id: *ball_id,
-                            position: ball_pos.to_owned(),
-                            trajectory: ball_rb.linvel().data.0.into(),
-                        }, Some(current_tick + 12)));
+                                if let Some(ball_id) = combatant_object.ball() {
+                                    beliefs.push(ExpiringBelief::new(Belief::HeldBall {
+                                        combatant_id: *combatant_id,
+                                        ball_id,
+                                    }, Some(current_tick + 1)));
+                                }
 
-                        if let Some(combatant_id) = ball_object.held_by {
-                            beliefs.push(ExpiringBelief::new(Belief::HeldBall {
-                                ball_id: *ball_id,
-                                combatant_id,
-                            }, Some(current_tick + 4)));
+                                if let Some(plate_id) = combatant_object.plate() {
+                                    beliefs.push(ExpiringBelief::new(Belief::OnPlate {
+                                        combatant_id: *combatant_id,
+                                        plate_id,
+                                    }, Some(current_tick + 1)));
+                                }
+
+                                if combatant_object.is_stunned() {
+                                    beliefs.push(ExpiringBelief::new(
+                                        Belief::CombatantIsStunned {
+                                            combatant_id: *combatant_id
+                                        }, Some(current_tick + 1))
+                                    );
+                                }
+
+                                if has_direct_line_of_sight {
+                                    beliefs.push(ExpiringBelief::new(
+                                        Belief::DirectLineOfSightToCombatant {
+                                            self_combatant_id: self.owner_combatant_id,
+                                            other_combatant_id: *combatant_id,
+                                        },
+                                        Some(current_tick + 1),
+                                    ));
+                                }
+                            },
+                            _ => {} // we can ignore all other game object types
                         }
-
-                        if matches!(ball_object.state, BallState::ThrownAtTarget {..}) {
-                            beliefs.push(ExpiringBelief::new(
-                                Belief::BallIsFlying { ball_id: *ball_id },
-                                Some(current_tick + 4),
-                            ));
-                        }
-                    },
-                    GameObjectType::Combatant(combatant_id) => {
-                        let combatant_object = combatants.get(combatant_id).unwrap();
-                        let combatant_pos = rigid_body_set
-                            .get(combatant_object.rigid_body_handle().unwrap())
-                            .unwrap()
-                            .translation();
-
-                        beliefs.push(ExpiringBelief::new(Belief::CombatantPosition {
-                            combatant_id: *combatant_id,
-                            position: combatant_pos.to_owned(),
-                        }, Some(current_tick + 12)));
-
-                        if let Some(ball_id) = combatant_object.ball() {
-                            beliefs.push(ExpiringBelief::new(Belief::HeldBall {
-                                combatant_id: *combatant_id,
-                                ball_id,
-                            }, Some(current_tick + 1)));
-                        }
-
-                        if let Some(plate_id) = combatant_object.plate() {
-                            beliefs.push(ExpiringBelief::new(Belief::OnPlate {
-                                combatant_id: *combatant_id,
-                                plate_id,
-                            }, Some(current_tick + 1)));
-                        }
-
-                        if combatant_object.is_stunned() {
-                            beliefs.push(ExpiringBelief::new(
-                                Belief::CombatantIsStunned {
-                                    combatant_id: *combatant_id
-                                }, Some(current_tick + 1))
-                            );
-                        }
-
-                        if has_direct_line_of_sight {
-                            beliefs.push(ExpiringBelief::new(
-                                Belief::DirectLineOfSightToCombatant {
-                                    self_combatant_id: self.owner_combatant_id,
-                                    other_combatant_id: *combatant_id,
-                                },
-                                Some(current_tick + 1),
-                            ));
-                        }
-                    },
-                    _ => {} // we can ignore all other game object types
-                }
+                    }
+                },
+                _ => {},
             }
         }
 

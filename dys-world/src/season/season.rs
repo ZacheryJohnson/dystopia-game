@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, Weak};
 use serde::Serialize;
-use ts_rs::TS;
 use crate::games::instance::{GameInstance, GameInstanceId};
 use crate::schedule::calendar::Date;
 use crate::season::series::Series;
@@ -11,18 +10,15 @@ pub type ScheduleMapT = HashMap<Date, Vec<Weak<Mutex<GameInstance>>>>;
 
 /// Seasons are the collection of games that will be played
 /// and the scheduling of those games.
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Season {
     /// This is considered the authoritative source-of-truth for all games.
     #[serde(skip_serializing)]
-    #[ts(skip)]
     games: GamesMapT,
     #[serde(skip_serializing)]
-    #[ts(skip)]
     schedule: ScheduleMapT,
     // ZJ-TODO: restore serializing
     #[serde(skip_serializing)]
-    #[ts(skip)]
     series: Vec<Series>,
 }
 

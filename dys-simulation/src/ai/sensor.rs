@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 use dyn_clone::DynClone;
-use rapier3d::na::Isometry3;
+use rapier3d::prelude::Pose3;
 use crate::ai::belief::ExpiringBelief;
 use crate::game_state::GameState;
 
@@ -11,7 +11,7 @@ pub trait Sensor: DynClone + Debug {
     fn set_yields_beliefs(&mut self, _yields_beliefs: bool) {}
     fn sense(
         &self,
-        combatant_isometry: &Isometry3<f32>,
+        combatant_isometry: Pose3,
         game_state: Arc<Mutex<GameState>>,
     ) -> (bool, Vec<ExpiringBelief>);
 }

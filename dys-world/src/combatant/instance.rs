@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 use crate::attribute::attribute_source::AttributeSource;
 use crate::attribute::attribute_type::AttributeType;
 use crate::attribute::instance::{AttributeInstance, AttributeValueT};
@@ -7,8 +6,7 @@ use crate::combatant::limb::Limb;
 
 pub type CombatantInstanceId = u32;
 
-#[derive(Debug, Deserialize, Serialize, TS)]
-#[ts(export)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CombatantInstance {
     pub id: CombatantInstanceId,
     pub name: String,
@@ -16,12 +14,12 @@ pub struct CombatantInstance {
     pub effect_modifiers: Vec<EffectInstance>,
 }
 
-#[derive(Debug, Deserialize, Serialize, TS)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum EffectDuration {
     NumberOfMatches(u32),
 }
 
-#[derive(Debug, Deserialize, Serialize, TS)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct EffectInstance {
     pub attribute_modifier: Vec<AttributeInstance>,
     pub duration: EffectDuration,

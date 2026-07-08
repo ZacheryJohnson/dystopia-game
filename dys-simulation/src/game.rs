@@ -1,4 +1,5 @@
 use std::sync::{Arc, Mutex};
+use rapier3d::glamx::vec3;
 use dys_world::{arena::{ball_spawn::ArenaBallSpawn, barrier::ArenaBarrier, feature::ArenaFeature, plate::ArenaPlate}, games::instance::GameInstance};
 use rapier3d::prelude::*;
 use dys_world::arena::Arena;
@@ -28,7 +29,7 @@ impl Game {
                 let combatant_rb = rigid_body_set.get(combatant_object.rigid_body_handle().unwrap()).unwrap();
                 simulation_events.push(SimulationEvent::CombatantPositionUpdate { 
                     combatant_id: *combatant_id,
-                    position: *combatant_rb.translation(),
+                    position: combatant_rb.translation(),
                 });
             }
             
@@ -36,7 +37,7 @@ impl Game {
                 let ball_rb = rigid_body_set.get(ball_object.rigid_body_handle().unwrap()).unwrap();
                 simulation_events.push(SimulationEvent::BallPositionUpdate { 
                     ball_id: *ball_id,
-                    position: *ball_rb.translation(),
+                    position: ball_rb.translation(),
                     charge: ball_object.charge,
                 });
             }
@@ -65,10 +66,10 @@ impl Game {
                     object_type_id,  
                     position: *feature.origin(),
                     scale: match shape.shape_type() {
-                        ShapeType::Ball => vector![shape.as_ball().unwrap().radius, shape.as_ball().unwrap().radius, shape.as_ball().unwrap().radius],
+                        ShapeType::Ball => vec3(shape.as_ball().unwrap().radius, shape.as_ball().unwrap().radius, shape.as_ball().unwrap().radius),
                         ShapeType::Cuboid => shape.as_cuboid().unwrap().half_extents * 2.0,
-                        ShapeType::Capsule => vector![shape.as_capsule().unwrap().radius, shape.as_capsule().unwrap().height(), shape.as_capsule().unwrap().radius],
-                        ShapeType::Cylinder => vector![shape.as_cylinder().unwrap().radius, shape.as_cylinder().unwrap().half_height * 2.0, shape.as_cylinder().unwrap().radius],
+                        ShapeType::Capsule => vec3(shape.as_capsule().unwrap().radius, shape.as_capsule().unwrap().height(), shape.as_capsule().unwrap().radius),
+                        ShapeType::Cylinder => vec3(shape.as_cylinder().unwrap().radius, shape.as_cylinder().unwrap().half_height * 2.0, shape.as_cylinder().unwrap().radius),
                         _ => panic!("shape unsupported")
                     },
                     rotation: *feature.rotation(),
