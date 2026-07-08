@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use serde::Serialize;
-use ts_rs::TS;
 use crate::{
     combatant::instance::CombatantInstance,
     serde::{serialize_combatants, serialize_teams},
@@ -11,8 +10,7 @@ use crate::combatant::instance::CombatantInstanceId;
 use crate::season::season::Season;
 use crate::team::instance::TeamInstanceId;
 
-#[derive(Clone, Debug, Serialize, TS)]
-#[ts(export)]
+#[derive(Clone, Debug, Serialize)]
 pub struct World {
     #[serde(serialize_with = "serialize_combatants")]
     pub combatants: HashMap<CombatantInstanceId, Arc<Mutex<CombatantInstance>>>,
@@ -21,7 +19,6 @@ pub struct World {
     pub teams: HashMap<TeamInstanceId, Arc<Mutex<TeamInstance>>>,
 
     #[serde(skip_serializing)]
-    #[ts(skip)]
     pub season: Season,
 }
 

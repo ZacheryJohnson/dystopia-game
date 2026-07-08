@@ -13,7 +13,7 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
     let (collision_events, active_colliders, balls) = {
         let mut game_state = game_state.lock().unwrap();
 
-        let collision_events = game_state.physics_sim.collision_events().to_owned();
+        let collision_events = game_state.physics_sim.collision_events();
         let active_colliders = game_state.active_colliders.to_owned();
         let balls = game_state.balls.to_owned();
 
@@ -75,7 +75,7 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
 
                     let (rigid_body_set, _) = game_state.physics_sim.sets();
                     let combatant_rigid_body = rigid_body_set.get(combatant_rb).unwrap();
-                    combatant_rigid_body.linvel().magnitude()
+                    combatant_rigid_body.linvel().length()
                 };
 
                 let mut game_state = game_state.lock().unwrap();

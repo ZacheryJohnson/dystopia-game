@@ -1,5 +1,5 @@
 use nalgebra::Quaternion;
-use rapier3d::{na::Vector3, prelude::*};
+use rapier3d::prelude::*;
 use super::{feature::NavmeshPathingType, ArenaFeature};
 
 #[derive(Clone, Copy, PartialEq)]
@@ -13,7 +13,7 @@ pub enum BarrierPathing {
 /// or as floors (which are pathable by characters)
 pub struct ArenaBarrier {
     /// Center point of the barrier
-    origin: Vector3<f32>,
+    origin: Vec3,
 
     shape: SharedShape,
 
@@ -27,8 +27,8 @@ pub struct ArenaBarrier {
 impl ArenaBarrier {
     #[must_use]
     pub fn new(
-        origin: Vector3<f32>,
-        size: Vector3<f32>,
+        origin: Vec3,
+        size: Vec3,
         rotation: Quaternion<f32>,
         pathing: BarrierPathing,
     ) -> ArenaBarrier {
@@ -46,7 +46,7 @@ impl ArenaBarrier {
 impl ArenaFeature for ArenaBarrier {
     fn build_rigid_body(&self) -> Option<RigidBody> {
         let rigid_body = RigidBodyBuilder::fixed()
-            .translation(self.origin)
+            .translation(self.origin.into())
             .rotation(self.rotation.vector().into())
             .build();
 
@@ -75,7 +75,7 @@ impl ArenaFeature for ArenaBarrier {
         Some(collider)
     }
 
-    fn origin(&self) -> &Vector3<f32> {
+    fn origin(&self) -> &Vec3 {
         &self.origin
     }
 

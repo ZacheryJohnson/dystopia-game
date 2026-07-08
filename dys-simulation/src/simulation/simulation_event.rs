@@ -1,5 +1,6 @@
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
+use rapier3d::glamx::vec3;
 use dys_world::arena::plate::PlateId;
 use rapier3d::prelude::*;
 use rapier3d::na::{Quaternion, UnitQuaternion, Vector3};
@@ -55,17 +56,17 @@ impl PendingSimulationEvent {
 pub enum SimulationEvent {
     // ZJ-TODO: keep?
     // This is currently only being used for tick zero initial state (eg where are there plates? where are there walls?)
-    ArenaObjectPositionUpdate { object_type_id: u32, position: Vector3<f32>, scale: Vector3<f32>, rotation: Quaternion<f32> },
+    ArenaObjectPositionUpdate { object_type_id: u32, position: Vec3, scale: Vec3, rotation: Quaternion<f32> },
 
     /// A ball has moved through the world
     BallPositionUpdate {
         ball_id: BallId,
-        position: Vector3<f32>,
+        position: Vec3,
         charge: f32,
     },
 
     /// A combatant has moved through the world
-    CombatantPositionUpdate { combatant_id: CombatantInstanceId, position: Vector3<f32> },
+    CombatantPositionUpdate { combatant_id: CombatantInstanceId, position: Vec3 },
 
     /// A combatant has begun being on a plate
     CombatantOnPlate { combatant_id: CombatantInstanceId, plate_id: PlateId },
@@ -84,7 +85,7 @@ pub enum SimulationEvent {
         thrower_id: CombatantInstanceId,
         enemy_id: CombatantInstanceId,
         ball_id: BallId,
-        ball_impulse_vector: Vector3<f32>,
+        ball_impulse_vector: Vec3,
     },
 
     /// A ball has been thrown targeting a teammate
@@ -92,7 +93,7 @@ pub enum SimulationEvent {
         thrower_id: CombatantInstanceId,
         teammate_id: CombatantInstanceId,
         ball_id: BallId,
-        ball_impulse_vector: Vector3<f32>,
+        ball_impulse_vector: Vec3,
     },
 
     ThrownBallCaught {
@@ -111,7 +112,7 @@ pub enum SimulationEvent {
     BallExplosion { ball_id: BallId, charge: f32 },
 
     /// A ball explosion has applied explosion force to a combatant
-    BallExplosionForceApplied { ball_id: BallId, combatant_id: CombatantInstanceId, force_magnitude: f32, force_direction: Vector3<f32> },
+    BallExplosionForceApplied { ball_id: BallId, combatant_id: CombatantInstanceId, force_magnitude: f32, force_direction: Vec3 },
 
     /// Points have been scored this tick by a combatant on a plate
     PointsScoredByCombatant { plate_id: PlateId, combatant_id: CombatantInstanceId, points: u8 },
@@ -123,7 +124,7 @@ pub enum SimulationEvent {
         shover_combatant_id: CombatantInstanceId,
         recipient_target_id: CombatantInstanceId,
         force_magnitude: f32,
-        force_direction: Vector3<f32>
+        force_direction: Vec3
     },
 
     // ZJ-TODO: TEMP: broadcast this belief to all other combatants (excluding self)
@@ -177,13 +178,13 @@ impl SimulationEvent {
                     .get_mut(combatant_object.rigid_body_handle)
                     .unwrap();
 
-                let old_position: &Vector3<f32> = combatant_rb.translation();
+                let old_position: Vec3 = combatant_rb.translation();
                 let difference_vector = position - old_position;
-                let rotation = UnitQuaternion::face_towards(&difference_vector, &Vector3::y());
+                let rotation = UnitQuaternion::face_towards(&difference_vector.into(), &Vector3::y());
                 combatant_rb.set_translation(position, true);
 
                 if rotation.axis_angle().is_some() {
-                    combatant_rb.set_rotation(rotation, true);
+                    combatant_rb.set_rotation(rotation.into(), true);
                 }
             }
             SimulationEvent::CombatantOnPlate { combatant_id, plate_id } => {
@@ -234,7 +235,7 @@ impl SimulationEvent {
 
                 // ZJ-TODO: read this from combatant stats
                 //          might have some long ass arms (if arms at all)
-                if distance.magnitude() > 2.0 {
+                if distance.length() > 2.0 {
                     return (false, vec![]);
                 }
 
@@ -348,8 +349,8 @@ impl SimulationEvent {
                     // After exploding, reset charge, make ball idle
                     // ZJ-TODO: delete ball, spawn new one, etc
                     let ball_rb = rigid_body_set.get_mut(ball_rigid_body_handle).unwrap();
-                    ball_rb.set_linvel(vector![0.0, 0.0, 0.0], true);
-                    ball_rb.set_angvel(vector![0.0, 0.0, 0.0], true);
+                    ball_rb.set_linvel(vec3(0.0, 0.0, 0.0), true);
+                    ball_rb.set_angvel(vec3(0.0, 0.0, 0.0), true);
                 }
 
                 {

@@ -1,8 +1,10 @@
-use crossbeam::channel::Receiver;
-use rapier3d::{na::Vector3, prelude::*};
+use std::sync::mpsc::Receiver;
+use rapier3d::glamx::vec3;
+use rapier3d::prelude::*;
+use rapier3d::parry::query::DefaultQueryDispatcher;
 
 pub struct PhysicsSim {
-    gravity: Vector3<f32>,
+    gravity: Vec3,
     integration_params: IntegrationParameters,
     pipeline: PhysicsPipeline,
     island_manager: IslandManager,
@@ -13,7 +15,6 @@ pub struct PhysicsSim {
     impulse_joint_set: ImpulseJointSet,
     multibody_joint_set: MultibodyJointSet,
     ccd_solver: CCDSolver,
-    query_pipeline: QueryPipeline,
     physics_hooks: (),
     event_handler: ChannelEventCollector,
     collision_event_recv: Receiver<CollisionEvent>,
@@ -28,12 +29,12 @@ impl PhysicsSim {
             ..Default::default()
         };
 
-        let (collision_send, collision_recv) = crossbeam::channel::unbounded();
-        let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();
+        let (collision_send, collision_recv) = std::sync::mpsc::channel();
+        let (contact_force_send, contact_force_recv) = std::sync::mpsc::channel();
         let event_handler = ChannelEventCollector::new(collision_send, contact_force_send);
 
         PhysicsSim {
-            gravity: vector![0.0, -9.81, 0.0],
+            gravity: vec3(0.0, -9.81, 0.0),
             integration_params,
             pipeline: PhysicsPipeline::new(),
             island_manager: IslandManager::new(),
@@ -44,7 +45,6 @@ impl PhysicsSim {
             impulse_joint_set: ImpulseJointSet::new(),
             multibody_joint_set: MultibodyJointSet::new(),
             ccd_solver: CCDSolver::new(),
-            query_pipeline: QueryPipeline::new(),
             physics_hooks: (),
             event_handler,
             collision_event_recv: collision_recv,
@@ -68,17 +68,18 @@ impl PhysicsSim {
         &mut self.contact_force_event_recv
     }
 
-    pub fn query_pipeline(&mut self) -> &QueryPipeline {
-        &self.query_pipeline
-    }
-
-    pub fn query_pipeline_and_sets(&mut self) -> (&mut QueryPipeline, &mut RigidBodySet, &mut ColliderSet) {
-        (&mut self.query_pipeline, &mut self.rigid_body_set, &mut self.collider_set)
+    pub fn query_pipeline<'s>(&'s mut self, query_filter: QueryFilter<'s>) -> QueryPipeline<'s> {
+        self.broad_phase.as_query_pipeline(
+            &DefaultQueryDispatcher,
+            &self.rigid_body_set,
+            &self.collider_set,
+            query_filter
+        )
     }
 
     pub fn tick(&mut self) {
         self.pipeline.step(
-            &self.gravity,
+            self.gravity,
             &self.integration_params,
             &mut self.island_manager,
             &mut self.broad_phase,
@@ -88,7 +89,6 @@ impl PhysicsSim {
             &mut self.impulse_joint_set,
             &mut self.multibody_joint_set,
             &mut self.ccd_solver,
-            Some(&mut self.query_pipeline),
             &self.physics_hooks,
             &self.event_handler,
         )

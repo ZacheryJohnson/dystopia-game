@@ -1,8 +1,8 @@
 use std::{fmt::Debug, sync::{Arc, Mutex}};
 use rand::RngCore;
 use dys_world::{arena::plate::PlateId, combatant::instance::CombatantInstance};
-use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, na::Vector3, pipeline::ActiveEvents};
-use rapier3d::na::Isometry3;
+use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, pipeline::ActiveEvents};
+use rapier3d::glamx::vec3;
 use rapier3d::prelude::*;
 use dys_satisfiable::{SatisfiabilityTest, SatisfiableField};
 use dys_world::attribute::attribute_type::AttributeType;
@@ -56,8 +56,8 @@ impl CombatantObject {
     pub fn new(
         id: CombatantInstanceId,
         combatant: Arc<Mutex<CombatantInstance>>,
-        position: Vector3<f32>,
-        rotation: Vector3<f32>,
+        position: Vec3,
+        rotation: Vec3,
         team: TeamAlignment,
         rigid_body_set: &mut RigidBodySet,
         collider_set: &mut ColliderSet
@@ -73,7 +73,7 @@ impl CombatantObject {
             .active_events(ActiveEvents::COLLISION_EVENTS)
             .active_collision_types(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_FIXED | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
             .mass(COMBATANT_MASS)
-            .position(Isometry3::translation(0.0, COMBATANT_HALF_HEIGHT, 0.0))
+            .position(Pose3::translation(0.0, COMBATANT_HALF_HEIGHT, 0.0))
             .build();
 
         let rigid_body_handle = rigid_body_set.insert(rigid_body);
@@ -126,14 +126,14 @@ impl CombatantObject {
     /// This consists of a translation, which is the origin of the rigid body + the radius of the combatant,
     /// and a rotation, which is the direction the combatant is currently facing.
     /// The rotation will always be strictly around the Y-axis, and the X and Z axes will always be zero.
-    pub fn forward_isometry(&self, rigid_body_set: &RigidBodySet) -> Isometry3<f32> {
+    pub fn forward_isometry(&self, rigid_body_set: &RigidBodySet) -> Pose3 {
         let rigid_body = rigid_body_set
             .get(self.rigid_body_handle)
             .unwrap();
 
-        Isometry3::new(
-            rigid_body.translation().to_owned() + vector![0.0, COMBATANT_HALF_HEIGHT, 0.0],
-            rigid_body.rotation().scaled_axis()
+        Pose3::new(
+            rigid_body.translation() + vec3(0.0, COMBATANT_HALF_HEIGHT, 0.0),
+            rigid_body.rotation().to_scaled_axis()
         )
     }
 
@@ -288,7 +288,7 @@ impl Agent for CombatantObject {
                 let mut game_state = game_state.lock().unwrap();
                 let (rigid_body_set, _) = game_state.physics_sim.sets_mut();
                 rigid_body_set.get_mut(self.rigid_body_handle).unwrap().set_linvel(
-                    Vector3::zeros(),
+                    Vec3::ZERO,
                     true
                 );
 

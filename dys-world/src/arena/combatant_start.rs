@@ -1,11 +1,11 @@
-use rapier3d::na::{Quaternion, Vector3};
-
+use rapier3d::na::Quaternion;
+use rapier3d::prelude::Vec3;
 use super::feature::{ArenaFeature, NavmeshPathingType};
 
 /// Location where a player can be spawned
 pub struct ArenaCombatantStart {    
     /// Center point of the player spawn spot
-    pub origin: Vector3<f32>,
+    pub origin: Vec3,
 
     /// Which team does this spawn point belong to
     pub is_home_team: bool,
@@ -14,7 +14,7 @@ pub struct ArenaCombatantStart {
 }
 
 impl ArenaFeature for ArenaCombatantStart {
-    fn origin(&self) -> &Vector3<f32> {
+    fn origin(&self) -> &Vec3 {
         &self.origin
     }
 

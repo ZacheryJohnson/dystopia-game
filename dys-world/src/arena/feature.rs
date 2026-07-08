@@ -1,6 +1,7 @@
 use std::any::Any;
 
-use rapier3d::{dynamics::RigidBody, geometry::{Collider, SharedShape}, na::{Quaternion, Vector3}};
+use rapier3d::{dynamics::RigidBody, geometry::{Collider, SharedShape}, na::Quaternion};
+use rapier3d::prelude::Vec3;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum NavmeshPathingType {
@@ -17,7 +18,7 @@ pub trait ArenaFeature {
 
     fn build_collider(&self) -> Option<Collider> { None }
 
-    fn origin(&self) -> &Vector3<f32>;
+    fn origin(&self) -> &Vec3;
 
     fn rotation(&self) -> &Quaternion<f32>;
 

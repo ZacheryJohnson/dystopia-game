@@ -1,5 +1,4 @@
 use nalgebra::Quaternion;
-use rapier3d::na::Vector3;
 use rapier3d::prelude::*;
 
 use super::feature::NavmeshPathingType;
@@ -11,7 +10,7 @@ pub struct ArenaPlate {
     pub id: PlateId,
 
     /// Center point of the plate
-    pub origin: Vector3<f32>,
+    pub origin: Vec3,
 
     /// Shape of the plate, including size of that shape
     pub shape: SharedShape,
@@ -33,7 +32,7 @@ impl ArenaFeature for ArenaPlate {
         // but not so large that players flying through the air are counted towards plate progress.
 
         let collider = ColliderBuilder::new(self.shape.clone())
-            .translation(self.origin)
+            .translation(self.origin.into())
             .rotation(self.rotation.vector().into())
             .sensor(true)
             .build();
@@ -41,7 +40,7 @@ impl ArenaFeature for ArenaPlate {
         Some(collider)
     }
 
-    fn origin(&self) -> &Vector3<f32> {
+    fn origin(&self) -> &Vec3 {
         &self.origin
     }
 

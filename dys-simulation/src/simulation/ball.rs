@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use rapier3d::{na::vector, prelude::*};
-use rapier3d::na::Vector3;
+use rapier3d::prelude::*;
+use rapier3d::glamx::vec3;
 use crate::{game_objects::{ball::{BallObject, BallState}, game_object::GameObject, game_object_type::GameObjectType}, game_state::GameState};
 use crate::simulation::simulation_event::PendingSimulationEvent;
 use crate::simulation::simulation_stage::SimulationStage;
@@ -36,7 +36,7 @@ pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationSta
             events.push(PendingSimulationEvent(
                 SimulationEvent::BallPositionUpdate {
                     ball_id,
-                    position: *ball_rb.translation(),
+                    position: ball_rb.translation(),
                     charge: ball_object.charge,
                 }
             ));
@@ -81,8 +81,8 @@ fn try_move_if_held(
 
         let forward_isometry = holding_combatant_object.forward_isometry(rigid_body_set);
         let outside_of_geometry_dist = holding_combatant_object.radius() + ball.radius();
-        let new_ball_position_offset = Vector3::z() * outside_of_geometry_dist;
-        forward_isometry.translation.vector + forward_isometry.transform_vector(&new_ball_position_offset)
+        let new_ball_position_offset = Vec3::Z * outside_of_geometry_dist;
+        forward_isometry.translation + forward_isometry.transform_vector(new_ball_position_offset)
     };
 
     Some(PendingSimulationEvent(
@@ -117,28 +117,20 @@ fn explode(
     const EXPLOSION_CYLINDER_HEIGHT: f32 = 30.0;
     let explosion_radius = ball.charge * 0.3; // ZJ-TODO: figure out explosion radius as compared to charge
     let explosion_shape = Cylinder::new(EXPLOSION_CYLINDER_HEIGHT, explosion_radius);
-    let explosion_pos = Isometry::new(ball_pos, vector![0.0, 0.0, 0.0]);
-    let query_filter = QueryFilter::only_dynamic()
-        .exclude_sensors();
-
-    // ZJ-TODO: use InteractionGroups to get only combatants and ignore everything else
-    let mut affected_colliders = vec![];
-
-    {
-        let mut game_state = game_state.lock().unwrap();
-        let (query_pipeline, rigid_body_set, collider_set) = game_state.physics_sim.query_pipeline_and_sets();
-
-        query_pipeline.intersections_with_shape(rigid_body_set, collider_set, &explosion_pos, &explosion_shape, query_filter, |handle| {
-            affected_colliders.push(handle);
-            true // return true to continue iterating over collisions
-        });
-    }
+    let explosion_pos = Pose3::new(ball_pos, Vec3::ZERO);
 
     let mut events = vec![
         PendingSimulationEvent(SimulationEvent::BallExplosion { ball_id: ball.id, charge: ball.charge })
     ];
 
-    for collider_handle in affected_colliders {
+    // ZJ-TODO: use InteractionGroups to get only combatants and ignore everything else
+    let mut locked_game_state = game_state.lock().unwrap();
+    let query_pipeline = locked_game_state
+        .physics_sim
+        .query_pipeline(QueryFilter::only_dynamic().exclude_sensors());
+
+    let collisions = query_pipeline.intersect_shape(explosion_pos, &explosion_shape);
+    for (collider_handle, _) in collisions {
         let new_events = apply_explosion_forces(
             game_state.clone(),
             collider_handle,
@@ -174,8 +166,8 @@ fn apply_explosion_forces(
     // Magnitude of the explosion force is the charge of the ball divided by the square distance
     // This means direct impacts will apply a LOT of force, while nearby combatants will take exponentially less per unit away
     let position_difference = combatant_pos - ball_pos;
-    let force_direction = vector![position_difference.x, 0.0, position_difference.z].normalize();
-    let force_magnitude = ball_object.charge * CHARGE_FORCE_MODIFIER / position_difference.magnitude().powi(2);
+    let force_direction = vec3(position_difference.x, 0.0, position_difference.z).normalize();
+    let force_magnitude = ball_object.charge * CHARGE_FORCE_MODIFIER / position_difference.length().powi(2);
 
     events.push(PendingSimulationEvent(
         SimulationEvent::BallExplosionForceApplied {

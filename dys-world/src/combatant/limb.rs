@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 use crate::attribute::instance::{AttributeInstance, AttributeValueT};
 use crate::attribute::attribute_display::AttributeDisplay;
 use crate::attribute::attribute_source::AttributeSource;
@@ -10,8 +9,7 @@ use crate::attribute::attribute_type::AttributeType;
 /// It's not too late to change the name or anything, but I prefer to believe that all the following
 /// are actually jointed in this world.
 /// That's a little horrifying to think about, but we're not renaming it.
-#[derive(Clone, Debug, Deserialize, Serialize, TS)]
-#[ts(export)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum LimbType {
     Head,
     Eye,
@@ -27,8 +25,7 @@ pub enum LimbType {
     Toe
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, TS)]
-#[ts(export)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum LimbModifierType {
     Regular,
     Giant,
@@ -38,15 +35,13 @@ pub enum LimbModifierType {
     // etc
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, TS)]
-#[ts(export)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum ModifierAcquisitionMethod {
     Inherent,
     GameInjury,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, TS)]
-#[ts(export)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LimbModifier {
     pub modifier_type: LimbModifierType,
     pub acquisition: ModifierAcquisitionMethod,
@@ -87,8 +82,7 @@ impl AttributeSource for LimbModifier {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, TS)]
-#[ts(export)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Limb {
     pub limb_type: LimbType,
     pub modifiers: Vec<LimbModifier>,
