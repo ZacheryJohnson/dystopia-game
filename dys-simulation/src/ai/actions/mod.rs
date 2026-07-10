@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use indexmap::IndexMap;
-use rapier3d::na::Vector3;
+use rapier3d::prelude::Vec3;
 use dys_satisfiable::SatisfiableField;
 use crate::{ai::{action::ActionBuilder, belief::Belief, strategies::move_to_location::MoveToLocationStrategy}, game_objects::{combatant::CombatantObject, game_object::GameObject}, game_state::GameState};
 use crate::ai::belief::SatisfiableBelief;
@@ -58,7 +58,7 @@ pub fn actions(
                     plate_location.into(),
                     4)
                 )
-                .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (plate_location - combatant_pos).magnitude() / combatant_move_speed)
+                .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (plate_location - combatant_pos).length() / combatant_move_speed)
                 .promises(Belief::OnPlate { combatant_id: combatant.id, plate_id })
                 .build()
         );
@@ -88,7 +88,7 @@ pub fn actions(
                     GameObjectType::Combatant(*other_combatant_id),
                     4)
                 )
-                .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (target_pos - combatant_pos).magnitude() / combatant_move_speed)
+                .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (target_pos - combatant_pos).length() / combatant_move_speed)
                 .completion(vec![
                     Belief::ScannedEnvironment { tick: current_tick },
                 ])
@@ -107,7 +107,7 @@ pub fn actions(
                     combatant.id,
                     GameObjectType::Combatant(*other_combatant_id),
                 ))
-                .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (target_pos - combatant_pos).magnitude() / combatant_move_speed)
+                .cost(MOVE_TO_LOCATION_WEIGHT_HARDCODE_HACK * (target_pos - combatant_pos).length() / combatant_move_speed)
                 .promises(Belief::CanReachCombatant {
                     self_combatant_id: combatant.id,
                     target_combatant_id: *other_combatant_id,
@@ -158,7 +158,7 @@ pub fn actions(
                     ball_location.into(),
                     4)
                 )
-                .cost(MOVE_TO_BALL_WEIGHT_HARDCODE_HACK * (ball_location - combatant_pos).magnitude() / combatant_move_speed)
+                .cost(MOVE_TO_BALL_WEIGHT_HARDCODE_HACK * (ball_location - combatant_pos).length() / combatant_move_speed)
                 .requires(
                     SatisfiableBelief::BallPosition()
                         .ball_id(SatisfiableField::Exactly(ball_id))
@@ -174,7 +174,7 @@ pub fn actions(
         actions.push(
             ActionBuilder::new()
                 .name(format!("Pick Up Ball {ball_id}"))
-                .strategy(PickUpBallStrategy::new(combatant.id, ball_id, ball_location.to_owned()))
+                .strategy(PickUpBallStrategy::new(combatant.id, ball_id, ball_location))
                 .cost(1.0)
                 .requires(
                     SatisfiableBelief::InBallPickupRange()
@@ -287,7 +287,7 @@ pub fn actions(
                     .strategy(ThrowBallAtTargetStrategy::new(combatant.id, teammate_combatant_id))
                     // ZJ-TODO: ideally this is an inverse bell curve
                     //          for now, just penalize close throws and reward far throws
-                    .cost(10.0 + 5.0 / (target_pos - combatant_pos).magnitude())
+                    .cost(10.0 + 5.0 / (target_pos - combatant_pos).length())
                     .requires(
                         SatisfiableBelief::HeldBall()
                             .combatant_id(SatisfiableField::Exactly(combatant.id))
@@ -305,9 +305,9 @@ pub fn actions(
                     .prohibits(
                         SatisfiableBelief::CombatantPosition()
                             .combatant_id(SatisfiableField::In(enemy_combatant_ids.clone()))
-                            .position(SatisfiableField::lambda_from(move |target_pos: Vector3<f32>| {
+                            .position(SatisfiableField::lambda_from(move |target_pos: Vec3| {
                                 const MIN_THROW_DISTANCE: f32 = 5.0;
-                                (target_pos - combatant_pos).magnitude() < MIN_THROW_DISTANCE
+                                (target_pos - combatant_pos).length() < MIN_THROW_DISTANCE
                             }))
                     )
                     .prohibits(
@@ -317,9 +317,9 @@ pub fn actions(
                     .requires(
                         SatisfiableBelief::CombatantPosition()
                             .combatant_id(SatisfiableField::Exactly(teammate_combatant_id))
-                            .position(SatisfiableField::lambda_from(move |target_pos: Vector3<f32>| {
+                            .position(SatisfiableField::lambda_from(move |target_pos: Vec3| {
                                 const MIN_THROW_DISTANCE: f32 = 5.0;
-                                (target_pos - combatant_pos).magnitude() >= MIN_THROW_DISTANCE
+                                (target_pos - combatant_pos).length() >= MIN_THROW_DISTANCE
                             }))
                     )
                     .prohibits(
@@ -382,7 +382,7 @@ pub fn actions(
                     .strategy(ThrowBallAtTargetStrategy::new(combatant.id, enemy_combatant_id))
                     // ZJ-TODO: ideally this is an inverse bell curve
                     //          for now, just penalize close throws and reward far throws
-                    .cost(10.0 + 5.0 / (target_pos - combatant_pos).magnitude())
+                    .cost(10.0 + 5.0 / (target_pos - combatant_pos).length())
                     .requires(
                         SatisfiableBelief::HeldBall()
                             .combatant_id(SatisfiableField::Exactly(combatant.id))
@@ -400,9 +400,9 @@ pub fn actions(
                     .prohibits(
                         SatisfiableBelief::CombatantPosition()
                             .combatant_id(SatisfiableField::In(enemy_combatant_ids.clone()))
-                            .position(SatisfiableField::lambda_from(move |target_pos: Vector3<f32>| {
+                            .position(SatisfiableField::lambda_from(move |target_pos: Vec3| {
                                 const MIN_THROW_DISTANCE: f32 = 5.0;
-                                (target_pos - combatant_pos).magnitude() < MIN_THROW_DISTANCE
+                                (target_pos - combatant_pos).length() < MIN_THROW_DISTANCE
                             }))
                     )
                     .completion(vec![

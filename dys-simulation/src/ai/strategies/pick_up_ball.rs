@@ -1,6 +1,6 @@
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use rapier3d::{na::Vector3};
+use rapier3d::prelude::Vec3;
 use dys_satisfiable::SatisfiableField;
 use dys_world::combatant::instance::CombatantInstanceId;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::ball::BallId, game_state::GameState, simulation::simulation_event::SimulationEvent};
@@ -11,7 +11,7 @@ use crate::simulation::simulation_event::PendingSimulationEvent;
 pub struct PickUpBallStrategy {
     self_combatant_id: CombatantInstanceId,
     ball_id: BallId,
-    believed_ball_position: Vector3<f32>,
+    believed_ball_position: Vec3,
     is_complete: bool,
 }
 
@@ -19,7 +19,7 @@ impl PickUpBallStrategy {
     pub fn new(
         self_id: CombatantInstanceId,
         target_ball: BallId,
-        believed_ball_position: Vector3<f32>
+        believed_ball_position: Vec3
     ) -> PickUpBallStrategy {
         PickUpBallStrategy {
             self_combatant_id: self_id,
@@ -76,7 +76,7 @@ impl Strategy for PickUpBallStrategy {
             &SatisfiableBelief::BallPosition()
                 .ball_id(SatisfiableField::Exactly(self.ball_id))
                 .position(SatisfiableField::Lambda(Rc::new(move |pos| {
-                    (believed_ball_pos - pos).magnitude() <= 1.0
+                    (believed_ball_pos - pos).length() <= 1.0
                 })))
         );
 
