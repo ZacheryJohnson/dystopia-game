@@ -53,6 +53,7 @@ impl Sensor for ProximitySensor {
         self.yields_beliefs = yields_beliefs;
     }
 
+    #[tracing::instrument(skip_all, level = "trace")]
     fn sense(
         &self,
         combatant_isometry: Pose3,

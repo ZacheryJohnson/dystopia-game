@@ -80,6 +80,7 @@ impl MoveToLocationStrategy {
 }
 
 impl MoveToLocationStrategy {
+    #[tracing::instrument(skip_all, level = "trace")]
     fn compute_path(
         &mut self,
         game_state: Arc<Mutex<GameState>>,

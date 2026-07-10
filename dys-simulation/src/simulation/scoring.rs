@@ -9,6 +9,7 @@ use super::simulation_event::{PendingSimulationEvent, SimulationEvent};
 const PLATE_POINTS_PER_TICK: u8 = 1; // ZJ-TODO: move this to config
 const OWNED_PLATE_MULTIPLIER: u8 = 2; // ZJ-TODO: move this to config
 
+#[tracing::instrument(skip_all, level = "trace")]
 pub fn simulate_scoring(
     game_state: Arc<Mutex<GameState>>,
 ) -> SimulationStage {

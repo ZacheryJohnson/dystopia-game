@@ -93,6 +93,7 @@ impl Strategy for PickUpBallStrategy {
         self.is_complete
     }
 
+    #[tracing::instrument(skip_all, level = "trace")]
     fn tick(
         &mut self,
         agent: &dyn Agent,
