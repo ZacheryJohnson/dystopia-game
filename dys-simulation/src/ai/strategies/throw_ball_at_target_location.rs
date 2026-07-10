@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 use rand_distr::num_traits::Zero;
-use rapier3d::{na::Vector3, prelude::*};
+use rapier3d::prelude::*;
+use rapier3d::glamx::vec3;
 use dys_satisfiable::SatisfiableField;
 use dys_world::combatant::instance::CombatantInstanceId;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_objects::game_object::GameObject, game_state::{GameState}, simulation::simulation_event::SimulationEvent};
@@ -99,14 +100,14 @@ impl Strategy for ThrowBallAtTargetStrategy {
         let accuracy_hack = 1.0_f32;
 
         let ball_impulse_vector = get_throw_vector_towards_target(
-            &target_pos,
-            &ball_pos,
+            target_pos,
+            ball_pos,
             throw_speed_units_per_sec_hack,
             accuracy_hack,
             y_axis_gravity
         );
 
-        if ball_impulse_vector.magnitude().is_zero() {
+        if ball_impulse_vector.length().is_zero() {
             tracing::info!("Zero vector for ball throw?");
             self.is_complete = true;
             return None;
@@ -161,16 +162,16 @@ impl Strategy for ThrowBallAtTargetStrategy {
 /// * `throw_speed_units_per_sec` - how many in-world non-vertical units the throw will travel per second, ignoring gravity.
 /// * `accuracy` - how accurate the throw is, in range `[0.0, 1.0]`, where 1.0 is perfectly accurate and 0.0 will go in a completely random direction.
 fn get_throw_vector_towards_target(
-    target_pos: &Vector3<f32>,
-    start_pos: &Vector3<f32>,
+    target_pos: Vec3,
+    start_pos: Vec3,
     throw_speed_units_per_sec: f32,
     accuracy: f32,
     y_axis_gravity: f32,
-) -> Vector3<f32> {
+) -> Vec3 {
     assert!((0.0..=1.0).contains(&accuracy));
 
     let difference_vector = target_pos - start_pos;
-    let difference_distance = difference_vector.magnitude();
+    let difference_distance = difference_vector.length();
     let total_travel_time_sec = difference_distance / throw_speed_units_per_sec;
 
     // Given that we want the ball to hit the target and our throw will be affected by gravity, we need to calculate how high to throw the ball to hit the target.
@@ -185,9 +186,9 @@ fn get_throw_vector_towards_target(
     let gravity_adjustment_magnitude = (difference_vector.y + (0.5 * -y_axis_gravity * (total_travel_time_sec.powi(2)))) / total_travel_time_sec;
     
     // Our throw direction will ignore the Y direction to get a correct normal vector.
-    let throw_direction = vector![difference_vector.x, 0.0, difference_vector.z].normalize();
+    let throw_direction = vec3(difference_vector.x, 0.0, difference_vector.z).normalize();
 
     // Our overall throw vector is the X and Z components of the throw, and our Y component that we calculated accounting for gravity.
 
-    (throw_direction * throw_speed_units_per_sec) + vector![0.0, gravity_adjustment_magnitude, 0.0]
+    (throw_direction * throw_speed_units_per_sec) + vec3(0.0, gravity_adjustment_magnitude, 0.0)
 }

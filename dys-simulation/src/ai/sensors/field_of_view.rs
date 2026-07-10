@@ -2,7 +2,6 @@ use std::sync::{Arc, Mutex};
 use rapier3d::geometry::{ColliderHandle, Cuboid};
 use rapier3d::glamx::vec3;
 use rapier3d::prelude::*;
-use rapier3d::na::{vector, Isometry3, Vector3};
 use rapier3d::pipeline::QueryFilter;
 use rapier3d::utils::PoseOps;
 use dys_world::combatant::instance::CombatantInstanceId;
@@ -73,7 +72,7 @@ impl Sensor for FieldOfViewSensor {
             .physics_sim
             .query_pipeline(query_filter);
 
-        let mut new_isometry = self.isometry_offset.to_owned();
+        let new_isometry = self.isometry_offset.to_owned();
         new_isometry.append_rotation(combatant_isometry.rotation.to_scaled_axis());
         new_isometry.append_translation(combatant_isometry.translation);
 
@@ -115,13 +114,13 @@ impl Sensor for FieldOfViewSensor {
                             },
                             GameObjectType::Ball(ball_id) => {
                                 let ball_object = balls.get(ball_id).unwrap();
-                                let ball_rb = rigid_body_set.get(ball_object.rigid_body_handle().unwrap()).unwrap();
+                                let ball_rb = query_pipeline.bodies.get(ball_object.rigid_body_handle().unwrap()).unwrap();
                                 let ball_pos = ball_rb.translation();
 
                                 beliefs.push(ExpiringBelief::new(Belief::BallPosition {
                                     ball_id: *ball_id,
                                     position: ball_pos.to_owned(),
-                                    trajectory: ball_rb.linvel().data.0.into(),
+                                    trajectory: ball_rb.linvel(),
                                 }, Some(current_tick + 12)));
 
                                 if let Some(combatant_id) = ball_object.held_by {
@@ -140,7 +139,8 @@ impl Sensor for FieldOfViewSensor {
                             },
                             GameObjectType::Combatant(combatant_id) => {
                                 let combatant_object = combatants.get(combatant_id).unwrap();
-                                let combatant_pos = rigid_body_set
+                                let combatant_pos = query_pipeline
+                                    .bodies
                                     .get(combatant_object.rigid_body_handle().unwrap())
                                     .unwrap()
                                     .translation();
@@ -198,8 +198,7 @@ impl Sensor for FieldOfViewSensor {
 mod tests {
     use rand::prelude::StdRng;
     use rand::SeedableRng;
-    use rand_distr::num_traits::Zero;
-    use rapier3d::na::{vector, Vector3};
+    use rapier3d::glamx::vec3;
     use rapier3d::prelude::*;
     use dys_satisfiable::{SatisfiabilityTest, SatisfiableField};
     use dys_world::arena::barrier::{ArenaBarrier, BarrierPathing};
@@ -224,11 +223,11 @@ mod tests {
         };
 
         // Combatant 1 is who the sensor will be "attached" to
-        let combatant_1_position = vector![1.0, 0.0, 0.0];
+        let combatant_1_position = vec3(1.0, 0.0, 0.0);
         // Combatant 2 is in front of combatant 1
-        let combatant_2_position = vector![1.0, 0.0, 3.0];
+        let combatant_2_position = vec3(1.0, 0.0, 3.0);
         // Combatant 3 is behind combatant 1
-        let combatant_3_position = vector![1.0, 0.0, -3.0];
+        let combatant_3_position = vec3(1.0, 0.0, -3.0);
 
         let physics_sim = PhysicsSim::new(10);
         let game_state = make_test_game_state(Some(physics_sim));
@@ -242,8 +241,8 @@ mod tests {
             let combatant_1 = CombatantObject::new(
                 1,
                 combatant_1_instance,
-                combatant_1_position.clone(),
-                Vector3::zero(),
+                combatant_1_position,
+                Vec3::ZERO,
                 TeamAlignment::Home,
                 rigid_body_set,
                 collider_set,
@@ -252,8 +251,8 @@ mod tests {
             let combatant_2 = CombatantObject::new(
                 2,
                 combatant_2_instance,
-                combatant_2_position.clone(),
-                Vector3::zero(),
+                combatant_2_position,
+                Vec3::ZERO,
                 TeamAlignment::Home,
                 rigid_body_set,
                 collider_set,
@@ -262,8 +261,8 @@ mod tests {
             let combatant_3 = CombatantObject::new(
                 3,
                 combatant_3_instance,
-                combatant_3_position.clone_owned(),
-                Vector3::zero(),
+                combatant_3_position,
+                Vec3::ZERO,
                 TeamAlignment::Away,
                 rigid_body_set,
                 collider_set,
@@ -298,19 +297,17 @@ mod tests {
                     combatant_1_collider_handle,
                 );
 
-                let (
-                    _,
-                    rigid_body_set,
-                    _,
-                ) = game_state.physics_sim.query_pipeline_and_sets();
+                let query_pipeline = game_state.physics_sim.query_pipeline(
+                    QueryFilter::default()
+                );
 
-                let combatant_forward_isometry = combatant_1.forward_isometry(rigid_body_set);
+                let combatant_forward_isometry = combatant_1.forward_isometry(query_pipeline.bodies);
 
                 (combatant_forward_isometry, field_of_view_sensor)
             };
 
             let (_, new_beliefs) = field_of_view_sensor.sense(
-                &combatant_isometry,
+                combatant_isometry,
                 game_state.clone()
             );
 
@@ -337,8 +334,7 @@ mod tests {
                 .unwrap();
 
             combatant_1_rigid_body.set_rotation(Rotation::from_scaled_axis(
-                vector![0.0, 180.0_f32.to_radians(), 0.0]),
-                                                true
+                vec3(0.0, 180.0_f32.to_radians(), 0.0)), true
             );
         }
 
@@ -347,11 +343,7 @@ mod tests {
         {
             let (combatant_isometry, field_of_view_sensor) = {
                 let mut game_state = game_state.lock().unwrap();
-                let (
-                    _,
-                    rigid_body_set,
-                    _,
-                ) = game_state.physics_sim.query_pipeline_and_sets();
+                let query_pipeline = game_state.physics_sim.query_pipeline(QueryFilter::default());
 
                 let field_of_view_sensor = FieldOfViewSensor::new(
                     10.0,
@@ -359,26 +351,26 @@ mod tests {
                     combatant_1_collider_handle,
                 );
 
-                let combatant_forward_isometry = combatant_1.forward_isometry(rigid_body_set);
+                let combatant_forward_isometry = combatant_1.forward_isometry(query_pipeline.bodies);
 
                 (combatant_forward_isometry, field_of_view_sensor)
             };
 
             let (_, new_beliefs) = field_of_view_sensor.sense(
-                &combatant_isometry,
+                combatant_isometry,
                 game_state.clone(),
             );
 
             let knows_combatant_3_position = new_beliefs.iter().any(|belief| {
                 SatisfiableBelief::CombatantPosition()
                     .combatant_id(SatisfiableField::Exactly(3))
-                    .satisfied_by(belief.belief.to_owned())
+                    .satisfied_by(belief.belief)
             });
 
             let knows_no_other_positions = !new_beliefs.iter().any(|belief| {
                 SatisfiableBelief::CombatantPosition()
                     .combatant_id(SatisfiableField::NotExactly(3))
-                    .satisfied_by(belief.belief.to_owned())
+                    .satisfied_by(belief.belief)
             });
 
             assert!(knows_combatant_3_position && knows_no_other_positions);
@@ -393,12 +385,12 @@ mod tests {
         };
 
         // Combatant 1 is who the sensor will be "attached" to
-        let combatant_1_position = vector![1.0, 0.0, 0.0];
+        let combatant_1_position = vec3(1.0, 0.0, 0.0);
         // Combatant 2 is in front of combatant 1
-        let combatant_2_position = vector![1.0, 0.0, 3.0];
+        let combatant_2_position = vec3(1.0, 0.0, 3.0);
         // Combatant 3 is behind combatant 1
-        let wall_position = vector![1.0, 0.0, 1.5];
-        let wall_size = vector![5.0, 5.0, 0.5];
+        let wall_position = vec3(1.0, 0.0, 1.5);
+        let wall_size = vec3(5.0, 5.0, 0.5);
 
         let physics_sim = PhysicsSim::new(10);
         let game_state = make_test_game_state(Some(physics_sim));
@@ -412,8 +404,8 @@ mod tests {
             let combatant_1 = CombatantObject::new(
                 1,
                 combatant_1_instance,
-                combatant_1_position.clone(),
-                Vector3::zero(),
+                combatant_1_position,
+                Vec3::ZERO,
                 TeamAlignment::Home,
                 rigid_body_set,
                 collider_set,
@@ -422,8 +414,8 @@ mod tests {
             let combatant_2 = CombatantObject::new(
                 2,
                 combatant_2_instance,
-                combatant_2_position.clone(),
-                Vector3::zero(),
+                combatant_2_position,
+                Vec3::ZERO,
                 TeamAlignment::Home,
                 rigid_body_set,
                 collider_set,
@@ -466,11 +458,7 @@ mod tests {
         {
             let (combatant_isometry, field_of_view_sensor) = {
                 let mut game_state = game_state.lock().unwrap();
-                let (
-                    _,
-                    rigid_body_set,
-                    _,
-                ) = game_state.physics_sim.query_pipeline_and_sets();
+                let query_pipeline = game_state.physics_sim.query_pipeline(QueryFilter::default());
 
                 let field_of_view_sensor = FieldOfViewSensor::new(
                     10.0,
@@ -478,13 +466,13 @@ mod tests {
                     combatant_1_collider_handle,
                 );
 
-                let combatant_forward_isometry = combatant_1.forward_isometry(rigid_body_set);
+                let combatant_forward_isometry = combatant_1.forward_isometry(query_pipeline.bodies);
 
                 (combatant_forward_isometry, field_of_view_sensor)
             };
 
             let (_, new_beliefs) = field_of_view_sensor.sense(
-                &combatant_isometry,
+                combatant_isometry,
                 game_state.clone(),
             );
 

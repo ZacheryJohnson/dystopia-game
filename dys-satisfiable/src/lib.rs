@@ -7,7 +7,7 @@ pub use ahash;
 ///
 #[derive(Clone, Default)]
 pub enum SatisfiableField<
-    ConcreteT: Clone + PartialEq + PartialOrd
+    ConcreteT: Clone + PartialEq
 > {
     /// The concrete value may have any value for this field.
     /// Ignored fields will always pass satisfiability tests.
@@ -73,50 +73,6 @@ pub enum SatisfiableField<
     /// ```
     NotIn(Vec<ConcreteT>),
 
-    /// The concrete value must be strictly greater than the value of type `ConcreteT`
-    /// ```
-    /// # use dys_satisfiable::SatisfiableField;
-    /// let greater_than_three = SatisfiableField::GreaterThan(3u32);
-    ///
-    /// assert_eq!(false, greater_than_three.satisfied_by(&2u32));
-    /// assert_eq!(false, greater_than_three.satisfied_by(&3u32));
-    /// assert_eq!(true, greater_than_three.satisfied_by(&4u32));
-    /// ```
-    GreaterThan(ConcreteT),
-
-    /// The concrete value must be greater than or equal to the value of type `ConcreteT`
-    /// ```
-    /// # use dys_satisfiable::SatisfiableField;
-    /// let greater_than_or_equal_three = SatisfiableField::GreaterThanOrEqual(3u32);
-    ///
-    /// assert_eq!(false, greater_than_or_equal_three.satisfied_by(&2u32));
-    /// assert_eq!(true, greater_than_or_equal_three.satisfied_by(&3u32));
-    /// assert_eq!(true, greater_than_or_equal_three.satisfied_by(&4u32));
-    /// ```
-    GreaterThanOrEqual(ConcreteT),
-
-    /// The concrete value must be strictly less than the value of type `ConcreteT`
-    /// ```
-    /// # use dys_satisfiable::SatisfiableField;
-    /// let less_than_three = SatisfiableField::LessThan(3u32);
-    ///
-    /// assert_eq!(true, less_than_three.satisfied_by(&2u32));
-    /// assert_eq!(false, less_than_three.satisfied_by(&3u32));
-    /// assert_eq!(false, less_than_three.satisfied_by(&4u32));
-    /// ```
-    LessThan(ConcreteT),
-
-    /// The concrete value must be less than or equal to the value of type `ConcreteT`
-    /// ```
-    /// # use dys_satisfiable::SatisfiableField;
-    /// let less_than_or_equal_three = SatisfiableField::LessThanOrEqual(3u32);
-    ///
-    /// assert_eq!(true, less_than_or_equal_three.satisfied_by(&2u32));
-    /// assert_eq!(true, less_than_or_equal_three.satisfied_by(&3u32));
-    /// assert_eq!(false, less_than_or_equal_three.satisfied_by(&4u32));
-    /// ```
-    LessThanOrEqual(ConcreteT),
-
     /// The concrete value must pass a provided lambda.
     /// See [SatisfiableField::lambda_from] for a convenience method of constructing a Lambda.
     /// ```
@@ -134,7 +90,7 @@ pub enum SatisfiableField<
     Lambda(Rc<dyn Fn(ConcreteT) -> bool>)
 }
 
-impl<ConcreteT: Clone + PartialEq + PartialOrd + Debug> Debug for SatisfiableField<ConcreteT> {
+impl<ConcreteT: Clone + PartialEq + Debug> Debug for SatisfiableField<ConcreteT> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
             SatisfiableField::Lambda(_) => write!(f, "<lambda fn>"),
@@ -143,16 +99,12 @@ impl<ConcreteT: Clone + PartialEq + PartialOrd + Debug> Debug for SatisfiableFie
             SatisfiableField::NotExactly(val) => write!(f, "NotExactly({val:?})"),
             SatisfiableField::In(vals) => write!(f, "In({vals:?})"),
             SatisfiableField::NotIn(vals) => write!(f, "NotIn({vals:?})"),
-            SatisfiableField::GreaterThan(val) => write!(f, "GreaterThan({val:?})"),
-            SatisfiableField::GreaterThanOrEqual(val) => write!(f, "GreaterThanOrEqual({val:?})"),
-            SatisfiableField::LessThan(val) => write!(f, "LessThan({val:?})"),
-            SatisfiableField::LessThanOrEqual(val) => write!(f, "LessThanOrEqual({val:?})"),
         }
     }
 }
 
 impl<
-    ConcreteT: Clone + PartialEq + PartialOrd,
+    ConcreteT: Clone + PartialEq,
 > SatisfiableField<ConcreteT> {
     pub fn lambda_from(lambda_fn: impl Fn(ConcreteT) -> bool + 'static) -> Self {
         SatisfiableField::Lambda(Rc::new(lambda_fn))
@@ -165,10 +117,6 @@ impl<
             SatisfiableField::NotExactly(self_val) => self_val != value,
             SatisfiableField::In(self_iter) => self_iter.contains(value),
             SatisfiableField::NotIn(self_iter) => !self_iter.contains(value),
-            SatisfiableField::GreaterThan(self_val) => self_val < value,
-            SatisfiableField::GreaterThanOrEqual(self_val) => self_val <= value,
-            SatisfiableField::LessThan(self_val) => self_val > value,
-            SatisfiableField::LessThanOrEqual(self_val) => self_val >= value,
             SatisfiableField::Lambda(lambda_fn) => lambda_fn(value.to_owned())
         }
     }

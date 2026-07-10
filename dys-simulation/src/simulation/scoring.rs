@@ -33,18 +33,16 @@ pub fn simulate_scoring(
         let mut affected_colliders = vec![];
         {
             let mut game_state = game_state.lock().unwrap();
-            let (query_pipeline, rigid_body_set, collider_set) = game_state.physics_sim.query_pipeline_and_sets();
-            let plate_collider = collider_set.get(*collider_handle).expect("failed to find plate with collider handle");
+            let query_filter = QueryFilter::only_dynamic().exclude_sensors();
+            let query_pipeline = game_state.physics_sim.query_pipeline(query_filter);
+            let plate_collider = query_pipeline.colliders.get(*collider_handle).expect("failed to find plate with collider handle");
             let plate_shape = plate_collider.shape();
             let plate_isometry = plate_collider.position();
-            let query_filter = QueryFilter::only_dynamic()
-                .exclude_sensors();
             // ZJ-TODO: use InteractionGroups to get only combatants and ignore everything else
 
-            query_pipeline.intersections_with_shape(rigid_body_set, collider_set, plate_isometry, plate_shape, query_filter, |handle| {
+            for (handle, _) in query_pipeline.intersect_shape(*plate_isometry, plate_shape) {
                 affected_colliders.push(handle);
-                true // return true to continue iterating over collisions
-            });
+            }
         }
 
         let (active_colliders, combatants) = {

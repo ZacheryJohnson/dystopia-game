@@ -1,7 +1,7 @@
 #![allow(non_snake_case)] // this shouldn't be necessary for enums?
 
 use std::fmt::Debug;
-use rapier3d::na::Vector3;
+use rapier3d::prelude::Vec3;
 use serde::{Deserialize, Serialize};
 use dys_satisfiable::*;
 use dys_satisfiable_macros::{Satisfiable, UniqueKey};
@@ -28,18 +28,18 @@ pub enum Belief {
     BallPosition {
         #[unique]
         ball_id: BallId,
-        position: Vector3<f32>,
-        trajectory: Vector3<f32>,
+        position: Vec3,
+        trajectory: Vec3,
     },
     CombatantPosition {
         #[unique]
         combatant_id: CombatantInstanceId,
-        position: Vector3<f32>,
+        position: Vec3,
     },
     PlatePosition {
         #[unique]
         plate_id: PlateId,
-        position: Vector3<f32>,
+        position: Vec3,
     },
     OnPlate {
         #[unique]

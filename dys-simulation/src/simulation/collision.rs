@@ -10,19 +10,23 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
     let start_time = Instant::now();
     let mut new_simulation_events = vec![];
 
-    let (collision_events, active_colliders, balls) = {
+    let collision_events = {
         let mut game_state = game_state.lock().unwrap();
 
-        let collision_events = game_state.physics_sim.collision_events();
-        let active_colliders = game_state.active_colliders.to_owned();
-        let balls = game_state.balls.to_owned();
+        let mut events = vec![];
+        while let Ok(evt) = game_state.physics_sim.collision_events().try_recv() {
+            events.push(evt);
+        }
 
-        (collision_events, active_colliders, balls)
+        events
     };
 
-    while let Ok(evt) = collision_events.try_recv() {
-        let maybe_collider_1 = active_colliders.get(&evt.collider1());
-        let maybe_collider_2 = active_colliders.get(&evt.collider2());
+    let mut pending_damage = vec![];
+
+    for evt in collision_events {
+        let game_state = game_state.lock().unwrap();
+        let maybe_collider_1 = game_state.active_colliders.get(&evt.collider1());
+        let maybe_collider_2 = game_state.active_colliders.get(&evt.collider2());
         if maybe_collider_1.is_none() || maybe_collider_2.is_none() {
             tracing::warn!("why tho");
             continue;
@@ -39,7 +43,7 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
                     continue;
                 }
 
-                let ball_obj = balls.get(ball_id).expect("Received invalid ball ID");
+                let ball_obj = game_state.balls.get(ball_id).expect("Received invalid ball ID");
 
                 if let BallState::ThrownAtTarget { direction: _direction, thrower_id, target_id } = ball_obj.state {
                     // ZJ-TODO: do this in simulation: Ball aiming for a target hit the arena - mark it as rolling now
@@ -69,8 +73,6 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
                 }
 
                 let damage = {
-                    let game_state = game_state.lock().unwrap();
-
                     let combatant_rb = game_state.combatants.get(combatant_id).unwrap().rigid_body_handle;
 
                     let (rigid_body_set, _) = game_state.physics_sim.sets();
@@ -78,9 +80,7 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
                     combatant_rigid_body.linvel().length()
                 };
 
-                let mut game_state = game_state.lock().unwrap();
-                let combatant_object = game_state.combatants.get_mut(combatant_id).unwrap();
-                combatant_object.apply_damage(damage);
+                pending_damage.push((combatant_id.to_owned(), damage));
             },
             (GameObjectType::Barrier, _) => continue,
             (GameObjectType::Ball(_), GameObjectType::Ball(_)) => continue,
@@ -91,10 +91,9 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
                     continue;
                 }
 
-                let ball_obj = balls.get(ball_id).expect("Received invalid ball ID");
+                let ball_obj = game_state.balls.get(ball_id).expect("Received invalid ball ID");
 
                 if let BallState::ThrownAtTarget { direction: _, thrower_id, target_id: _ } = ball_obj.state {
-                    let game_state = game_state.lock().unwrap();
                     let thrower_team = game_state.combatants.get(&thrower_id).unwrap().team;
                     let hit_combatant_team = game_state.combatants.get(combatant_id).unwrap().team;
 
@@ -107,6 +106,14 @@ pub(crate) fn handle_collision_events(game_state: Arc<Mutex<GameState>>) -> Simu
                     // ZJ-TODO: need to handle case of same team (catch pass?)
                 }
             }
+        }
+    }
+
+    {
+        let mut game_state = game_state.lock().unwrap();
+        for (combatant_id, damage) in pending_damage {
+            let combatant_object = game_state.combatants.get_mut(&combatant_id).unwrap();
+            combatant_object.apply_damage(damage);
         }
     }
 

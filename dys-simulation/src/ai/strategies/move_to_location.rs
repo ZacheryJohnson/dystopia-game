@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
+use rapier3d::glamx::vec3;
 use dys_world::arena::navmesh::{ArenaNavmeshNode, ArenaNavmeshPath};
-use rapier3d::na::Point3;
 use rapier3d::prelude::*;
 use dys_world::combatant::instance::CombatantInstanceId;
 use crate::{ai::{agent::Agent, strategy::Strategy}, game_state::GameState, simulation::simulation_event::SimulationEvent};
@@ -14,9 +14,9 @@ pub struct MoveToLocationStrategy {
     path: ArenaNavmeshPath,
     next_node: Option<ArenaNavmeshNode>,
     self_combatant_id: CombatantInstanceId,
-    start_location: Option<Point3<f32>>,
+    start_location: Option<Vec3>,
     target_game_object: Option<GameObjectType>,
-    target_location: Point3<f32>,
+    target_location: Vec3,
     max_ticks: u16,
     dynamic_pathing: bool,
 }
@@ -24,7 +24,7 @@ pub struct MoveToLocationStrategy {
 impl MoveToLocationStrategy {
     pub fn new(
         self_combatant_id: CombatantInstanceId,
-        target_location: Point3<f32>,
+        target_location: Vec3,
         max_ticks: u16,
     ) -> MoveToLocationStrategy {
         // Rather than immediately construct a path, we'll wait until actually executing the strategy
@@ -55,7 +55,7 @@ impl MoveToLocationStrategy {
             self_combatant_id,
             start_location: None,
             target_game_object: Some(target_object),
-            target_location: point![0.0, 0.0, 0.0],
+            target_location: vec3(0.0, 0.0, 0.0),
             max_ticks,
             dynamic_pathing: false,
         }
@@ -72,7 +72,7 @@ impl MoveToLocationStrategy {
             self_combatant_id,
             start_location: None,
             target_game_object: Some(target_object),
-            target_location: point![0.0, 0.0, 0.0],
+            target_location: vec3(0.0, 0.0, 0.0),
             max_ticks: u16::MAX,
             dynamic_pathing: true,
         }
@@ -96,7 +96,7 @@ impl MoveToLocationStrategy {
                 rigid_body_set.get(combatant_object.rigid_body_handle).unwrap().translation()
             };
 
-            self.start_location = Some((*start_location).into());
+            self.start_location = Some(start_location.into());
         }
 
         if let Some(target_game_object) = &self.target_game_object {
@@ -104,20 +104,18 @@ impl MoveToLocationStrategy {
                 GameObjectType::Ball(ball_id) => {
                     let ball_object = game_state.balls.get(ball_id).unwrap();
                     let (rigid_body_set, _) = game_state.physics_sim.sets();
-                    Point3::from(rigid_body_set
+                    rigid_body_set
                         .get(ball_object.rigid_body_handle().unwrap())
                         .unwrap()
                         .translation()
-                        .to_owned())
                 },
                 GameObjectType::Combatant(combatant_id) => {
                     let combatant_object = game_state.combatants.get(combatant_id).unwrap();
                     let (rigid_body_set, _) = game_state.physics_sim.sets();
-                    Point3::from(rigid_body_set
+                    rigid_body_set
                         .get(combatant_object.rigid_body_handle().unwrap())
                         .unwrap()
                         .translation()
-                        .to_owned())
                 },
                 _ => panic!("unsupported game object type for MoveToLocation strategy"),
             };
@@ -183,10 +181,10 @@ impl Strategy for MoveToLocationStrategy {
             (combatant_pos, unit_resolution)
         };
 
-        let mut combatant_position = combatant_isometry.translation.vector;
+        let mut combatant_position = combatant_isometry.translation;
 
         if self.dynamic_pathing {
-            self.start_location = Some(combatant_position.into());
+            self.start_location = Some(combatant_position);
             // 1. Always finish path to next node if exists
             if self.next_node.is_none() {
                 self.path = self.compute_path(game_state.clone());
@@ -207,12 +205,12 @@ impl Strategy for MoveToLocationStrategy {
 
             let difference_vector = next_node.as_vector() - combatant_position;
             let (updated_position, distance_traveled) = {
-                if total_distance_can_travel_this_tick >= difference_vector.magnitude() {
-                    (next_node.as_vector(), difference_vector.magnitude())
+                if total_distance_can_travel_this_tick >= difference_vector.length() {
+                    (next_node.as_vector(), difference_vector.length())
                 } else {
                     let partial_vector = difference_vector.normalize() * total_distance_can_travel_this_tick;
 
-                    (combatant_position + partial_vector, partial_vector.magnitude())
+                    (combatant_position + partial_vector, partial_vector.length())
                 }
             };
 
@@ -223,7 +221,7 @@ impl Strategy for MoveToLocationStrategy {
                 total_distance_can_travel_this_tick = (total_distance_can_travel_this_tick - distance_traveled).max(0.0);
             }
 
-            let distance_from_node = (next_node.as_vector() - combatant_position).magnitude();
+            let distance_from_node = (next_node.as_vector() - combatant_position).length();
             if distance_from_node == 0.0 {
                 if self.dynamic_pathing {
                     self.path = self.compute_path(game_state.clone());
@@ -241,7 +239,7 @@ impl Strategy for MoveToLocationStrategy {
             }
         }
 
-        let is_at_target = (self.target_location - combatant_position).coords.magnitude() <= unit_resolution;
+        let is_at_target = (self.target_location - combatant_position).length() <= unit_resolution;
         if is_at_target || self.next_node.is_none() {
             tracing::trace!("Completing action - is_at_target = {is_at_target} | next_node_is_node = {}", self.next_node.is_none());
             self.is_complete = true;

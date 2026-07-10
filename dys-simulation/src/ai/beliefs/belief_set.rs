@@ -156,7 +156,7 @@ impl BeliefSet {
 
 #[cfg(test)]
 mod tests {
-    use rapier3d::na::Vector3;
+    use rapier3d::prelude::Vec3;
     use dys_satisfiable::SatisfiableField;
     use crate::ai::belief::SatisfiableBelief;
     use super::*;
@@ -174,8 +174,8 @@ mod tests {
     fn test_different_type_doesnt_satisfy() {
         let belief_set = BeliefSet::from(&vec![Belief::BallPosition {
             ball_id: 1,
-            position: Vector3::<f32>::identity(),
-            trajectory: Vector3::<f32>::identity(),
+            position: Vec3::ZERO,
+            trajectory: Vec3::ZERO,
         }]);
 
         let satisfiable = SatisfiableBelief::OnPlate();
