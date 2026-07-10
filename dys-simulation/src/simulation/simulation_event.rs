@@ -135,6 +135,7 @@ pub enum SimulationEvent {
 }
 
 impl SimulationEvent {
+    #[tracing::instrument(skip_all, level = "trace")]
     pub fn simulate_event(
         game_state: Arc<Mutex<GameState>>,
         event: &PendingSimulationEvent,

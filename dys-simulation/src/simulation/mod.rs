@@ -16,6 +16,7 @@ mod simulation_stage;
 pub mod config;
 pub mod simulation_event;
 
+#[tracing::instrument(skip_all, level = "trace")]
 pub fn simulate_tick(game_state: Arc<Mutex<GameState>>) -> GameTick {
     let pre_tick_timestamp = Instant::now();
 
@@ -38,23 +39,35 @@ pub fn simulate_tick(game_state: Arc<Mutex<GameState>>) -> GameTick {
 
     let mut committed_simulation_events = vec![];
 
+    tracing::debug!("starting balls simulation");
     let balls_stage = simulate_balls(game_state.clone());
+    tracing::debug!("balls stage prepared");
     committed_simulation_events.extend(commit_simulation_events(game_state.clone(), balls_stage.pending_events));
+    tracing::debug!("balls stage committed");
 
+    tracing::debug!("starting combatants simulation");
     let combatants_stage = simulate_combatants(game_state.clone());
+    tracing::debug!("combatants stage prepared");
     committed_simulation_events.extend(commit_simulation_events(game_state.clone(), combatants_stage.pending_events));
+    tracing::debug!("combatants stage committed");
 
     // Anything that may cause movement **must** occur before simulating collisions
     // Otherwise, we may have collisions that happen instantly, but we've already processed collisions this tick
+    tracing::debug!("starting collision simulation");
     let collision_stage = handle_collision_events(game_state.clone());
+    tracing::debug!("collision stage prepared");
     committed_simulation_events.extend(commit_simulation_events(game_state.clone(), collision_stage.pending_events));
+    tracing::debug!("collision stage committed");
 
     let scoring_stage = if is_scoring_tick {
+        tracing::debug!("starting scoring simulation");
         simulate_scoring(game_state.clone())
     } else {
         SimulationStage { execution_duration: Duration::new(0, 0), pending_events: vec![] }
     };
+    tracing::debug!("scoring stage prepared");
     committed_simulation_events.extend(commit_simulation_events(game_state.clone(), scoring_stage.pending_events));
+    tracing::debug!("scoring stage committed");
 
     let post_tick_timestamp = Instant::now();
 
@@ -72,12 +85,14 @@ pub fn simulate_tick(game_state: Arc<Mutex<GameState>>) -> GameTick {
     }
 }
 
+#[tracing::instrument(skip_all, level = "trace")]
 fn commit_simulation_events(
     game_state: Arc<Mutex<GameState>>,
     pending_events: Vec<PendingSimulationEvent>
 ) -> Vec<SimulationEvent> {
     let mut committed_simulation_events = vec![];
     for pending_event in pending_events {
+        tracing::trace!(?pending_event);
         let (successful_simulation, new_pending_events) = SimulationEvent::simulate_event(
             game_state.clone(),
             &pending_event

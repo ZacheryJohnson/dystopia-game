@@ -17,6 +17,7 @@ pub fn idle_goal() -> Goal {
         .build()
 }
 
+#[tracing::instrument(skip_all, level = "trace")]
 pub fn goals(
     combatant_object: &CombatantObject,
     game_state: Arc<Mutex<GameState>>,

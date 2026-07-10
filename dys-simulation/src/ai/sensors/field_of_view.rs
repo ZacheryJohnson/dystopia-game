@@ -52,6 +52,7 @@ impl Sensor for FieldOfViewSensor {
         self.enabled
     }
 
+    #[tracing::instrument(skip_all, level = "trace")]
     fn sense(
         &self,
         combatant_isometry: Pose3,
@@ -72,9 +73,10 @@ impl Sensor for FieldOfViewSensor {
             .physics_sim
             .query_pipeline(query_filter);
 
-        let new_isometry = self.isometry_offset.to_owned();
-        new_isometry.append_rotation(combatant_isometry.rotation.to_scaled_axis());
-        new_isometry.append_translation(combatant_isometry.translation);
+        let new_isometry = self
+            .isometry_offset
+            .append_rotation(combatant_isometry.rotation.to_scaled_axis())
+            .append_translation(combatant_isometry.translation);
 
         let collisions = query_pipeline.intersect_shape(new_isometry, &self.shape);
         for (collider_handle, collider) in collisions {

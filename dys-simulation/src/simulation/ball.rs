@@ -13,6 +13,7 @@ use super::{config::SimulationConfig, simulation_event::SimulationEvent};
 /// 100kg combatant being accelerated 5 units/second^2 (eg 500 Newtons).
 const CHARGE_FORCE_MODIFIER: f32 = 500.0;
 
+#[tracing::instrument(skip_all, level = "trace")]
 pub(crate) fn simulate_balls(game_state: Arc<Mutex<GameState>>) -> SimulationStage {
     let start_time = Instant::now();
     let mut events = vec![];
@@ -124,13 +125,18 @@ fn explode(
     ];
 
     // ZJ-TODO: use InteractionGroups to get only combatants and ignore everything else
-    let mut locked_game_state = game_state.lock().unwrap();
-    let query_pipeline = locked_game_state
-        .physics_sim
-        .query_pipeline(QueryFilter::only_dynamic().exclude_sensors());
+    let affected_colliders = {
+        let mut game_state = game_state.lock().unwrap();
+        let query_pipeline = game_state
+            .physics_sim
+            .query_pipeline(QueryFilter::only_dynamic().exclude_sensors());
+        query_pipeline
+            .intersect_shape(explosion_pos, &explosion_shape)
+            .map(|(handle, _)| handle)
+            .collect::<Vec<_>>()
+    };
 
-    let collisions = query_pipeline.intersect_shape(explosion_pos, &explosion_shape);
-    for (collider_handle, _) in collisions {
+    for collider_handle in affected_colliders {
         let new_events = apply_explosion_forces(
             game_state.clone(),
             collider_handle,
