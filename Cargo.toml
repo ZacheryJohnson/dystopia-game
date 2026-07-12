@@ -28,7 +28,7 @@ criterion = "0.8.2"
 ahash = { version = "0.8", default-features = false, features = ["no-rng", "std"] }
 anyhow = "1.0.100"
 axum = "0.8.4"
-bevy = { version = "0.16.1", features = ["bevy_asset", "bevy_color", "bevy_core_pipeline", "bevy_render", "bevy_sprite", "bevy_state", "bevy_text", "web", "default_font"] }
+bevy = { version = "0.19.0", features = ["bevy_asset", "bevy_color", "bevy_core_pipeline", "bevy_render", "bevy_sprite", "bevy_state", "bevy_text", "debug", "track_location", "web", "default_font"] }
 bytes = { version = "1.10.1", features = ["serde"] }
 chrono = { version = "0.4.40", features = ["serde"] }
 crossbeam = "0.8.4"

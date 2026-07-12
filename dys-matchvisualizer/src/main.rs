@@ -3,10 +3,8 @@ use std::sync::{Arc, Mutex};
 use dys_simulation::{game_log::GameLog, simulation::simulation_event::SimulationEvent};
 use dys_stat::combatant_statline::CombatantStatline;
 
-use bevy::{math::vec2, prelude::*, sprite::MeshMaterial2d};
+use bevy::{math::vec2, prelude::*};
 use bevy::prelude::Color::Srgba;
-use bevy::render::camera::ScalingMode;
-use bevy::sprite::AlphaMode2d;
 use bevy::window::WindowResolution;
 use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -14,12 +12,15 @@ use web_time::{Duration, Instant};
 
 #[cfg(target_family = "wasm")]
 use bevy::asset::AssetMetaCheck;
+use bevy::camera::ScalingMode;
+use bevy::sprite_render::AlphaMode2d;
 use dys_simulation::game_objects::combatant::TeamAlignment;
 
 mod ui;
 mod visualizer;
 
-use crate::ui::{components as UiComponents, UiSystems};
+use crate::ui::UiSystems;
+use crate::ui::components::*;
 use crate::visualizer::components::*;
 use crate::visualizer::resources::*;
 use crate::visualizer::VisualizerSystems;
@@ -75,7 +76,7 @@ pub fn initialize_with_canvas(
                         title: String::from("DAX Match Visualizer"),
                         name: Some(String::from("DAX Match Visualizer")),
                         canvas: if canvas_id.is_empty() { None } else { Some(canvas_id) },
-                        resolution: WindowResolution::new(1200.0, 1200.0),
+                        resolution: WindowResolution::new(1200, 1200),
                         ..default()
                     }),
                     ..default()
@@ -188,7 +189,7 @@ fn try_reload_vis_state(
     materials: ResMut<Assets<ColorMaterial>>,
     mut vis_state: ResMut<VisualizationState>,
     asset_server: Res<AssetServer>,
-    entity_query: Query<Entity, Or<(With<VisualizationObject>, With<Text>)>>,
+    entity_query: Query<Entity, With<VisualizationObject>>,
     texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     // If we don't have pending updated game state from WASM, abort early
@@ -420,14 +421,14 @@ fn setup_after_reload_game_log(
                     builder.spawn((
                         Text2d(name),
                         TextFont {
-                            font: asset_server.load(FONT_FILE),
-                            font_size: 64.0,
+                            font: FontSource::Handle(asset_server.load(FONT_FILE)),
+                            font_size: FontSize::Px(64.0),
                             ..Default::default()
                         },
                         TextColor(Color::WHITE),
                         new_transform,
                         VisualizationObject,
-                        UiComponents::CombatantIdText {
+                        CombatantIdText {
                             combatant_id: *combatant_id,
                             is_stunned: false,
                         },
@@ -452,7 +453,7 @@ fn setup_after_reload_game_log(
         },
         BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.85)),
         VisualizationObject,
-        UiComponents::PostgameScoreboard,
+        PostgameScoreboard,
     )).with_children(|parent| {
         parent.spawn((
             Node {
@@ -478,8 +479,8 @@ fn setup_after_reload_game_log(
                 ).with_child((
                     Text::new(stat_category),
                     TextFont {
-                        font: asset_server.load(FONT_FILE),
-                        font_size: 32.0,
+                        font: FontSource::Handle(asset_server.load(FONT_FILE)),
+                        font_size: FontSize::Px(32.0),
                         ..default()
                     },
                     TextColor(Color::WHITE),
@@ -523,8 +524,8 @@ fn setup_after_reload_game_log(
                     ).with_child((
                         Text::new(stat_str),
                         TextFont {
-                            font: asset_server.load(FONT_FILE),
-                            font_size: 36.0,
+                            font: FontSource::Handle(asset_server.load(FONT_FILE)),
+                            font_size: FontSize::Px(36.0),
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -539,7 +540,7 @@ fn update(
     mut commands: Commands,
     mut vis_state: ResMut<VisualizationState>,
     mut combatants_query: Query<(&mut CombatantVisualizer, &mut Transform, &mut Sprite, &mut AnimationConfig), Without<BallVisualizer>>,
-    mut combatant_id_text_query: Query<&mut UiComponents::CombatantIdText>,
+    mut combatant_id_text_query: Query<&mut CombatantIdText>,
     mut balls_query: Query<(&mut BallVisualizer, &mut Transform, &mut MeshMaterial2d<ColorMaterial>), Without<CombatantVisualizer>>,
     mut camera_query: Query<(&mut Transform, &mut Projection), (With<Camera2d>, Without<CombatantVisualizer>, Without<BallVisualizer>)>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -635,7 +636,7 @@ fn update(
 
         ball_vis.last_scale = ball_transform.scale;
 
-        let ball_color_mat = materials.get_mut(ball_mat.0.id()).unwrap();
+        let mut ball_color_mat = materials.get_mut(ball_mat.0.id()).unwrap();
         ball_color_mat.color = Color::linear_rgb(0.75, 0.75 - (ball_vis.desired_charge / 100.0), 0.0);
     }
 
@@ -780,7 +781,7 @@ fn update(
 
 fn display_game_log_perf(
     vis_state: Res<VisualizationState>,
-    mut text_query: Query<&mut Text2d, With<UiComponents::GameLogPerfText>>,
+    mut text_query: Query<&mut Text, With<GameLogPerfText>>,
 ) {
     let Some(ref game_log) = vis_state.game_log else {
         return;
@@ -795,9 +796,9 @@ fn display_game_log_perf(
 
 fn display_current_score(
     mut set: ParamSet<(
-        Query<(&mut Text2d, &mut TextColor), With<UiComponents::HomeTeamScoreText>>,
-        Query<(&mut Text2d, &mut TextColor), With<UiComponents::AwayTeamScoreText>>,
-        Query<&mut Text2d, With<UiComponents::MatchTimerText>>,
+        Query<(&mut Text, &mut TextColor), With<HomeTeamScoreText>>,
+        Query<(&mut Text, &mut TextColor), With<AwayTeamScoreText>>,
+        Query<&mut Text, With<MatchTimerText>>,
     )>,
     vis_state: Res<VisualizationState>,
 ) {
@@ -808,7 +809,11 @@ fn display_current_score(
     const TICKS_PER_SECOND: u32 = 10;
     {
         let mut home_text_query = set.p0();
-        let (mut home_text, mut color) = home_text_query.single_mut().expect("failed to get home score text component");
+        let (mut home_text, mut color) = match home_text_query.single_mut() {
+            Ok(res) => res,
+            Err(err) => panic!("{err:?}")
+        };
+
         home_text.0 = format!("{}", vis_state.home_score);
         if vis_state.end_of_game {
             if vis_state.home_score >= vis_state.away_score {
@@ -860,7 +865,7 @@ fn update_explosion_visualizers(
 
         explosion.opacity = new_opacity;
 
-        let Some(color_material) = assets.get_mut(mesh_handle.0.id()) else {
+        let Some(mut color_material) = assets.get_mut(mesh_handle.0.id()) else {
             continue;
         };
 
@@ -879,7 +884,7 @@ fn update_plate_visualizers(
     mut assets: ResMut<Assets<ColorMaterial>>
 ) {
     for (_, mesh_handle) in plate_query.iter_mut() {
-        let Some(color_material) = assets.get_mut(mesh_handle.0.id()) else {
+        let Some(mut color_material) = assets.get_mut(mesh_handle.0.id()) else {
             continue;
         };
 
@@ -896,11 +901,11 @@ fn update_plate_visualizers(
 fn update_scoring_text_visualizers(
     vis_state: Res<VisualizationState>,
     mut team_query: Query<
-        (&mut Text2d, &mut TextColor, &mut Node, Has<UiComponents::HomeTeamScoreUpdateText>),
-        Or<(With<UiComponents::HomeTeamScoreUpdateText>, With<UiComponents::AwayTeamScoreUpdateText>)>
+        (&mut Text, &mut TextColor, Has<HomeTeamScoreUpdateText>),
+        Or<(With<HomeTeamScoreUpdateText>, With<AwayTeamScoreUpdateText>)>
     >
 ) {
-    for (mut text, mut text_color, mut node, is_home_team) in team_query.iter_mut() {
+    for (mut text, mut text_color, is_home_team) in team_query.iter_mut() {
         if vis_state.current_tick % 10 == 0 {
             let (self_score_change, opponent_score_change) = {
                 if is_home_team {
@@ -922,15 +927,11 @@ fn update_scoring_text_visualizers(
                 text.0 = String::new();
                 *text_color = TextColor(Color::WHITE);
             }
-
-            node.top = Val::Px(107.0);
         } else {
             let alpha = 1.0 - (vis_state.current_tick % 10) as f32 / 10.0;
             let mut existing_color = text_color.0;
             existing_color.set_alpha(alpha);
             *text_color = TextColor(existing_color);
-
-            node.top = Val::Px(107.0 + ((vis_state.current_tick % 10) as f32 / 2.0));
         }
     }
 }
@@ -961,7 +962,7 @@ fn handle_keyboard_input(
 }
 
 fn update_combatant_id_text(
-    mut combatants_query: Query<(&mut TextColor, &UiComponents::CombatantIdText)>,
+    mut combatants_query: Query<(&mut TextColor, &CombatantIdText)>,
 ) {
     for (mut text_color, combatant_id_text) in combatants_query.iter_mut() {
         if combatant_id_text.is_stunned {

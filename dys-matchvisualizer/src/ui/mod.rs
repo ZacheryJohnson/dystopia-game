@@ -1,6 +1,7 @@
 use bevy::app::App;
 use bevy::prelude::{Plugin, SystemSet};
 
+pub mod components;
 mod setup;
 mod update;
 
@@ -17,5 +18,3 @@ impl Plugin for UiPlugin {
         ));
     }
 }
-
-pub mod components;
