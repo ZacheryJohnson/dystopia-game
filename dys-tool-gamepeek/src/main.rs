@@ -1,6 +1,8 @@
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
+use eframe::Frame;
+use egui::Ui;
 use rand::SeedableRng;
 use rand_pcg::Pcg64;
 use dys_simulation::game::Game;
@@ -45,8 +47,8 @@ impl GamePeekApp {
 }
 
 impl eframe::App for GamePeekApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+    fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
+        egui::CentralPanel::default().show(ui, |ui| {
             egui::ComboBox::from_label("Combatant Filter")
                 .selected_text(if self.combatant_filter.is_some() { format!("{}", self.combatant_filter.unwrap()) } else { "(none)".to_string() })
                 .show_ui(ui, |ui| {

@@ -33,8 +33,8 @@ bytes = { version = "1.10.1", features = ["serde"] }
 chrono = { version = "0.4.40", features = ["serde"] }
 crossbeam = "0.8.4"
 dyn-clone = "1.0"
-eframe = "0.31"
-egui = "0.31"
+eframe = "0.35"
+egui = "0.35"
 futures = "0.3.31"
 indexmap = "2.10"
 lazy_static = "1.5.0"
@@ -56,7 +56,7 @@ thiserror = "2.0.17"
 tracing = { version = "0.1.40", features = ["attributes", "log"] }
 tracing-opentelemetry = "0.33.0"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter", "json"] }
-wasm-bindgen = "=0.2.104"
+wasm-bindgen = "=0.2.126"
 web-sys = { version = "0.3.81", features = ["console"] }
 web-time = "1.1.0"
 
