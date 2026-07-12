@@ -1,5 +1,5 @@
 use std::{fmt::Debug, sync::{Arc, Mutex}};
-use rand::RngCore;
+use rand::Rng;
 use dys_world::{arena::plate::PlateId, combatant::instance::CombatantInstance};
 use rapier3d::{dynamics::{RigidBodyBuilder, RigidBodyHandle, RigidBodySet}, geometry::{ActiveCollisionTypes, ColliderBuilder, ColliderHandle, ColliderSet}, pipeline::ActiveEvents};
 use rapier3d::glamx::vec3;

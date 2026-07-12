@@ -124,7 +124,11 @@ mod tests {
 
     #[test]
     fn test_deterministic_simulations() {
-        let world = Generator::new().generate_world(&mut StdRng::from_os_rng());
+        let seed = &[0; 32];
+
+        let mut rng = StdRng::from_seed(seed.to_owned());
+
+        let world = Generator::new().generate_world(&mut rng);
 
         let mut teams = world.teams.values();
 
@@ -138,7 +142,6 @@ mod tests {
                 date: Date::new(Month::Arguscorp, 1, 10000),
             },
         };
-        let seed = &[0; 32];
         let game_1 = game.simulate_seeded(seed);
         let game_2 = game.simulate_seeded(seed);
 

@@ -1,6 +1,4 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use rand::prelude::StdRng;
-use rand::SeedableRng;
 use dys_simulation::game::Game;
 use dys_world::{schedule::{calendar::{Date, Month}}, generator::Generator};
 use dys_world::games::instance::GameInstance;
@@ -11,7 +9,7 @@ fn game_simulation_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("simulation");
     group.sample_size(20);
 
-    let world = Generator::new().generate_world(&mut StdRng::from_os_rng());
+    let world = Generator::new().generate_world(&mut rand::rng());
     let mut teams = world.teams.values();
     let game = Game {
         game_instance: GameInstance {
@@ -25,7 +23,9 @@ fn game_simulation_benchmark(c: &mut Criterion) {
     };
     let seed = &[0; 32];
     
-    group.bench_function("full_game_simulation", |b| b.iter(|| game.simulate_seeded(seed)));
+    group.bench_function("full_game_simulation", |b| b.iter(|| {
+        game.simulate_seeded(seed)
+    }));
     group.finish();
 }
 
