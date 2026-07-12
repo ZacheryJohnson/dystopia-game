@@ -20,7 +20,7 @@ opt-level = "z"
 # -----------------------
 # Dev dependencies
 # -----------------------
-criterion = "0.7.0"
+criterion = "0.8.2"
 
 # -----------------------
 # Runtime dependencies
