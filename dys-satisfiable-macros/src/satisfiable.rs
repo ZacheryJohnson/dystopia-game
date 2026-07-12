@@ -2,6 +2,7 @@ use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::Data;
 
+#[allow(clippy::too_many_lines)]
 pub fn satisfiable_impl(input: TokenStream) -> TokenStream {
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
 

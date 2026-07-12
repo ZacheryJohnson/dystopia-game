@@ -28,6 +28,7 @@ pub struct ArenaNavmeshNode {
 }
 
 impl ArenaNavmeshNode {
+    #[must_use]
     pub fn from_point(point: Vec3) -> ArenaNavmeshNode {
         ArenaNavmeshNode {
             x: OrderedFloat::from(point.x),
@@ -36,6 +37,7 @@ impl ArenaNavmeshNode {
         }
     }
 
+    #[must_use]
     pub fn as_vector(&self) -> Vec3 {
         vec3(*self.x, *self.y, *self.z)
     }
@@ -52,23 +54,28 @@ pub struct ArenaNavmeshPath {
 }
 
 impl ArenaNavmeshPath {
+    #[must_use]
     pub fn new(mut path: Vec<ArenaNavmeshNode>) -> ArenaNavmeshPath {
         path.reverse();
         ArenaNavmeshPath { path }
     }
 
+    #[must_use]
     pub fn empty() -> ArenaNavmeshPath {
         ArenaNavmeshPath { path: vec![] }
     }
 
+    #[must_use]
     pub fn next_node(&mut self) -> Option<ArenaNavmeshNode> {
         self.path.pop()
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.path.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.path.is_empty()
     }
@@ -80,6 +87,8 @@ pub struct ArenaNavmesh {
 }
 
 impl ArenaNavmesh {
+    /// # Panics
+    /// Will panic if `arena` cannot be locked.
     pub fn new_from(arena: Arc<Mutex<Arena>>, config: ArenaNavmeshConfig) -> ArenaNavmesh {
         let arena = arena.lock().unwrap();
         let arena_features = arena.all_features();
@@ -127,7 +136,7 @@ impl ArenaNavmesh {
                     let mut curr_y = max_y;
                     while curr_y >= min_y {
                         let curr_point = vec3(curr_x, curr_y, curr_z);
-                        if shape.contains_point(&shape_isometry, curr_point.into()) {
+                        if shape.contains_point(&shape_isometry, curr_point) {
                             // If any of our unpathable geometry is in the way, skip the potential node instead
                             let mut is_unpathable = false;
                             for (unpathable_shape, unpathable_isometry) in &unpathable_arena_shapes {
@@ -187,6 +196,7 @@ impl ArenaNavmesh {
         }
     }
 
+    #[must_use]
     pub fn config(&self) -> &ArenaNavmeshConfig {
         &self.config
     }

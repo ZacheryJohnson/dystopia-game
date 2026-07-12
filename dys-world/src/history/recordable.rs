@@ -6,9 +6,9 @@ pub trait RecordType: Serialize {
     type InstanceIdType: Display;
 
     /// Each record type has a shared identifier between records.
-    /// For example, with two types Car and Pet, the type_id of Car may be "CAR", while the type_id
-    /// of Pet may be "PET". With different instances of Cars, both would have a type_id of "CAR",
-    /// but different instance_ids.
+    /// For example, with two types Car and Pet, the `type_id()` of Car may be "CAR", while the `type_id()`
+    /// of Pet may be "PET". With different instances of Cars, both would have a `type_id()` of "CAR",
+    /// but different `instance_id()`s.
     fn type_id(&self) -> String {
         format!("{}-{}", Self::RECORD_PREFIX, self.instance_id())
     }

@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use serde::de::{Error, IgnoredAny, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use crate::combatant::instance::{CombatantInstance, CombatantInstanceId};
-use crate::season::season::{GamesMapT, ScheduleMapT, Season};
+use crate::schedule::season::{GamesMapT, ScheduleMapT, Season};
 use crate::team::instance::TeamInstance;
 use crate::world::World;
 

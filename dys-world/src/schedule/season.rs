@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex, Weak};
 use serde::Serialize;
 use crate::games::instance::{GameInstance, GameInstanceId};
 use crate::schedule::calendar::Date;
-use crate::season::series::Series;
+use crate::schedule::series::Series;
 
 pub type GamesMapT = HashMap<GameInstanceId, Arc<Mutex<GameInstance>>>;
 pub type ScheduleMapT = HashMap<Date, Vec<Weak<Mutex<GameInstance>>>>;
@@ -62,7 +62,7 @@ impl Season {
 mod tests {
     use crate::games::instance::GameInstanceId;
     use crate::schedule::calendar::Month;
-    use crate::season::series::SeriesType;
+    use crate::schedule::series::SeriesType;
     use crate::team::instance::TeamInstance;
     use super::*;
 

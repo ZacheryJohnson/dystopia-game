@@ -7,7 +7,7 @@ use crate::{
     team::instance::TeamInstance,
 };
 use crate::combatant::instance::CombatantInstanceId;
-use crate::season::season::Season;
+use crate::schedule::season::Season;
 use crate::team::instance::TeamInstanceId;
 
 #[derive(Clone, Debug, Serialize)]
@@ -27,7 +27,7 @@ mod tests {
     use crate::attribute::attribute_type::AttributeType;
     use crate::attribute::instance::AttributeInstance;
     use crate::combatant::limb::{Limb, LimbModifier, LimbType};
-    use crate::season::season::{GamesMapT, ScheduleMapT};
+    use crate::schedule::season::{GamesMapT, ScheduleMapT};
     use super::*;
 
     #[test]

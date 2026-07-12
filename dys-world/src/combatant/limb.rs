@@ -49,6 +49,7 @@ pub struct LimbModifier {
 }
 
 impl LimbModifier {
+    #[must_use]
     pub fn default_with_attributes(attributes: &[AttributeInstance]) -> LimbModifier {
         LimbModifier {
             modifier_type: LimbModifierType::Regular,
@@ -74,7 +75,7 @@ impl AttributeSource for LimbModifier {
             .attributes
             .iter()
             .find(|instance| instance.attribute_type() == attribute_type)
-            .map(|instance| instance.value())
+            .map(AttributeInstance::value)
     }
 
     fn attributes(&self) -> Vec<AttributeInstance> {

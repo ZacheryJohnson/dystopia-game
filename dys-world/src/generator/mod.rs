@@ -13,8 +13,8 @@ use crate::world::World;
 use crate::games::instance::GameInstance;
 use crate::proposal::{Proposal, ProposalEffect, ProposalOption};
 use crate::schedule::calendar::{Date, Month};
-use crate::season::season::{GamesMapT, ScheduleMapT, Season};
-use crate::season::series::{Series, SeriesType};
+use crate::schedule::season::{GamesMapT, ScheduleMapT, Season};
+use crate::schedule::series::{Series, SeriesType};
 
 pub struct Generator {
     given_names: Vec<String>,
@@ -29,15 +29,16 @@ impl Default for Generator {
 }
 
 impl Generator {
+    #[must_use]
     pub fn new() -> Generator {
         let given_names: Vec<String> = include_str!("../../data/given_names.txt")
             .split_whitespace()
-            .map(|s| s.to_owned())
+            .map(str::to_owned)
             .collect();
 
         let surnames: Vec<String> = include_str!("../../data/surnames.txt")
             .split_whitespace()
-            .map(|s| s.to_owned())
+            .map(str::to_owned)
             .collect();
 
         let team_names = vec![
@@ -432,12 +433,11 @@ impl Generator {
 
         let teams = teams.values().collect::<Vec<_>>();
         let fixed_team = teams.first().unwrap().to_owned();
-        let mut rotating_teams = Vec::from_iter(
-            teams
-                .iter()
-                .skip(1)
-                .map(|arc| (*arc).to_owned())
-        );
+        let mut rotating_teams = teams
+            .iter()
+            .skip(1)
+            .map(|arc| (*arc).to_owned())
+            .collect::<Vec<_>>();
 
         let mut game_id = 0;
         let mut date = Date::new(Month::Arguscorp, 1, 10000);
@@ -517,6 +517,7 @@ impl Generator {
         Season::new(games, schedule, series)
     }
 
+    #[must_use]
     pub fn generate_proposals(
         &self,
         _: &mut impl Rng,

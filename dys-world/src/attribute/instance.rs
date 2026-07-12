@@ -7,8 +7,11 @@ pub type AttributeValueT = f32;
 pub struct AttributeInstance(AttributeType, AttributeValueT);
 
 impl AttributeInstance {
+    #[must_use]
     pub fn new(attribute_type: AttributeType, value: AttributeValueT) -> Self { Self(attribute_type, value) }
+    #[must_use]
     pub fn attribute_type(&self) -> &AttributeType { &self.0 }
+    #[must_use]
     pub fn value(&self) -> AttributeValueT { self.1 }
 }
 

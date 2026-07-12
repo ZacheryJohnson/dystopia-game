@@ -54,6 +54,7 @@ impl CombatantInstance {
         });
     }
 
+    #[must_use]
     pub fn get_attribute_value(&self, attribute_type: &AttributeType) -> Option<AttributeValueT> {
         let temp_effects = self
             .effect_modifiers
@@ -62,7 +63,7 @@ impl CombatantInstance {
                 .attribute_modifier
                 .iter()
                 .filter(|inst| inst.attribute_type() == attribute_type)
-                .map(|inst| inst.value())
+                .map(AttributeInstance::value)
                 .collect::<Vec<_>>()
             )
             .collect::<Vec<_>>();
@@ -76,6 +77,7 @@ impl CombatantInstance {
     }
 
     /// A combatant's move speed, expressed in units travelable per tick.
+    #[must_use]
     pub fn move_speed(&self) -> f32 {
         let dexterity = self
             .get_attribute_value(&AttributeType::Dexterity)

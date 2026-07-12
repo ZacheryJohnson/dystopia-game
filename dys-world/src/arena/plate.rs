@@ -32,7 +32,7 @@ impl ArenaFeature for ArenaPlate {
         // but not so large that players flying through the air are counted towards plate progress.
 
         let collider = ColliderBuilder::new(self.shape.clone())
-            .translation(self.origin.into())
+            .translation(self.origin)
             .rotation(self.rotation.vector().into())
             .sensor(true)
             .build();

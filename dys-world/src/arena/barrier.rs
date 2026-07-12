@@ -46,7 +46,7 @@ impl ArenaBarrier {
 impl ArenaFeature for ArenaBarrier {
     fn build_rigid_body(&self) -> Option<RigidBody> {
         let rigid_body = RigidBodyBuilder::fixed()
-            .translation(self.origin.into())
+            .translation(self.origin)
             .rotation(self.rotation.vector().into())
             .build();
 

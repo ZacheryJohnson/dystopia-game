@@ -74,7 +74,7 @@ pub enum SatisfiableField<
     NotIn(Vec<ConcreteT>),
 
     /// The concrete value must pass a provided lambda.
-    /// See [SatisfiableField::lambda_from] for a convenience method of constructing a Lambda.
+    /// See [`SatisfiableField::lambda_from`] for a convenience method of constructing a Lambda.
     /// ```
     /// # use dys_satisfiable::SatisfiableField;
     /// let is_power_of_two = SatisfiableField::lambda_from(move |val: u32| val.is_power_of_two());

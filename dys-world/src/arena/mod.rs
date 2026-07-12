@@ -26,6 +26,7 @@ impl Debug for Arena {
 }
 
 impl Arena {
+    #[must_use]
     pub fn new_with_testing_defaults() -> Arena {
         Arena {
             // X: west-east; Y: up-down; Z: north-south
@@ -114,6 +115,7 @@ impl Arena {
         }
     }
 
+    #[must_use]
     pub fn all_features(&self) -> Vec<&dyn ArenaFeature> {
         self
             .all_features
@@ -122,6 +124,7 @@ impl Arena {
             .collect()
     }
 
+    #[must_use]
     pub fn features<T: ArenaFeature + 'static>(&self) -> Vec<&T> {
         self
             .all_features

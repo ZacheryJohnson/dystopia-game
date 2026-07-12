@@ -32,7 +32,7 @@ impl GameStat for GameStatPointsScored {
                             return 0;
                         };
 
-                        points.to_owned() as Self::ValueT
+                        Self::ValueT::from(*points)
                     })
                     .sum()
             )
